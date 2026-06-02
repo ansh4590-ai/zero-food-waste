@@ -1,0 +1,206 @@
+import { useState, useEffect, useRef } from "react";
+import { useNavigate, Link } from "react-router-dom";
+import { Button } from "../../components/ui/button";
+import { Input } from "../../components/ui/input";
+import { useLoadingStore } from "../../store";
+import { supabase } from "../../lib/supabase";
+import { toast } from "sonner";
+import { AuthLayout } from "../../components/auth/AuthLayout";
+
+export default function DonorSignup() {
+  const navigate = useNavigate();
+  const { isLoading, setLoading } = useLoadingStore();
+  
+  const autoCompleteRef = useRef<HTMLInputElement>(null);
+  const [formData, setFormData] = useState({
+    name: "",
+    email: "",
+    password: "",
+    phone: "",
+    donorType: "restaurant",
+    address: "",
+  });
+
+  useEffect(() => {
+    let scriptLoaded = false;
+    
+    const initAutocomplete = () => {
+      // @ts-ignore
+      if (!window.google || !window.google.maps || !window.google.maps.places || !autoCompleteRef.current) return;
+
+      // @ts-ignore
+      const autocomplete = new window.google.maps.places.Autocomplete(autoCompleteRef.current, {
+        fields: ["formatted_address", "geometry", "name"],
+      });
+
+      autocomplete.addListener("place_changed", () => {
+        const place = autocomplete.getPlace();
+        if (place.formatted_address) {
+          setFormData(prev => ({ ...prev, address: place.formatted_address }));
+        } else if (place.name) {
+          setFormData(prev => ({ ...prev, address: place.name }));
+        }
+      });
+    };
+
+    if (!document.querySelector(`script[src*="maps.googleapis.com/maps/api/js"]`)) {
+      const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || "";
+      if (apiKey) {
+        const script = document.createElement("script");
+        script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places`;
+        script.async = true;
+        script.defer = true;
+        script.onload = initAutocomplete;
+        document.head.appendChild(script);
+        scriptLoaded = true;
+      } else {
+        console.warn("VITE_GOOGLE_MAPS_API_KEY is missing. Autocomplete will not work.");
+      }
+    } else {
+      setTimeout(initAutocomplete, 500);
+    }
+  }, []);
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    setFormData({ ...formData, [e.target.name]: e.target.value });
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    
+    try {
+      const { error } = await supabase.auth.signUp({
+        email: formData.email,
+        password: formData.password,
+        options: {
+          data: {
+            full_name: formData.name,
+            role: 'donor',
+            phone: formData.phone,
+            donor_type: formData.donorType,
+          }
+        }
+      });
+
+      if (error) {
+        throw new Error(error.message);
+      }
+
+      toast.success("Registered successfully as Donor");
+      navigate("/dashboard");
+    } catch (err: any) {
+      toast.error(err.message || "An error occurred during registration");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <AuthLayout
+      title="Donor Registration"
+      subtitle="Sign up to start donating surplus food."
+      illustrationText="Join thousands of donors reducing food waste and feeding the community."
+    >
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div className="space-y-2">
+          <label className="text-sm font-medium leading-none text-zinc-300">Name / Business Name</label>
+          <Input 
+            name="name" 
+            required 
+            value={formData.name} 
+            onChange={handleChange} 
+            className="bg-zinc-900/50 border-white/10 text-white placeholder:text-zinc-500 focus-visible:ring-emerald-500" 
+          />
+        </div>
+        
+        <div className="space-y-2">
+          <label className="text-sm font-medium leading-none text-zinc-300">Email</label>
+          <Input 
+            name="email" 
+            type="email" 
+            required 
+            value={formData.email} 
+            onChange={handleChange} 
+            className="bg-zinc-900/50 border-white/10 text-white placeholder:text-zinc-500 focus-visible:ring-emerald-500" 
+          />
+        </div>
+        
+        <div className="space-y-2">
+          <label className="text-sm font-medium leading-none text-zinc-300">Password</label>
+          <Input 
+            name="password" 
+            type="password" 
+            required 
+            value={formData.password} 
+            onChange={handleChange} 
+            className="bg-zinc-900/50 border-white/10 text-white placeholder:text-zinc-500 focus-visible:ring-emerald-500" 
+          />
+        </div>
+
+        <div className="space-y-2">
+          <label className="text-sm font-medium leading-none text-zinc-300">Phone Number</label>
+          <Input 
+            name="phone" 
+            type="tel" 
+            required 
+            value={formData.phone} 
+            onChange={handleChange} 
+            className="bg-zinc-900/50 border-white/10 text-white placeholder:text-zinc-500 focus-visible:ring-emerald-500" 
+          />
+        </div>
+
+        <div className="space-y-2">
+          <label className="text-sm font-medium leading-none text-zinc-300">Donor Type</label>
+          <select 
+            name="donorType" 
+            className="flex h-10 w-full rounded-md border border-white/10 bg-zinc-900/50 px-3 py-2 text-sm text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+            value={formData.donorType} 
+            onChange={handleChange}
+          >
+            <option value="restaurant" className="bg-zinc-900">Restaurant / Cafe</option>
+            <option value="grocery" className="bg-zinc-900">Grocery Store</option>
+            <option value="event" className="bg-zinc-900">Event Organizer</option>
+            <option value="individual" className="bg-zinc-900">Individual</option>
+          </select>
+        </div>
+
+        <div className="space-y-2">
+          <label className="text-sm font-medium leading-none text-zinc-300">Address</label>
+          <Input 
+            name="address" 
+            ref={autoCompleteRef}
+            placeholder="Start typing address..." 
+            required 
+            value={formData.address} 
+            onChange={handleChange} 
+            className="bg-zinc-900/50 border-white/10 text-white placeholder:text-zinc-500 focus-visible:ring-emerald-500" 
+          />
+        </div>
+
+        <div className="space-y-2">
+          <label className="text-sm font-medium leading-none text-zinc-300">Profile Photo (Optional)</label>
+          <Input 
+            type="file" 
+            accept="image/*" 
+            className="bg-zinc-900/50 border-white/10 text-zinc-400 file:text-white file:bg-zinc-800 file:border-0 file:mr-4 file:py-1 file:px-3 file:rounded-md hover:file:bg-zinc-700" 
+          />
+        </div>
+        
+        <Button 
+          type="submit" 
+          className="w-full mt-6 bg-emerald-600 hover:bg-emerald-500 text-white transition-all active:scale-[0.98]" 
+          disabled={isLoading}
+        >
+          {isLoading ? "Registering..." : "Register as Donor"}
+        </Button>
+      </form>
+      
+      <div className="mt-6 text-center">
+        <Link to="/register" className="text-sm font-medium text-emerald-400 hover:text-emerald-300 transition-colors">
+          ← Back to roles
+        </Link>
+      </div>
+    </AuthLayout>
+  );
+}

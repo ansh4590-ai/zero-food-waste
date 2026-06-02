@@ -1,0 +1,5 @@
+{
+  "name": "Zero Food Waste",
+  "description": "Online Food Donation and Distribution System connecting donors, receivers, and volunteers.",
+  "requestFramePermissions": ["geolocation"]
+}
