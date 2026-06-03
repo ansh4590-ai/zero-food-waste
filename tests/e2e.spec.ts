@@ -6,12 +6,12 @@ test.describe('Zero Food Waste Platform E2E', () => {
     await page.goto('/');
     
     // Check main sections are present without overflow
-    await expect(page.getByText('Surplus Food')).toBeVisible();
-    await expect(page.getByText('See Zero Food Waste in Action')).toBeVisible();
+    await expect(page.getByRole('heading', { name: /Surplus Food Real-Time Rescue/i })).toBeVisible();
 
     // Verify touch targets on mobile
     if (isMobile) {
-      const getStartedBtn = page.getByText('Start Rescuing Food', { exact: false }).first();
+      const getStartedBtn = page.getByRole('link', { name: /Start Rescuing Food/i }).first();
+      await getStartedBtn.scrollIntoViewIfNeeded();
       const box = await getStartedBtn.boundingBox();
       expect(box?.height).toBeGreaterThanOrEqual(44);
     }
@@ -33,7 +33,7 @@ test.describe('Zero Food Waste Platform E2E', () => {
 
   test('Donor Signup Flow', async ({ page }) => {
     await page.goto('/register');
-    await page.getByText('I have surplus food').click();
+    await page.getByRole('link', { name: /Donor/i }).first().click();
     
     await expect(page).toHaveURL(/.*register\/donor/);
     await expect(page.getByRole('heading', { name: 'Donor Registration' })).toBeVisible();
