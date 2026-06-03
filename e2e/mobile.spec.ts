@@ -36,7 +36,8 @@ test.describe('Mobile Responsiveness', () => {
     await page.goto('/dashboard');
     const viewport = page.viewportSize();
     if (viewport && viewport.width < 640) {
-      const cards = page.locator('.neon-kpi-card');
+      // Find the grid containing the KPI cards, then select its direct children
+      const cards = page.locator('.grid-cols-1.sm\\:grid-cols-2.lg\\:grid-cols-4 > div');
       const count = await cards.count();
       if (count >= 2) {
         const box1 = await cards.nth(0).boundingBox();

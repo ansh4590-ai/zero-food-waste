@@ -1,8 +1,5 @@
 import { useState, useEffect, useRef } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/card";
-import { NeonCard, NeonCardHeader, NeonCardTitle, NeonCardDescription, NeonCardContent } from "../components/ui/NeonCard";
-import { NeonBadge } from "../components/ui/NeonBadge";
-import { AnimatedContainer } from "../components/ui/AnimatedContainer";
 import { Badge } from "../components/ui/badge";
 import {
   Utensils,
@@ -49,7 +46,7 @@ const COLORS = ["#2f6f57", "#c6923b", "#8b5cf6", "#5c8f62", "#a64b4b", "#f5f3ef"
 // DB lifecycle for food_listings: active → completed | expired
 // food_listings.status = 'completed' is set by the verify_qr_token / verify_task_otp RPC on delivery
 const DELIVERED_STATUSES = LISTING_DELIVERED_STATUSES as readonly string[];
-const ACTIVE_STATUSES = LISTING_ACTIVE_STATUSES as readonly string[];
+const ACTIVE_STATUSES    = LISTING_ACTIVE_STATUSES as readonly string[];
 
 export function isExpired(expiryTime?: string | null) {
   if (!expiryTime) return false;
@@ -124,11 +121,11 @@ function mapListingRow(d: any): Listing {
     if (taskId) break;
   }
   return {
-    id: String(d.id),
-    foodType: d.title ?? "Untitled",
+    id:       String(d.id),
+    foodType: d.title               ?? "Untitled",
     quantity: d.quantity_description ?? "—",
-    status: d.status ?? "unknown",
-    time: d.created_at
+    status:   d.status              ?? "unknown",
+    time:     d.created_at
       ? new Date(d.created_at).toLocaleDateString("en-IN", { day: "numeric", month: "short" })
       : "—",
     location: d.location_name ?? "Not set",
@@ -141,11 +138,11 @@ function mapListingRow(d: any): Listing {
 
 function mapRequestRow(d: any): RequestItem {
   return {
-    id: String(d.id),
+    id:       String(d.id),
     foodType: d.food_listings?.title ?? "Unknown",
-    donor: "Verified Partner",
-    status: d.status ?? "pending",
-    date: d.created_at
+    donor:    "Verified Partner",
+    status:   d.status ?? "pending",
+    date:     d.created_at
       ? new Date(d.created_at).toLocaleDateString("en-IN", { day: "numeric", month: "short" })
       : "—",
   };
@@ -160,47 +157,47 @@ function getRequestBadgeVariant(status: string): "success" | "default" | "warnin
 
 function getRequestLabel(status: string): string {
   const MAP: Record<string, string> = {
-    [REQUEST_STATUS.PENDING]: "⏳ Waiting",
-    pending_acceptance: "🔔 Notified",
-    [REQUEST_STATUS.ASSIGNED]: "🚗 En Route",
+    [REQUEST_STATUS.PENDING]:   "⏳ Waiting",
+    pending_acceptance:         "🔔 Notified",
+    [REQUEST_STATUS.ASSIGNED]:  "🚗 En Route",
     [REQUEST_STATUS.PICKED_UP]: "📦 Delivering",
-    fulfilled: "✅ Delivered",
+    fulfilled:                  "✅ Delivered",
     [REQUEST_STATUS.DELIVERED]: "✅ Delivered",
     [REQUEST_STATUS.CANCELLED]: "Cancelled",
-    [REQUEST_STATUS.REJECTED]: "Rejected",
+    [REQUEST_STATUS.REJECTED]:  "Rejected",
   };
   return MAP[status] ?? status.charAt(0).toUpperCase() + status.slice(1).replace(/_/g, " ");
 }
 
 export default function Dashboard() {
   const { user } = useAuthStore();
-  const navigate = useNavigate();
+  const navigate  = useNavigate();
 
-  const [isLoading, setIsLoading] = useState(true);
-  const [fetchError, setFetchError] = useState(false);
-  const [recentListings, setRecentListings] = useState<Listing[]>([]);
-  const [requests, setRequests] = useState<RequestItem[]>([]);
+  const [isLoading,       setIsLoading]       = useState(true);
+  const [fetchError,      setFetchError]       = useState(false);
+  const [recentListings,  setRecentListings]   = useState<Listing[]>([]);
+  const [requests,        setRequests]         = useState<RequestItem[]>([]);
 
   // Analytics
-  const [totalMeals, setTotalMeals] = useState(0);
+  const [totalMeals,     setTotalMeals]     = useState(0);
   const [completedCount, setCompletedCount] = useState(0);
-  const [activeCount, setActiveCount] = useState(0);
+  const [activeCount,    setActiveCount]    = useState(0);
   const [pendingPickups, setPendingPickups] = useState(0);
   const [recentActivity, setRecentActivity] = useState<any[]>([]);
-  const [trendData, setTrendData] = useState<{ name: string; meals: number }[]>([]);
-  const [categoryData, setCategoryData] = useState<{ name: string; value: number }[]>([]);
+  const [trendData,      setTrendData]      = useState<{ name: string; meals: number }[]>([]);
+  const [categoryData,   setCategoryData]   = useState<{ name: string; value: number }[]>([]);
 
   // ─── Actions ──────────────────────────────────────────────────────────────
   const handleCancelListing = async (listingId: string) => {
     if (!window.confirm("Are you sure you want to cancel this listing? It will be removed from the Find Food page.")) return;
-
+    
     try {
       const { error } = await supabase
         .from('food_listings')
         .update({ status: LISTING_STATUS.CANCELLED })
         .eq('id', listingId)
         .eq('donor_id', user?.id); // extra safety
-
+        
       if (error) throw error;
       toast.success("Listing cancelled successfully.");
       // Realtime subscription will handle updating the UI state automatically
@@ -229,7 +226,7 @@ export default function Dashboard() {
 
       const rawItems = listingsData.data || [];
       if (listingsData.error && import.meta.env.DEV) console.error("Dashboard fetch error:", listingsData.error);
-
+      
       let totMeals = 0, comp = 0, act = 0;
       if (rawItems.length > 0) {
         comp = rawItems.filter(i => DELIVERED_STATUSES.includes(i.status)).length;
@@ -240,10 +237,10 @@ export default function Dashboard() {
           }
           return true;
         }).length;
-
+        
         rawItems.filter(i => DELIVERED_STATUSES.includes(i.status)).forEach(i => {
-          const match = String(i.quantity_description || "").match(/(\d+)/);
-          totMeals += match ? parseInt(match[1], 10) : 15;
+           const match = String(i.quantity_description || "").match(/(\d+)/);
+           totMeals += match ? parseInt(match[1], 10) : 15;
         });
       }
       setTotalMeals(totMeals);
@@ -251,7 +248,7 @@ export default function Dashboard() {
       setActiveCount(act);
       setPendingPickups(tasksData.count || 0);
 
-      const activityFeed = [...rawItems].sort((a, b) =>
+      const activityFeed = [...rawItems].sort((a, b) => 
         new Date(b.updated_at || b.created_at).getTime() - new Date(a.updated_at || a.created_at).getTime()
       ).slice(0, 10);
       setRecentActivity(activityFeed);
@@ -331,7 +328,7 @@ export default function Dashboard() {
             const newRec = payload.new as Record<string, any>;
             if (ACTIVE_STATUSES.includes(newRec.status)) setActiveCount(prev => prev + 1);
             if (DELIVERED_STATUSES.includes(newRec.status)) setCompletedCount(prev => prev + 1);
-
+            
             setRecentActivity(prev => [newRec, ...prev].slice(0, 10));
           } else if (payload.eventType === 'UPDATE') {
             const oldStatus = (payload.old as Record<string, any>)?.status;
@@ -340,14 +337,14 @@ export default function Dashboard() {
             if (oldStatus !== newStatus && oldStatus && newStatus) {
               if (ACTIVE_STATUSES.includes(newStatus)) setActiveCount(prev => prev + 1);
               if (ACTIVE_STATUSES.includes(oldStatus)) setActiveCount(prev => Math.max(0, prev - 1));
-
+              
               if (DELIVERED_STATUSES.includes(newStatus)) {
-                setCompletedCount(prev => prev + 1);
-                const match = String((payload.new as Record<string, any>)?.quantity_description || "").match(/(\d+)/);
-                setTotalMeals(prev => prev + (match ? parseInt(match[1], 10) : 15));
+                 setCompletedCount(prev => prev + 1);
+                 const match = String((payload.new as Record<string, any>)?.quantity_description || "").match(/(\d+)/);
+                 setTotalMeals(prev => prev + (match ? parseInt(match[1], 10) : 15));
               }
               if (DELIVERED_STATUSES.includes(oldStatus)) {
-                setCompletedCount(prev => Math.max(0, prev - 1));
+                 setCompletedCount(prev => Math.max(0, prev - 1));
               }
             } else if (!oldStatus) {
               // If REPLICA IDENTITY is not FULL, old status is missing, fetch to stay synced
@@ -356,7 +353,7 @@ export default function Dashboard() {
 
             setRecentActivity(prev => {
               const filtered = prev.filter(item => item.id !== (payload.new as any).id);
-              return [payload.new, ...filtered].sort((a: any, b: any) =>
+              return [payload.new, ...filtered].sort((a: any, b: any) => 
                 new Date(b.updated_at || b.created_at).getTime() - new Date(a.updated_at || a.created_at).getTime()
               ).slice(0, 10);
             });
@@ -394,11 +391,11 @@ export default function Dashboard() {
           if (newRec?.receiver_id === user.id || oldRec?.receiver_id === user.id) {
             // Direct fetch allowed since load on per-receiver filter is tiny
             const { data: rd } = await supabase
-              .from("food_requests")
-              .select("id, status, created_at, food_listings(title)")
-              .eq("receiver_id", user.id)
-              .order("created_at", { ascending: false })
-              .limit(5);
+            .from("food_requests")
+            .select("id, status, created_at, food_listings(title)")
+            .eq("receiver_id", user.id)
+            .order("created_at", { ascending: false })
+            .limit(5);
             if (rd) setRequests(rd.map(mapRequestRow));
           }
         } catch (e) {
@@ -420,23 +417,23 @@ export default function Dashboard() {
 
   // ─── Derived UI values ────────────────────────────────────────────────────
   const listingBadgeVariant = (status: string) => {
-    if (status === LISTING_STATUS.ACTIVE) return "warning" as const;
-    if (status === LISTING_STATUS.COMPLETED) return "success" as const;
+    if (status === LISTING_STATUS.ACTIVE)    return "warning"   as const;
+    if (status === LISTING_STATUS.COMPLETED) return "success"   as const;
     return "secondary" as const;
   };
 
   // ─── Render ───────────────────────────────────────────────────────────────
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <AnimatedContainer animation="fade-in-up" className="mb-8">
-        <h2 className="text-2xl font-bold text-white sm:text-3xl">Dashboard</h2>
-        <p className="mt-1 text-sm text-white/50">
+      <div className="mb-8">
+        <h2 className="text-2xl font-bold text-foreground sm:text-3xl">Dashboard</h2>
+        <p className="mt-1 text-sm text-muted-foreground">
           Live platform metrics, powered by your Supabase database.
         </p>
-      </AnimatedContainer>
+      </div>
 
       {fetchError && (
-        <div className="mb-6 flex items-center gap-3 rounded-xl neon-card neon-border-red px-4 py-3 text-sm text-red-400">
+        <div className="mb-6 flex items-center gap-3 rounded-lg border border-red-200 bg-red-50 dark:bg-red-950/20 dark:border-red-900 px-4 py-3 text-sm text-red-700 dark:text-red-400">
           <AlertCircle className="h-4 w-4 shrink-0" />
           <span>
             Could not load dashboard data.{" "}
@@ -448,77 +445,77 @@ export default function Dashboard() {
       )}
 
       {/* ─── KPI Cards ─── */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 mb-8">
-        <AnimatedContainer animation="fade-in-up" delay={100}>
-          <NeonCard kpi accentBar className="neon-card-emerald">
-            <div className="flex items-center justify-between mb-3">
-              <p className="text-sm font-medium text-white/60">Meals Rescued</p>
-              <div className="h-9 w-9 rounded-xl bg-[rgba(0,229,153,0.1)] flex items-center justify-center">
-                <Utensils className="h-4 w-4 text-[#00e599]" />
-              </div>
-            </div>
-            <p className="text-3xl font-bold tabular-nums text-white">
-              {isLoading ? <span className="h-9 w-16 bg-white/10 animate-pulse rounded inline-block" /> : totalMeals}
+      <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4 mb-8">
+        <Card className="hover:shadow-md transition-shadow group relative overflow-hidden">
+          <div className="absolute inset-x-0 bottom-0 h-1 bg-green-500 scale-x-0 group-hover:scale-x-100 transition-transform origin-left duration-300" />
+          <CardHeader className="pb-2">
+            <CardDescription className="text-sm font-medium">Meals Rescued</CardDescription>
+            <CardTitle className="text-3xl tabular-nums text-foreground">
+              {isLoading ? <div className="h-9 w-16 bg-muted animate-pulse rounded" /> : totalMeals}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-xs text-green-600 dark:text-green-500 font-medium flex items-center">
+              <Utensils className="h-3.5 w-3.5 mr-1" /> Lifetime community impact
             </p>
-            <p className="mt-2 text-xs text-[#00e599] font-medium">Lifetime community impact</p>
-          </NeonCard>
-        </AnimatedContainer>
+          </CardContent>
+        </Card>
 
-        <AnimatedContainer animation="fade-in-up" delay={200}>
-          <NeonCard kpi accentBar className="neon-card-amber">
-            <div className="flex items-center justify-between mb-3">
-              <p className="text-sm font-medium text-white/60">Active Donations</p>
-              <div className="h-9 w-9 rounded-xl bg-[rgba(245,158,11,0.1)] flex items-center justify-center">
-                <Activity className="h-4 w-4 text-[#fbbf24]" />
-              </div>
-            </div>
-            <p className="text-3xl font-bold tabular-nums text-white">
-              {isLoading ? <span className="h-9 w-16 bg-white/10 animate-pulse rounded inline-block" /> : activeCount}
+        <Card className="hover:shadow-md transition-shadow group relative overflow-hidden">
+          <div className="absolute inset-x-0 bottom-0 h-1 bg-amber-500 scale-x-0 group-hover:scale-x-100 transition-transform origin-left duration-300" />
+          <CardHeader className="pb-2">
+            <CardDescription className="text-sm font-medium">Active Donations</CardDescription>
+            <CardTitle className="text-3xl tabular-nums text-foreground">
+              {isLoading ? <div className="h-9 w-16 bg-muted animate-pulse rounded" /> : activeCount}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-xs text-amber-600 dark:text-amber-500 font-medium flex items-center">
+              <Activity className="h-3.5 w-3.5 mr-1" /> Ready for pickup
             </p>
-            <p className="mt-2 text-xs text-[#fbbf24] font-medium">Ready for pickup</p>
-          </NeonCard>
-        </AnimatedContainer>
+          </CardContent>
+        </Card>
 
-        <AnimatedContainer animation="fade-in-up" delay={300}>
-          <NeonCard kpi accentBar className="neon-card-blue">
-            <div className="flex items-center justify-between mb-3">
-              <p className="text-sm font-medium text-white/60">Pending Pickups</p>
-              <div className="h-9 w-9 rounded-xl bg-[rgba(59,130,246,0.1)] flex items-center justify-center">
-                <Truck className="h-4 w-4 text-[#60a5fa]" />
-              </div>
-            </div>
-            <p className="text-3xl font-bold tabular-nums text-white">
-              {isLoading ? <span className="h-9 w-16 bg-white/10 animate-pulse rounded inline-block" /> : pendingPickups}
+        <Card className="hover:shadow-md transition-shadow group relative overflow-hidden">
+          <div className="absolute inset-x-0 bottom-0 h-1 bg-blue-500 scale-x-0 group-hover:scale-x-100 transition-transform origin-left duration-300" />
+          <CardHeader className="pb-2">
+            <CardDescription className="text-sm font-medium">Pending Pickups</CardDescription>
+            <CardTitle className="text-3xl tabular-nums text-foreground">
+              {isLoading ? <div className="h-9 w-16 bg-muted animate-pulse rounded" /> : pendingPickups}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-xs text-blue-600 dark:text-blue-500 font-medium flex items-center">
+              <Truck className="h-3.5 w-3.5 mr-1" /> Volunteers en route
             </p>
-            <p className="mt-2 text-xs text-[#60a5fa] font-medium">Volunteers en route</p>
-          </NeonCard>
-        </AnimatedContainer>
+          </CardContent>
+        </Card>
 
-        <AnimatedContainer animation="fade-in-up" delay={400}>
-          <NeonCard kpi accentBar>
-            <div className="flex items-center justify-between mb-3">
-              <p className="text-sm font-medium text-white/60">Completed Deliveries</p>
-              <div className="h-9 w-9 rounded-xl bg-[rgba(47,111,87,0.15)] flex items-center justify-center">
-                <CheckCircle2 className="h-4 w-4 text-[#2f6f57]" />
-              </div>
-            </div>
-            <p className="text-3xl font-bold tabular-nums text-white">
-              {isLoading ? <span className="h-9 w-16 bg-white/10 animate-pulse rounded inline-block" /> : completedCount}
+        <Card className="hover:shadow-md transition-shadow group relative overflow-hidden">
+          <div className="absolute inset-x-0 bottom-0 h-1 bg-teal-500 scale-x-0 group-hover:scale-x-100 transition-transform origin-left duration-300" />
+          <CardHeader className="pb-2">
+            <CardDescription className="text-sm font-medium">Completed Deliveries</CardDescription>
+            <CardTitle className="text-3xl tabular-nums text-foreground">
+              {isLoading ? <div className="h-9 w-16 bg-muted animate-pulse rounded" /> : completedCount}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-xs text-teal-600 dark:text-teal-500 font-medium flex items-center">
+              <CheckCircle2 className="h-3.5 w-3.5 mr-1" /> Successful handoffs
             </p>
-            <p className="mt-2 text-xs text-[#00e599] font-medium">Successful handoffs</p>
-          </NeonCard>
-        </AnimatedContainer>
+          </CardContent>
+        </Card>
       </div>
 
       {/* ─── Charts ─── */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
         {/* Bar chart */}
-        <NeonCard className="p-6">
-          <NeonCardHeader>
-            <NeonCardTitle>Listing Volume by Day</NeonCardTitle>
-            <NeonCardDescription>Distribution of food listings across the week</NeonCardDescription>
-          </NeonCardHeader>
-          <NeonCardContent>
+        <Card>
+          <CardHeader>
+            <CardTitle>Listing Volume by Day</CardTitle>
+            <CardDescription>Distribution of food listings across the week</CardDescription>
+          </CardHeader>
+          <CardContent className="pt-0">
             {/* Explicit pixel height — prevents Recharts width/height = -1 warning */}
             <div style={{ width: "100%", height: 288 }}>
               {isLoading ? (
@@ -563,16 +560,16 @@ export default function Dashboard() {
                 </div>
               )}
             </div>
-          </NeonCardContent>
-        </NeonCard>
+          </CardContent>
+        </Card>
 
         {/* Pie chart */}
-        <NeonCard className="p-6">
-          <NeonCardHeader>
-            <NeonCardTitle>By Category</NeonCardTitle>
-            <NeonCardDescription>Breakdown of food types across all listings</NeonCardDescription>
-          </NeonCardHeader>
-          <NeonCardContent>
+        <Card>
+          <CardHeader>
+            <CardTitle>By Category</CardTitle>
+            <CardDescription>Breakdown of food types across all listings</CardDescription>
+          </CardHeader>
+          <CardContent className="pt-0">
             <div style={{ width: "100%", height: 288 }}>
               {isLoading ? (
                 <div className="w-full h-full flex items-center justify-center">
@@ -615,8 +612,8 @@ export default function Dashboard() {
                 </div>
               )}
             </div>
-          </NeonCardContent>
-        </NeonCard>
+          </CardContent>
+        </Card>
       </div>
 
       {/* ─── Global Organization: Recent Activity Timeline ─── */}
@@ -629,19 +626,19 @@ export default function Dashboard() {
           </span>
         </h3>
         {isLoading ? (
-          <NeonCard className="p-5">
-            <div className="animate-pulse space-y-4">
-              {[1, 2, 3, 4].map(i => (
-                <div key={i} className="flex gap-4">
-                  <div className="h-4 w-4 bg-white/10 rounded-full shrink-0" />
-                  <div className="space-y-2 flex-1">
-                    <div className="h-4 bg-white/10 rounded w-3/4" />
-                    <div className="h-3 bg-white/10 rounded w-1/4" />
-                  </div>
-                </div>
-              ))}
-            </div>
-          </NeonCard>
+          <div className="bg-card text-card-foreground shadow-sm overflow-hidden rounded-lg border border-border p-5">
+             <div className="animate-pulse space-y-4">
+                 {[1,2,3,4].map(i => (
+                    <div key={i} className="flex gap-4">
+                       <div className="h-4 w-4 bg-muted rounded-full shrink-0" />
+                       <div className="space-y-2 flex-1">
+                          <div className="h-4 bg-muted rounded w-3/4" />
+                          <div className="h-3 bg-muted rounded w-1/4" />
+                       </div>
+                    </div>
+                 ))}
+             </div>
+          </div>
         ) : recentActivity.length === 0 ? (
           <EmptyState
             icon={Activity}
@@ -651,26 +648,26 @@ export default function Dashboard() {
             onAction={fetchDashboard}
           />
         ) : (
-          <NeonCard className="p-6">
-            <div className="relative border-l-2 border-white/10 pl-4 ml-2 space-y-6">
+          <div className="bg-card text-card-foreground shadow-sm overflow-hidden rounded-lg border border-border p-6">
+            <div className="relative border-l-2 border-muted pl-4 ml-2 space-y-6">
               {recentActivity.map((activity, idx) => (
                 <div key={activity.id + '-' + idx} className="relative">
-                  <div className="absolute -left-[23px] top-1 h-3 w-3 rounded-full border-2 border-[#0f1111] bg-[#2f6f57]" />
+                  <div className="absolute -left-[23px] top-1 h-3 w-3 rounded-full border-2 border-background bg-primary" />
                   <div className="flex flex-col sm:flex-row sm:items-baseline sm:justify-between gap-1 mb-1">
-                    <p className="text-sm font-medium text-white/80">
-                      Listing <span className="font-semibold text-[#00e599]">{activity.title}</span> was updated.
+                    <p className="text-sm font-medium text-foreground">
+                      Listing <span className="font-semibold text-primary">{activity.title}</span> was updated.
                     </p>
-                    <time className="text-xs text-white/40 whitespace-nowrap">
-                      {new Date(activity.updated_at || activity.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    <time className="text-xs text-muted-foreground whitespace-nowrap">
+                       {new Date(activity.updated_at || activity.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                     </time>
                   </div>
-                  <div className="text-sm text-white/50">
-                    Status: <NeonBadge variant="green" className="scale-90 origin-left ml-1">{activity.status}</NeonBadge>
+                  <div className="text-sm text-muted-foreground">
+                    Current status: <Badge variant="secondary" className="scale-90 origin-left mt-1">{activity.status}</Badge>
                   </div>
                 </div>
               ))}
             </div>
-          </NeonCard>
+          </div>
         )}
       </div>
 
@@ -697,7 +694,7 @@ export default function Dashboard() {
               onAction={() => navigate("/browse")}
             />
           ) : (
-            <NeonCard className="overflow-hidden">
+            <div className="bg-card text-card-foreground shadow-sm overflow-hidden rounded-lg border border-border">
               <ul className="divide-y divide-border/50">
                 {requests.map((req) => (
                   <li
@@ -737,7 +734,7 @@ export default function Dashboard() {
                   </li>
                 ))}
               </ul>
-            </NeonCard>
+            </div>
           )}
         </div>
       </RoleGate>
@@ -759,7 +756,7 @@ export default function Dashboard() {
               onAction={() => navigate("/donate")}
             />
           ) : (
-            <NeonCard className="overflow-hidden">
+            <div className="bg-card text-card-foreground shadow-sm overflow-hidden rounded-lg border border-border">
               <ul className="divide-y divide-border/50">
                 {recentListings.map((listing) => (
                   <li key={listing.id} className="px-5 py-4 hover:bg-muted/40 transition-colors">
@@ -792,9 +789,9 @@ export default function Dashboard() {
                         <span className="font-medium text-foreground">{listing.quantity}</span>
                       </p>
                       {(listing.status === 'active' || listing.status === 'reserved') && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
                           className="text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 -mr-2"
                           onClick={() => handleCancelListing(listing.id)}
                         >
@@ -817,26 +814,25 @@ export default function Dashboard() {
                   </li>
                 ))}
               </ul>
-            </NeonCard>
+            </div>
           )}
         </div>
       </RoleGate>
 
       {/* ─── System Status footer ─── */}
-      <NeonCard className="p-5">
-        <div className="flex items-center gap-3">
-          <div className="relative flex h-2.5 w-2.5 shrink-0">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#00e599] opacity-60" />
-            <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-[#00e599]" />
+      <Card>
+        <CardContent className="p-5">
+          <div className="flex items-center gap-3">
+            <div className="h-2.5 w-2.5 rounded-full bg-green-500 dark:bg-green-400 animate-pulse shrink-0" />
+            <div>
+              <p className="text-sm font-medium text-foreground">All systems operational</p>
+              <p className="text-xs text-muted-foreground">
+                Realtime sync active · Database connected · Last refresh: just now
+              </p>
+            </div>
           </div>
-          <div>
-            <p className="text-sm font-semibold text-white">All systems operational</p>
-            <p className="text-xs text-white/50">
-              Realtime sync active · Database connected · Last refresh: just now
-            </p>
-          </div>
-        </div>
-      </NeonCard>
+        </CardContent>
+      </Card>
     </div>
   );
 }
