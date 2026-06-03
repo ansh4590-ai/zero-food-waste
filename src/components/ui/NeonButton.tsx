@@ -21,7 +21,7 @@ const variantStyles: Record<NeonButtonVariant, string> = {
 };
 
 const sizeStyles: Record<NeonButtonSize, string> = {
-  sm:   "px-3 py-1.5 text-xs min-h-[36px] rounded-lg gap-1.5",
+  sm:   "px-3 py-1.5 text-xs min-h-[44px] rounded-lg gap-1.5",
   md:   "px-4 py-2 text-sm min-h-[44px] rounded-xl gap-2",
   lg:   "px-6 py-3 text-base min-h-[52px] rounded-xl gap-2",
   icon: "p-2.5 min-h-[44px] min-w-[44px] rounded-xl",

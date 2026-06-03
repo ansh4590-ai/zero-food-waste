@@ -8,11 +8,18 @@ export interface OSRMCoordinate {
   lng: number;
 }
 
+export interface OSRMStep {
+  maneuver?: { type?: string; modifier?: string };
+  name?: string;
+  distance?: number;
+  duration?: number;
+}
+
 export interface OSRMRouteResult {
   geometry: OSRMCoordinate[];
   distanceMeters: number;
   durationSeconds: number;
-  legs: Array<{ distance: number; duration: number; steps: any[] }>;
+  legs: Array<{ distance: number; duration: number; steps: OSRMStep[] }>;
   isFallback?: boolean; // true when using Haversine estimate
 }
 

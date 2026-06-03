@@ -249,7 +249,7 @@ Return ONLY this JSON with no markdown or extra text:
     }
 
     // Haversine distance function
-    const getDistance = (p1: any, p2: any) => {
+    const getDistance = (p1: { lat: number; lng: number }, p2: { lat: number; lng: number }) => {
       const R = 6371; // Radius of the earth in km
       const dLat = (p2.lat - p1.lat) * (Math.PI / 180);
       const dLon = (p2.lng - p1.lng) * (Math.PI / 180);
@@ -394,10 +394,14 @@ Return ONLY this JSON with no markdown or extra text:
     }
   );
 
+  interface AuthenticatedRequest extends express.Request {
+    user?: { id: string; email?: string; role?: string };
+  }
+
   // ─── AUTH MIDDLEWARE ───────────────────────────────────────────────────────
   // Extracts user identity from Supabase JWT. Sets req.user = { id, email, role }.
   // Non-blocking: if no token, req.user is undefined.
-  const extractUser = async (req: any, _res: any, next: any) => {
+  const extractUser = async (req: AuthenticatedRequest, _res: express.Response, next: express.NextFunction) => {
     try {
       const authHeader = req.headers.authorization;
       if (!authHeader?.startsWith('Bearer ')) return next();
@@ -413,7 +417,7 @@ Return ONLY this JSON with no markdown or extra text:
   };
 
   // Blocking version: returns 401 if no valid user
-  const requireAuth = async (req: any, res: any, next: any) => {
+  const requireAuth = async (req: AuthenticatedRequest, res: express.Response, next: express.NextFunction) => {
     await extractUser(req, res, () => {});
     if (!req.user?.id) {
       return res.status(401).json({ error: 'Authentication required' });
@@ -641,7 +645,7 @@ Return ONLY this JSON with no markdown or extra text:
   });
 
   // ─── 22. QR TOKEN GENERATION ────────────────────────────────────────────────
-  app.post("/api/tasks/:taskId/generate-qr", requireAuth, async (req: any, res) => {
+  app.post("/api/tasks/:taskId/generate-qr", requireAuth, async (req: AuthenticatedRequest, res) => {
     try {
       const { taskId } = req.params;
       const { type } = req.body; // 'pickup' or 'delivery'
@@ -687,11 +691,11 @@ Return ONLY this JSON with no markdown or extra text:
     }
   }, 60_000);
 
-  app.post("/api/tasks/verify-qr", requireAuth, async (req: any, res) => {
+  app.post("/api/tasks/verify-qr", requireAuth, async (req: AuthenticatedRequest, res) => {
     try {
       const { token } = req.body;
       // Use authenticated identity instead of trusting client body
-      const volunteerId = req.user.id;
+      const volunteerId = req.user!.id;
 
       if (!token) {
         return res.status(400).json({ error: "token is required" });
@@ -745,11 +749,11 @@ Return ONLY this JSON with no markdown or extra text:
   });
 
   // ─── 24. ABORT VOLUNTEER TASK ──────────────────────────────────────────────────
-  app.post("/api/tasks/:taskId/abort", requireAuth, async (req: any, res) => {
+  app.post("/api/tasks/:taskId/abort", requireAuth, async (req: AuthenticatedRequest, res) => {
     try {
       const { taskId } = req.params;
       const { reason } = req.body;
-      const volunteerId = req.user.id;
+      const volunteerId = req.user!.id;
 
       if (!UUID_REGEX.test(taskId)) {
         return res.status(400).json({ error: "Invalid taskId format" });

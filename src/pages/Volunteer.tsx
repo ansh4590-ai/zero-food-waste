@@ -77,7 +77,7 @@ function DynamicMapController({
         let coords: [number, number][] =
           osrmGeometry?.length
             ? osrmGeometry.map(p => [p.lat, p.lng])
-            : [[livePos.lat, livePos.lng], [active.pickupLat, active.pickupLng], [active.dropoffLat, active.dropoffLng]];
+            : [[livePos.lat, livePos.lng], [active.pickupLat, active.pickupLng], ...(active.dropoffLat != null && active.dropoffLng != null ? [[active.dropoffLat, active.dropoffLng] as [number, number]] : [])];
         const bounds = L.latLngBounds(coords);
         if (bounds.isValid()) map.fitBounds(bounds, { padding: [80, 80], maxZoom: 16, animate: true, duration: 1 });
         return;
@@ -307,7 +307,7 @@ export default function Volunteer() {
   }, [user]);
 
   // ─── DATA TRANSFORMERS ──────────────────────────────────────────────────────
-  const transformOpenRow = (row: any): VolunteerTask | null => {
+  const transformOpenRow = (row: Record<string, unknown>): VolunteerTask | null => {
     const listing = Array.isArray(row.food_listings) ? row.food_listings[0] : row.food_listings;
     if (!listing) return null;
 
@@ -318,20 +318,20 @@ export default function Volunteer() {
 
     const pickupLat = listing.pickup_lat;
     const pickupLng = listing.pickup_lng;
-    const dropoffLat = row.drop_lat ?? null;
-    const dropoffLng = row.drop_lng ?? null;
+    const dropoffLat = (row.drop_lat as number) ?? null;
+    const dropoffLng = (row.drop_lng as number) ?? null;
     const receiverLocation = (row.receiver as any)?.location_text || "Location unavailable";
     const hasCoords = !!(pickupLat && pickupLng && dropoffLat && dropoffLng);
 
     return {
-      id: row.id,
-      requestId: row.id,
+      id: row.id as string,
+      requestId: row.id as string,
       name: listing.title ?? "Food Donation",
       quantity: listing.quantity_description ?? "–",
       type: "pickup",
-      status: row.status,
+      status: row.status as string,
       expiryTime: listing.expiry_time ?? null,
-      createdAt: row.created_at ?? new Date().toISOString(),
+      createdAt: (row.created_at as string) ?? new Date().toISOString(),
       pickupAddress: listing.location_name ?? "Pickup Location",
       pickupLat,
       pickupLng,
@@ -385,7 +385,7 @@ export default function Volunteer() {
       if (myError && import.meta.env.DEV) console.error("Supabase error [myTasksRaw]:", myError);
 
       const myRequestIds = new Set(
-        (myTasksRaw ?? []).map((row: any) => row.request_id as string | undefined).filter(Boolean)
+        (myTasksRaw ?? []).map((row: Record<string, unknown>) => row.request_id as string | undefined).filter(Boolean)
       );
 
       const OPEN_REQUEST_STATUSES = ["pending"] as const;
@@ -1318,7 +1318,7 @@ export default function Volunteer() {
                     const isWorking = loadingTaskId === task.id;
                     const isSelected = activeTaskId === task.id;
                     const expInfo = getSafeExpirationInfo(task.expiryTime);
-                    const isUrgent = expInfo ? expInfo.diffH < 4 : false;
+                    const isUrgent = expInfo ? (expInfo.diffH ?? 0) < 4 : false;
 
                     return (
                       <div
@@ -1529,7 +1529,7 @@ export default function Volunteer() {
                       zIndexOffset={isActive ? 100 : 0}
                     >
                       <Popup className="custom-popup">
-                        <div className="p-4 bg-[#171a1a] text-white border border-white/10 rounded-xl min-w-[220px]">
+                        <div className="p-4 bg-[#171a1a] text-white border border-white/10 rounded-xl w-max max-w-[240px] md:min-w-[220px]">
                           <Badge className="bg-amber-500/15 text-amber-400 border-amber-500/25 mb-2 text-[9px]">PICKUP</Badge>
                           <strong className="block text-sm mb-1">{task.name}</strong>
                           <span className="text-xs text-white/40">{task.pickupAddress}</span>
@@ -1547,7 +1547,7 @@ export default function Volunteer() {
                       zIndexOffset={isActive ? 100 : 0}
                     >
                       <Popup className="custom-popup">
-                        <div className="p-4 bg-[#171a1a] text-white border border-white/10 rounded-xl min-w-[220px]">
+                        <div className="p-4 bg-[#171a1a] text-white border border-white/10 rounded-xl w-max max-w-[240px] md:min-w-[220px]">
                           <Badge className="bg-emerald-500/15 text-emerald-400 border-emerald-500/25 mb-2 text-[9px]">DROPOFF</Badge>
                           <strong className="block text-sm mb-1">{task.name}</strong>
                           <span className="text-xs text-white/40 flex items-center gap-1" style={{ color: stage.color }}>

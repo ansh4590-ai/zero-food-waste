@@ -8,6 +8,20 @@ import {
 import { QRCodeSVG } from "qrcode.react";
 import { toast } from "sonner";
 
+// Minimal type for the dynamically imported Html5Qrcode scanner
+interface Html5QrcodeScanner {
+  start(
+    cameraIdOrConfig: { facingMode: string },
+    config: { fps: number; qrbox: { width: number; height: number }; aspectRatio: number },
+    onSuccess: (decodedText: string) => void,
+    onFailure: () => void,
+  ): Promise<any>;
+  stop(): Promise<void>;
+  clear(): void;
+  pause(shouldPauseVideo?: boolean): void;
+  resume(): void;
+}
+
 // ═══════════════════════════════════════════════════════════════════════════════
 // QR CODE DISPLAY CARD — shown to Donor (pickup) and Receiver (delivery)
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -266,7 +280,7 @@ export function QRScannerModal({
   const [verified, setVerified] = useState(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
   const scannerRef = useRef<HTMLDivElement>(null);
-  const html5QrRef = useRef<any>(null);
+  const html5QrRef = useRef<Html5QrcodeScanner | null>(null);
   const hasScannedRef = useRef(false);
   const lastScannedRef = useRef("");
 
@@ -289,7 +303,7 @@ export function QRScannerModal({
   useEffect(() => {
     if (!open || mode !== "camera" || verified) return;
 
-    let scanner: any = null;
+    let scanner: Html5QrcodeScanner | null = null;
     let isMounted = true;
 
     const initScanner = async () => {
@@ -310,7 +324,7 @@ export function QRScannerModal({
         scanner = new Html5Qrcode("qr-reader");
         html5QrRef.current = scanner;
 
-        await scanner.start(
+        await scanner?.start(
           { facingMode: "environment" },
           {
             fps: 10,
@@ -328,16 +342,16 @@ export function QRScannerModal({
             }
             
             await verifyToken(decodedText);
-            try { await scanner.stop(); } catch {}
+            try { await scanner?.stop(); } catch {}
           },
           () => { /* ignore scan failures */ }
         );
 
         // Torch support for dark rooms
         try {
-          const track = (scanner as any).getRunningTrack?.();
+          const track = (scanner as unknown as { getRunningTrack?: () => MediaStreamTrack | null })?.getRunningTrack?.();
           if (track) {
-            track.applyConstraints({ advanced: [{ torch: true }] as any });
+            track.applyConstraints({ advanced: [{ torch: true } as MediaTrackConstraintSet] });
           }
         } catch {}
       } catch (err: unknown) {

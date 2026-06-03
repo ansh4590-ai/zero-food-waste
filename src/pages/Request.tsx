@@ -68,24 +68,24 @@ export default function Request() {
       if (error) throw error;
 
       if (data) {
-          setRequests(data.map((r: any) => {
+          setRequests(data.map((r: Record<string, unknown>) => {
           // volunteer_tasks may be an object (single join) or array
           const taskObj = Array.isArray(r.volunteer_tasks)
             ? r.volunteer_tasks[0]
             : r.volunteer_tasks;
           return {
-            id: r.id,
-            listing_id: r.listing_id,
-            status: r.status,
-            created_at: r.created_at,
-            updated_at: r.updated_at,
-            receiver_rating: r.receiver_rating,
-            receiver_feedback: r.receiver_feedback,
-            listing_title: r.food_listings?.title || "Unknown Listing",
-            listing_quantity: r.food_listings?.quantity_description || "—",
-            listing_location: r.food_listings?.location_name || "Location not set",
-            listing_category: r.food_listings?.food_category?.replace("_", " ") || "Food",
-            donor_name: r.food_listings?.profiles?.full_name || "Verified Donor",
+            id: r.id as string,
+            listing_id: r.listing_id as string,
+            status: r.status as string,
+            created_at: r.created_at as string,
+            updated_at: r.updated_at as string,
+            receiver_rating: r.receiver_rating as number | null,
+            receiver_feedback: r.receiver_feedback as string | null,
+            listing_title: (r.food_listings as Record<string, unknown>)?.title as string || "Unknown Listing",
+            listing_quantity: (r.food_listings as Record<string, unknown>)?.quantity_description as string || "—",
+            listing_location: (r.food_listings as Record<string, unknown>)?.location_name as string || "Location not set",
+            listing_category: ((r.food_listings as Record<string, unknown>)?.food_category as string)?.replace("_", " ") || "Food",
+            donor_name: ((r.food_listings as Record<string, unknown>)?.profiles as Record<string, unknown>)?.full_name as string || "Verified Donor",
             task_status: taskObj?.status || null,
             task_id: taskObj?.id || null,
             delivery_qr_token: taskObj?.delivery_qr_token || null,
@@ -221,7 +221,7 @@ export default function Request() {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
                           <h3 className="font-semibold text-foreground truncate">{req.listing_title}</h3>
-                          <Badge variant={config.variant as any} className={`shrink-0 flex items-center gap-1 ${config.pulse ? "animate-pulse" : ""}`}>
+                          <Badge variant={config.variant as "default" | "secondary" | "destructive" | "outline" | "success" | "warning"} className={`shrink-0 flex items-center gap-1 ${config.pulse ? "animate-pulse" : ""}`}>
                             {config.icon} {config.label}
                           </Badge>
                         </div>

@@ -4,7 +4,7 @@ import { Activity, CheckCircle2, Clock } from "lucide-react";
 
 // --- CUSTOM PREMIUM 3D-STYLE SVGS ---
 const CustomIcons = {
-  Upload: (props: any) => (
+  Upload: (props: React.ImgHTMLAttributes<HTMLImageElement>) => (
     <img
       src="https://em-content.zobj.net/source/apple/354/pot-of-food_1f372.png"
       alt="Food Upload"
@@ -12,7 +12,7 @@ const CustomIcons = {
       style={{ ...props.style, filter: props.style?.filter ? props.style.filter.replace('grayscale(100%)', 'grayscale(100%) opacity(0.6)') : 'none' }}
     />
   ),
-  AICheck: (props: any) => (
+  AICheck: (props: React.SVGProps<SVGSVGElement>) => (
     <svg viewBox="0 0 24 24" fill="none" {...props}>
       <defs>
         <linearGradient id="gradAI" x1="0" y1="0" x2="1" y2="1">
@@ -29,7 +29,7 @@ const CustomIcons = {
       <path d="M9 11.5l2 2 4-4" stroke="#ffffff" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   ),
-  NGO: (props: any) => (
+  NGO: (props: React.SVGProps<SVGSVGElement>) => (
     <svg viewBox="0 0 24 24" fill="none" {...props}>
       <defs>
         <linearGradient id="gradNGO" x1="0" y1="0" x2="0" y2="1">
@@ -47,7 +47,7 @@ const CustomIcons = {
       <path d="M5 21v-2a5 5 0 0 1 5-5h4a5 5 0 0 1 5 5v2" fill="url(#gradNGO)" />
     </svg>
   ),
-  Volunteer: (props: any) => (
+  Volunteer: (props: React.ImgHTMLAttributes<HTMLImageElement>) => (
     <img
       src="/images/volunteer_icon.png"
       alt="Volunteer"
@@ -58,7 +58,7 @@ const CustomIcons = {
       }}
     />
   ),
-  Pickup: (props: any) => (
+  Pickup: (props: React.ImgHTMLAttributes<HTMLImageElement>) => (
     <img
       src="/images/qr_icon.png"
       alt="QR Pickup"
@@ -69,7 +69,7 @@ const CustomIcons = {
       }}
     />
   ),
-  Delivery: (props: any) => (
+  Delivery: (props: React.SVGProps<SVGSVGElement>) => (
     <svg viewBox="0 0 24 24" fill="none" {...props}>
       <defs>
         <linearGradient id="gradBoxTop" x1="0" y1="0" x2="0" y2="1">

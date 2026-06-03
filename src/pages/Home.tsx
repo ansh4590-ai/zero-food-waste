@@ -28,7 +28,7 @@ import {
   Users,
   Leaf
 } from "lucide-react";
-import { motion, useScroll, useTransform, AnimatePresence, useInView, useSpring, useMotionValue } from "motion/react";
+import { motion, useScroll, useTransform, AnimatePresence, useInView, useSpring, useMotionValue, useReducedMotion } from "motion/react";
 import { useState, useRef, useEffect } from "react";
 import { DemoSection } from "../components/DemoSection";
 import { LiveSystemVisualization } from "../components/LiveSystemVisualization";
@@ -191,7 +191,7 @@ function AnimatedProcessFlow() {
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     exit={{ opacity: 0, y: -10, scale: 0.95 }}
                     transition={{ duration: 0.25, ease: "easeOut" }}
-                    className="absolute top-full mt-5 left-1/2 -translate-x-1/2 w-[280px] md:w-[340px] z-50"
+                    className="absolute top-full mt-5 left-1/2 -translate-x-1/2 w-[90vw] md:w-[340px] max-w-[340px] z-50"
                   >
                     <div
                       className="relative p-5 md:p-6 rounded-2xl border backdrop-blur-xl shadow-2xl text-left bg-white/95 dark:bg-[#0a0c0c]/95"
@@ -441,7 +441,7 @@ const ROLES = [
   },
 ];
 
-function InteractiveRoleCard({ role, index, onClick }: { role: any; index: number; onClick: () => void }) {
+function InteractiveRoleCard({ role, index, onClick }: { role: (typeof ROLES)[number]; index: number; onClick: () => void }) {
   const cardRef = useRef<HTMLDivElement>(null);
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
   const [isHovered, setIsHovered] = useState(false);
@@ -478,7 +478,7 @@ function InteractiveRoleCard({ role, index, onClick }: { role: any; index: numbe
       onMouseLeave={() => setIsHovered(false)}
       whileHover={{ scale: 1.02, y: -4 }}
       whileTap={{ scale: 0.98 }}
-      className="group w-full relative flex flex-col p-8 rounded-[1.5rem] backdrop-blur-xl transition-all duration-500 text-left h-[340px] cursor-pointer overflow-hidden outline-none bg-[#030404] border"
+      className="group w-full relative flex flex-col p-8 rounded-[1.5rem] backdrop-blur-xl transition-all duration-500 text-left min-h-[340px] h-auto cursor-pointer overflow-hidden outline-none bg-[#030404] border"
       style={{
         borderColor: isHovered ? theme.main : theme.border,
         boxShadow: isHovered 
@@ -542,12 +542,13 @@ export default function Home() {
     mouseY.set((clientY / innerHeight) * 2 - 1);
   };
 
-  const bgParallaxX = useTransform(smoothMouseX, [-1, 1], [-20, 20]);
-  const bgParallaxY = useTransform(smoothMouseY, [-1, 1], [-20, 20]);
-  const bgParallaxXFast = useTransform(smoothMouseX, [-1, 1], [-40, 40]);
-  const bgParallaxYFast = useTransform(smoothMouseY, [-1, 1], [-40, 40]);
-  const floatX = useTransform(smoothMouseX, [-1, 1], [-80, 80]);
-  const floatY = useTransform(smoothMouseY, [-1, 1], [-80, 80]);
+  const shouldReduceMotion = useReducedMotion();
+  const bgParallaxX = useTransform(smoothMouseX, [-1, 1], shouldReduceMotion ? [0, 0] : [-20, 20]);
+  const bgParallaxY = useTransform(smoothMouseY, [-1, 1], shouldReduceMotion ? [0, 0] : [-20, 20]);
+  const bgParallaxXFast = useTransform(smoothMouseX, [-1, 1], shouldReduceMotion ? [0, 0] : [-40, 40]);
+  const bgParallaxYFast = useTransform(smoothMouseY, [-1, 1], shouldReduceMotion ? [0, 0] : [-40, 40]);
+  const floatX = useTransform(smoothMouseX, [-1, 1], shouldReduceMotion ? [0, 0] : [-80, 80]);
+  const floatY = useTransform(smoothMouseY, [-1, 1], shouldReduceMotion ? [0, 0] : [-80, 80]);
 
   return (
     <div className="relative flex flex-col justify-start bg-background font-sans selection:bg-[#2f6f57] selection:text-white overflow-hidden text-gray-900 dark:text-white transition-colors duration-300 min-h-screen">
@@ -595,9 +596,9 @@ export default function Home() {
 
 
         {/* Subtle Background Elements */}
-        <motion.div style={{ x: bgParallaxX, y: bgParallaxY }} className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-[#2f6f57]/10 dark:bg-[#2f6f57]/15 blur-[120px] opacity-70 pointer-events-none rounded-full mix-blend-multiply dark:mix-blend-screen" />
-        <motion.div style={{ x: bgParallaxXFast, y: bgParallaxYFast }} className="absolute top-0 right-0 w-[400px] h-[400px] bg-emerald-500/5 dark:bg-emerald-500/10 blur-[100px] rounded-full pointer-events-none" />
-        <motion.div style={{ x: bgParallaxXFast, y: bgParallaxYFast }} className="absolute bottom-0 left-0 w-[600px] h-[600px] bg-blue-500/5 dark:bg-blue-500/5 blur-[120px] rounded-full pointer-events-none" />
+        <motion.div style={{ x: bgParallaxX, y: bgParallaxY }} className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[150vw] md:w-[800px] h-[150vw] md:h-[800px] bg-[#2f6f57]/10 dark:bg-[#2f6f57]/15 blur-[120px] opacity-70 pointer-events-none rounded-full mix-blend-multiply dark:mix-blend-screen" />
+        <motion.div style={{ x: bgParallaxXFast, y: bgParallaxYFast }} className="absolute top-0 right-0 w-[100vw] md:w-[400px] h-[100vw] md:h-[400px] bg-emerald-500/5 dark:bg-emerald-500/10 blur-[100px] rounded-full pointer-events-none" />
+        <motion.div style={{ x: bgParallaxXFast, y: bgParallaxYFast }} className="absolute bottom-0 left-0 w-[120vw] md:w-[600px] h-[120vw] md:h-[600px] bg-blue-500/5 dark:bg-blue-500/5 blur-[120px] rounded-full pointer-events-none" />
 
         <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)] pointer-events-none" />
 
@@ -623,7 +624,7 @@ export default function Home() {
             <motion.h1
               initial="hidden" animate="visible"
               variants={{ visible: { transition: { staggerChildren: 0.1 } } }}
-              className="text-5xl md:text-7xl lg:text-[5.5rem] font-black tracking-tight text-gray-900 dark:text-white leading-[1.05] mb-6 max-w-[900px] drop-shadow-sm dark:drop-shadow-none"
+              className="text-4xl sm:text-5xl md:text-7xl lg:text-[5.5rem] font-black tracking-tight text-gray-900 dark:text-white leading-[1.05] mb-6 max-w-[900px] drop-shadow-sm dark:drop-shadow-none"
             >
               {["Surplus", "Food"].map((word, i) => (
                 <motion.span
@@ -732,7 +733,7 @@ export default function Home() {
         {/* Cinematic Background Elements */}
         <div className="absolute inset-0 z-0 pointer-events-none">
           {/* Radial dark green glow */}
-          <div className="absolute top-[10%] left-1/2 -translate-x-1/2 w-[1200px] h-[600px] bg-[#00e599]/10 blur-[150px] rounded-[100%]" />
+          <div className="absolute top-[10%] left-1/2 -translate-x-1/2 w-[200vw] max-w-[1200px] h-[40vh] md:h-[600px] bg-[#00e599]/10 blur-[150px] rounded-[100%]" />
           
           {/* Particles/Stars */}
           <div className="absolute top-1/4 left-[15%] w-1.5 h-1.5 rounded-full bg-[#00e599] shadow-[0_0_15px_2px_#00e599]" />

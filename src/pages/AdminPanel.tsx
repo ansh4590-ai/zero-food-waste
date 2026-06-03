@@ -37,14 +37,14 @@ export default function AdminPanel() {
 
   // ─── RENDER ───────────────────────────────────────────────────────────────
   return (
-    <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-8 h-[calc(100vh-64px)] flex flex-col">
+    <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-8 min-h-[calc(100vh-64px)] md:h-[calc(100vh-64px)] flex flex-col">
       <AdminHeader activeTab={activeTab} onTabChange={setActiveTab} />
 
       {/* ════════════════════════════════════════════════════════════════════ */}
       {/*  TAB: SMART KYC VERIFICATION                                       */}
       {/* ════════════════════════════════════════════════════════════════════ */}
       {activeTab === 'verification' && (
-        <div className="flex-1 overflow-y-auto space-y-6">
+        <div className="flex-1 md:overflow-y-auto space-y-6">
           <KycStatsCards stats={kyc.stats} />
           <KycTrendChart trendData={kyc.trendData} trendMax={kyc.trendMax} />
           <VerificationQueue

@@ -74,6 +74,14 @@ type RequestItem = {
   date: string;
 };
 
+type ActivityItem = {
+  id: string;
+  title?: string;
+  status?: string;
+  created_at?: string;
+  updated_at?: string;
+};
+
 /** Guard: only render Recharts once the container has a real measured size */
 function ChartReadyGuard({ children }: { children: React.ReactNode }) {
   const ref = useRef<HTMLDivElement>(null);
@@ -100,7 +108,7 @@ function ChartReadyGuard({ children }: { children: React.ReactNode }) {
   );
 }
 
-function mapListingRow(d: any): Listing {
+function mapListingRow(d: Record<string, unknown>): Listing {
   // Extract first active volunteer task from nested joins
   const requests = Array.isArray(d.food_requests) ? d.food_requests : d.food_requests ? [d.food_requests] : [];
   let taskId: string | null = null;
@@ -122,13 +130,13 @@ function mapListingRow(d: any): Listing {
   }
   return {
     id:       String(d.id),
-    foodType: d.title               ?? "Untitled",
-    quantity: d.quantity_description ?? "—",
-    status:   d.status              ?? "unknown",
+    foodType: (d.title as string)               ?? "Untitled",
+    quantity: (d.quantity_description as string) ?? "—",
+    status:   (d.status as string)              ?? "unknown",
     time:     d.created_at
-      ? new Date(d.created_at).toLocaleDateString("en-IN", { day: "numeric", month: "short" })
+      ? new Date(d.created_at as string).toLocaleDateString("en-IN", { day: "numeric", month: "short" })
       : "—",
-    location: d.location_name ?? "Not set",
+    location: (d.location_name as string) ?? "Not set",
     taskId,
     taskStatus,
     pickupQrToken,
@@ -136,14 +144,14 @@ function mapListingRow(d: any): Listing {
   };
 }
 
-function mapRequestRow(d: any): RequestItem {
+function mapRequestRow(d: Record<string, unknown>): RequestItem {
   return {
     id:       String(d.id),
-    foodType: d.food_listings?.title ?? "Unknown",
+    foodType: (d.food_listings as Record<string, unknown> | null)?.title as string ?? "Unknown",
     donor:    "Verified Partner",
-    status:   d.status ?? "pending",
+    status:   (d.status as string) ?? "pending",
     date:     d.created_at
-      ? new Date(d.created_at).toLocaleDateString("en-IN", { day: "numeric", month: "short" })
+      ? new Date(d.created_at as string).toLocaleDateString("en-IN", { day: "numeric", month: "short" })
       : "—",
   };
 }
@@ -183,7 +191,7 @@ export default function Dashboard() {
   const [completedCount, setCompletedCount] = useState(0);
   const [activeCount,    setActiveCount]    = useState(0);
   const [pendingPickups, setPendingPickups] = useState(0);
-  const [recentActivity, setRecentActivity] = useState<any[]>([]);
+  const [recentActivity, setRecentActivity] = useState<ActivityItem[]>([]);
   const [trendData,      setTrendData]      = useState<{ name: string; meals: number }[]>([]);
   const [categoryData,   setCategoryData]   = useState<{ name: string; value: number }[]>([]);
 
@@ -325,14 +333,14 @@ export default function Dashboard() {
         try {
           // 1. Scalable Incremental KPI Updates (No full table scans per event)
           if (payload.eventType === 'INSERT') {
-            const newRec = payload.new as Record<string, any>;
-            if (ACTIVE_STATUSES.includes(newRec.status)) setActiveCount(prev => prev + 1);
-            if (DELIVERED_STATUSES.includes(newRec.status)) setCompletedCount(prev => prev + 1);
+            const newRec = payload.new as ActivityItem;
+            if (ACTIVE_STATUSES.includes(newRec.status as string)) setActiveCount(prev => prev + 1);
+            if (DELIVERED_STATUSES.includes(newRec.status as string)) setCompletedCount(prev => prev + 1);
             
             setRecentActivity(prev => [newRec, ...prev].slice(0, 10));
           } else if (payload.eventType === 'UPDATE') {
-            const oldStatus = (payload.old as Record<string, any>)?.status;
-            const newStatus = (payload.new as Record<string, any>)?.status;
+            const oldStatus = (payload.old as Record<string, unknown>)?.status as string | undefined;
+            const newStatus = (payload.new as Record<string, unknown>)?.status as string | undefined;
 
             if (oldStatus !== newStatus && oldStatus && newStatus) {
               if (ACTIVE_STATUSES.includes(newStatus)) setActiveCount(prev => prev + 1);
@@ -340,7 +348,7 @@ export default function Dashboard() {
               
               if (DELIVERED_STATUSES.includes(newStatus)) {
                  setCompletedCount(prev => prev + 1);
-                 const match = String((payload.new as Record<string, any>)?.quantity_description || "").match(/(\d+)/);
+                 const match = String((payload.new as Record<string, unknown>)?.quantity_description || "").match(/(\d+)/);
                  setTotalMeals(prev => prev + (match ? parseInt(match[1], 10) : 15));
               }
               if (DELIVERED_STATUSES.includes(oldStatus)) {
@@ -352,20 +360,20 @@ export default function Dashboard() {
             }
 
             setRecentActivity(prev => {
-              const filtered = prev.filter(item => item.id !== (payload.new as any).id);
-              return [payload.new, ...filtered].sort((a: any, b: any) => 
-                new Date(b.updated_at || b.created_at).getTime() - new Date(a.updated_at || a.created_at).getTime()
+              const filtered = prev.filter(item => item.id !== (payload.new as ActivityItem).id);
+              return [payload.new as ActivityItem, ...filtered].sort((a: ActivityItem, b: ActivityItem) => 
+                new Date(b.updated_at || b.created_at || Date.now()).getTime() - new Date(a.updated_at || a.created_at || Date.now()).getTime()
               ).slice(0, 10);
             });
           } else if (payload.eventType === 'DELETE') {
-            const oldRec = payload.old as Record<string, any>;
-            if (ACTIVE_STATUSES.includes(oldRec?.status)) setActiveCount(prev => Math.max(0, prev - 1));
-            if (DELIVERED_STATUSES.includes(oldRec?.status)) setCompletedCount(prev => Math.max(0, prev - 1));
+            const oldRec = payload.old as Record<string, unknown>;
+            if (ACTIVE_STATUSES.includes(oldRec?.status as string)) setActiveCount(prev => Math.max(0, prev - 1));
+            if (DELIVERED_STATUSES.includes(oldRec?.status as string)) setCompletedCount(prev => Math.max(0, prev - 1));
           }
 
           // 2. Fetch specific donor records only if relevant
-          const newRec = payload.new as Record<string, any>;
-          const oldRec = payload.old as Record<string, any>;
+          const newRec = payload.new as Record<string, unknown>;
+          const oldRec = payload.old as Record<string, unknown>;
           if (user && isValidSupabaseId(user.id) && (newRec?.donor_id === user.id || oldRec?.donor_id === user.id)) {
             const { data: ld } = await supabase
               .from("food_listings")
@@ -658,7 +666,7 @@ export default function Dashboard() {
                       Listing <span className="font-semibold text-primary">{activity.title}</span> was updated.
                     </p>
                     <time className="text-xs text-muted-foreground whitespace-nowrap">
-                       {new Date(activity.updated_at || activity.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                       {new Date(activity.updated_at || activity.created_at || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                     </time>
                   </div>
                   <div className="text-sm text-muted-foreground">

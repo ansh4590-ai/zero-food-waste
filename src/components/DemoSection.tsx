@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from "motion/react";
+import { motion, AnimatePresence, useReducedMotion } from "motion/react";
 import { Button } from "./ui/button";
 import { Link } from "react-router-dom";
 import { 
@@ -296,6 +296,7 @@ const DEMO_STEPS = [
 export function DemoSection() {
   const [isPlaying, setIsPlaying] = useState(true);
   const [elapsedMs, setElapsedMs] = useState(0);
+  const shouldReduceMotion = useReducedMotion();
 
   useEffect(() => {
     let interval: NodeJS.Timeout;
@@ -460,9 +461,9 @@ export function DemoSection() {
                 <AnimatePresence mode="wait">
                   <motion.div
                     key={currentStep}
-                    initial={{ opacity: 0, scale: 0.98, filter: "blur(4px)" }}
-                    animate={{ opacity: 1, scale: 1, filter: "blur(0px)" }}
-                    exit={{ opacity: 0, scale: 1.02, filter: "blur(4px)" }}
+                    initial={{ opacity: 0, scale: shouldReduceMotion ? 1 : 0.98, filter: shouldReduceMotion ? "none" : "blur(4px)" }}
+                    animate={{ opacity: 1, scale: 1, filter: shouldReduceMotion ? "none" : "blur(0px)" }}
+                    exit={{ opacity: 0, scale: shouldReduceMotion ? 1 : 1.02, filter: shouldReduceMotion ? "none" : "blur(4px)" }}
                     transition={{ duration: 0.4, ease: "easeInOut" }}
                     className="absolute inset-0 w-full h-full"
                   >

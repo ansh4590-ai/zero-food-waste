@@ -8,6 +8,21 @@ export interface Suggestion {
   lng: number;
 }
 
+interface PhotonFeature {
+  properties: {
+    osm_id?: number;
+    name?: string;
+    street?: string;
+    city?: string;
+    state?: string;
+    country?: string;
+    postcode?: string;
+  };
+  geometry: {
+    coordinates: [number, number];
+  };
+}
+
 export function useAddressAutocomplete(query: string) {
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -53,7 +68,7 @@ export function useAddressAutocomplete(query: string) {
         const data = await res.json();
         
         // 4. Format GeoJSON response
-        const formattedSuggestions: Suggestion[] = (data.features || []).map((f: any) => {
+        const formattedSuggestions: Suggestion[] = (data.features || []).map((f: PhotonFeature) => {
           const props = f.properties;
           
           // Construct primary text (name of the place, or street)

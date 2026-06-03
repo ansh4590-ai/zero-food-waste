@@ -31,6 +31,8 @@ export default defineConfig(({mode}) => {
             'vendor-react': ['react', 'react-dom', 'react-router-dom'],
             'vendor-ui': ['lucide-react', 'clsx', 'tailwind-merge', 'framer-motion'],
             'vendor-data': ['@supabase/supabase-js', 'zustand'],
+            'vendor-maps': ['leaflet', 'react-leaflet'],
+            'vendor-charts': ['recharts'],
           }
         }
       }

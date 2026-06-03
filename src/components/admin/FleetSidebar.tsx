@@ -26,7 +26,7 @@ const FleetSidebar: React.FC<FleetSidebarProps> = React.memo(function FleetSideb
   );
 
   return (
-    <div className="absolute top-4 left-4 z-[400] bg-card text-card-foreground/95 backdrop-blur-md rounded-lg p-4 shadow-xl border border-border w-80">
+    <div className="absolute top-4 left-4 z-[400] bg-card text-card-foreground/95 backdrop-blur-md rounded-lg p-4 shadow-xl border border-border w-[calc(100vw-32px)] md:w-80">
       <h3 className="font-bold text-foreground flex items-center gap-2 mb-3"><Navigation className="w-5 h-5 text-blue-600"/> Live Agent Tracking</h3>
       <div className="grid grid-cols-2 gap-2 mb-4">
         <div className="bg-muted rounded p-2 text-center">
