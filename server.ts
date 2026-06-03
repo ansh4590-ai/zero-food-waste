@@ -142,7 +142,7 @@ Return ONLY this JSON with no markdown or extra text:
       };
 
       res.json(finalResult);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Classification error details:", error);
       
       // Graceful fallback for ANY AI failure (quota, invalid model, invalid key)
@@ -449,7 +449,7 @@ Return ONLY this JSON with no markdown or extra text:
       const result = await runRealKyc(aadhaarBuffer, selfieBuffer);
 
       res.json({ success: true, ...result });
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("KYC Processing error:", err);
       res.status(500).json({ error: "Internal server error" });
     }
@@ -478,7 +478,7 @@ Return ONLY this JSON with no markdown or extra text:
       });
 
       if (error) {
-        return res.status(400).json({ error: error.message });
+        return res.status(400).json({ error: (error as Error).message });
       }
 
       // Force insert into profiles table as admin, in case the trigger skipped or defaulted it.
@@ -498,7 +498,7 @@ Return ONLY this JSON with no markdown or extra text:
           role: "admin"
         }
       });
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Admin registration error:", err);
       res.status(500).json({ error: "Internal server error" });
     }
@@ -549,7 +549,7 @@ Return ONLY this JSON with no markdown or extra text:
 
       if (error) throw error;
       res.json(data);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("OTP generation error:", err);
       res.status(500).json({ error: "Internal server error" });
     }
@@ -574,7 +574,7 @@ Return ONLY this JSON with no markdown or extra text:
 
       if (error) throw error;
       res.json(data);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("OTP verification error:", err);
       res.status(500).json({ error: "Internal server error" });
     }
@@ -622,7 +622,7 @@ Return ONLY this JSON with no markdown or extra text:
       if (updateErr) throw updateErr;
 
       res.json({ success: true, url: publicUrl });
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Proof upload error:", err);
       res.status(500).json({ error: "Internal server error" });
     }
@@ -634,7 +634,7 @@ Return ONLY this JSON with no markdown or extra text:
       const { data, error } = await supabaseAdmin.rpc('auto_expire_stale_tasks');
       if (error) throw error;
       res.json(data);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Stale cleanup error:", err);
       res.status(500).json({ error: "Internal server error" });
     }
@@ -670,7 +670,7 @@ Return ONLY this JSON with no markdown or extra text:
       } else {
         res.status(400).json({ success: false, error: data?.error || "Failed to generate QR" });
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("QR generation error:", err);
       res.status(500).json({ error: "Internal server error" });
     }
@@ -738,7 +738,7 @@ Return ONLY this JSON with no markdown or extra text:
         }
         res.status(400).json({ success: false, error: data?.error || "Verification failed" });
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("QR verification error:", err);
       res.status(500).json({ error: "Internal server error" });
     }
@@ -772,7 +772,7 @@ Return ONLY this JSON with no markdown or extra text:
       } else {
         res.status(400).json({ success: false, error: data?.error || "Failed to abort task" });
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Task abort error:", err);
       res.status(500).json({ error: "Internal server error" });
     }

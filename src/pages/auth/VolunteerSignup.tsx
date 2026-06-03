@@ -45,13 +45,13 @@ export default function VolunteerSignup() {
       });
 
       if (error) {
-        throw new Error(error.message);
+        throw new Error((error as Error).message);
       }
 
       toast.success("Registered successfully as Volunteer");
       navigate("/tasks");
-    } catch (err: any) {
-      toast.error(err.message || "An error occurred during registration");
+    } catch (err: unknown) {
+      toast.error((err as Error).message || "An error occurred during registration");
     } finally {
       setLoading(false);
     }

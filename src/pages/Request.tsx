@@ -93,7 +93,7 @@ export default function Request() {
           };
         }));
       }
-    } catch (e: any) {
+    } catch (e: unknown) {
       /* console.error("Failed to fetch requests:", e); removed for security */
       toast.error("Could not load your food requests.");
     } finally {
@@ -154,8 +154,8 @@ export default function Request() {
       if (error) throw error;
       toast.success("Request cancelled.");
       setRequests(prev => prev.map(r => r.id === requestId ? { ...r, status: "cancelled" } : r));
-    } catch (e: any) {
-      toast.error(e.message || "Failed to cancel request.");
+    } catch (e: unknown) {
+      toast.error((e as Error).message || "Failed to cancel request.");
     }
   };
 

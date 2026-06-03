@@ -91,8 +91,8 @@ export default function Profile() {
           verification_status: data.verification_status ?? null,
         });
       }
-    } catch (err: any) {
-      toast.error(err?.message || "Failed to load profile.");
+    } catch (err: unknown) {
+      toast.error((err as Error)?.message || "Failed to load profile.");
     } finally {
       setIsLoading(false);
     }
@@ -201,8 +201,8 @@ export default function Profile() {
           : "Profile saved.",
       });
       setTimeout(() => setSaved(false), 3000);
-    } catch (err: any) {
-      toast.error(err.message || "Failed to save profile.");
+    } catch (err: unknown) {
+      toast.error((err as Error).message || "Failed to save profile.");
     } finally {
       setIsSaving(false);
     }

@@ -167,13 +167,13 @@ export default function Browse() {
       if (error) {
         console.error("INSERT ERROR:", error);
         // Handle the 'listing already reserved' trigger error
-        if (error.message?.includes('no longer available') || error.code === 'P0001' || error.message?.includes('unique_active_request_per_listing')) {
+        if ((error as Error).message?.includes('no longer available') || error.code === 'P0001' || (error as Error).message?.includes('unique_active_request_per_listing')) {
           toast.error("This food has already been claimed by another receiver.", {
             description: "The listing will be removed from your view.",
           });
           fetchFood(); // Refresh to remove the now-reserved listing
         } else {
-          toast.error(error.message || "Failed to submit request.");
+          toast.error((error as Error).message || "Failed to submit request.");
         }
       } else {
         toast.success(`Request sent for ${item.foodType}!`, {

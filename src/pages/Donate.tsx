@@ -166,8 +166,8 @@ export default function Donate() {
           const errData = await response.json().catch(() => ({}));
           throw new Error(errData.error || "Classification failed");
         }
-      } catch (error: any) {
-        toast.error(error.message || "Failed to classify image");
+      } catch (error: unknown) {
+        toast.error((error as Error).message || "Failed to classify image");
       } finally {
         setIsClassifying(false);
       }
@@ -317,8 +317,8 @@ export default function Donate() {
       form.reset();
 
       if (fileInputRef.current) fileInputRef.current.value = "";
-    } catch (error: any) {
-      toast.error(error.message || "Failed to create listing");
+    } catch (error: unknown) {
+      toast.error((error as Error).message || "Failed to create listing");
     } finally {
       setLoading(false);
     }

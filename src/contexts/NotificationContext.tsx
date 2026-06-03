@@ -81,7 +81,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
         .limit(50);
       if (error) {
         // Table might not exist yet — fail silently so the app never crashes
-        if (import.meta.env.DEV) console.warn("notifications fetch error:", error.message);
+        if (import.meta.env.DEV) console.warn("notifications fetch error:", (error as Error).message);
         return;
       }
       setNotifications(data || []);

@@ -19,9 +19,9 @@ export default function SupabaseTest() {
         if (dbError) throw dbError;
         
         setData(testData || []);
-      } catch (err: any) {
-        /* console.error('Database connection error:', err.message); removed for security */
-        setError(err.message);
+      } catch (err: unknown) {
+        /* console.error('Database connection error:', (err as Error).message); removed for security */
+        setError((err as Error).message);
       } finally {
         setLoading(false);
       }

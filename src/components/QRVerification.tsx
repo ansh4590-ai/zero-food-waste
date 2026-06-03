@@ -340,11 +340,11 @@ export function QRScannerModal({
             track.applyConstraints({ advanced: [{ torch: true }] as any });
           }
         } catch {}
-      } catch (err: any) {
+      } catch (err: unknown) {
         if (import.meta.env.DEV) console.warn("Camera init error:", err);
         // Gracefully fall back to manual mode — don't crash
         if (isMounted) {
-          setCameraError(err?.message || "Camera not available. Use manual entry.");
+          setCameraError((err as Error)?.message || "Camera not available. Use manual entry.");
           setMode("manual");
         }
       }

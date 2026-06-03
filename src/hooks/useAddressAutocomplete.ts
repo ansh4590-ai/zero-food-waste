@@ -81,9 +81,9 @@ export function useAddressAutocomplete(query: string) {
         cacheRef.current.set(cacheKey, formattedSuggestions);
         
         setSuggestions(formattedSuggestions);
-      } catch (err: any) {
-        if (err.name !== 'AbortError') {
-          setError(err.message || 'An error occurred');
+      } catch (err: unknown) {
+        if ((err as Error).name !== 'AbortError') {
+          setError((err as Error).message || 'An error occurred');
           setSuggestions([]);
         }
       } finally {

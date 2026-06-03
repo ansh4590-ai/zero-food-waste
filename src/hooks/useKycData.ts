@@ -148,7 +148,7 @@ export function useKycData(enabled: boolean): UseKycDataReturn {
       if (error) throw error;
       setUsers((data as KycProfile[]) || []);
     } catch (error: unknown) {
-      const msg = error instanceof Error ? error.message : JSON.stringify(error);
+      const msg = error instanceof Error ? (error as Error).message : JSON.stringify(error);
       toast.error(`Failed to load verification requests: ${msg}`);
     } finally {
       setIsLoading(false);

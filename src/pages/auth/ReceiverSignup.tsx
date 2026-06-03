@@ -46,13 +46,13 @@ export default function ReceiverSignup() {
       });
 
       if (error) {
-        throw new Error(error.message);
+        throw new Error((error as Error).message);
       }
 
       toast.success("Registered successfully. Pending verification.");
       navigate("/dashboard");
-    } catch (err: any) {
-      toast.error(err.message || "An error occurred during registration");
+    } catch (err: unknown) {
+      toast.error((err as Error).message || "An error occurred during registration");
     } finally {
       setLoading(false);
     }

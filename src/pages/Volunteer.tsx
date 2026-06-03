@@ -696,13 +696,13 @@ export default function Volunteer() {
             const msg = await res.text();
             throw new Error(msg || "QR generation failed");
           }
-        } catch (err: any) {
+        } catch (err: unknown) {
           console.error("Failed to generate pickup QR:", err);
         }
       }
       fetchTasks();
-    } catch (err: any) {
-      toast.error(err?.message || "Network error. Please try again.");
+    } catch (err: unknown) {
+      toast.error((err as Error)?.message || "Network error. Please try again.");
     } finally {
       setLoadingTaskId(null);
     }
@@ -775,7 +775,7 @@ export default function Volunteer() {
             const msg = await res.text();
             throw new Error(msg || "QR generation failed");
           }
-        } catch (err: any) {
+        } catch (err: unknown) {
           console.error("Failed to generate pickup QR:", err);
         }
       }
@@ -785,9 +785,9 @@ export default function Volunteer() {
         style: { background: "#171a1a", color: "#f5f3ef", border: "1px solid #10b981" },
       });
       await fetchTasks();
-    } catch (err: any) {
+    } catch (err: unknown) {
       setOpenTasks(prevTasks); // restore
-      toast.error(err?.message || "Network error. Please try again.");
+      toast.error((err as Error)?.message || "Network error. Please try again.");
     } finally {
       setLoadingTaskId(null);
     }
@@ -859,7 +859,7 @@ export default function Volunteer() {
             const msg = await res.text();
             throw new Error(msg || "QR generation failed");
           }
-        } catch (err: any) {
+        } catch (err: unknown) {
           console.error(err); 
           toast.error("Failed to generate delivery QR");
         }
@@ -900,7 +900,7 @@ export default function Volunteer() {
           const msg = await res.text();
           throw new Error(msg || "QR generation failed");
         }
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error("Failed to generate delivery QR:", err);
       }
     } else if (newStatus === 'delivered') {
@@ -948,8 +948,8 @@ export default function Volunteer() {
       if (activeTaskId === taskId) { setActiveTaskId(null); setRouteOne(null); setRouteTwo(null); setDynamicETA(null); }
       toast("Task removed from your manifest and returned to the pool.");
       await fetchTasks();
-    } catch (err: any) {
-      toast.error(err?.message || "Failed to drop task.");
+    } catch (err: unknown) {
+      toast.error((err as Error)?.message || "Failed to drop task.");
     } finally {
       setLoadingTaskId(null);
     }
@@ -991,8 +991,8 @@ export default function Volunteer() {
       setAbortModal({ open: false, taskId: '' });
       setAbortReason("");
       await fetchTasks();
-    } catch (err: any) {
-      toast.error(err.message || "Failed to abort task");
+    } catch (err: unknown) {
+      toast.error((err as Error).message || "Failed to abort task");
     } finally {
       setIsAborting(false);
     }

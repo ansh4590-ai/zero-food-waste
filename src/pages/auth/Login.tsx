@@ -35,7 +35,7 @@ export default function Login() {
       });
 
       if (error) {
-        throw new Error(error.message);
+        throw new Error((error as Error).message);
       }
       // Role-based redirection parsed dynamically from JWT claims
       const role = data.user?.user_metadata?.role || "donor";
@@ -56,8 +56,8 @@ export default function Login() {
           navigate("/dashboard");
           break;
       }
-    } catch (err: any) {
-      toast.error(err.message || "An error occurred during login");
+    } catch (err: unknown) {
+      toast.error((err as Error).message || "An error occurred during login");
     } finally {
       setLoading(false);
     }
@@ -77,8 +77,8 @@ export default function Login() {
         toast.success("Logged in with Google successfully");
         navigate("/dashboard");
       }
-    } catch (err: any) {
-      toast.error(err.message || "Failed to sign in with Google");
+    } catch (err: unknown) {
+      toast.error((err as Error).message || "Failed to sign in with Google");
     } finally {
       setIsGoogleLoading(false);
     }

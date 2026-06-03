@@ -48,7 +48,7 @@ export default function Verification() {
             auto_status: data.kyc_auto_status ?? 'pending',
           });
         }
-      } catch (e: any) {
+      } catch (e: unknown) {
         /* Silenced for security */
       } finally {
         setIsLoading(false);
@@ -85,7 +85,7 @@ export default function Verification() {
       // AdminPanel can call getPublicUrl(path) with proper auth context.
       return filePath;
 
-    } catch (err: any) {
+    } catch (err: unknown) {
       throw err;
     }
   };
@@ -171,8 +171,8 @@ export default function Verification() {
         });
       }
       window.scrollTo(0, 0);
-    } catch (error: any) {
-      toast.error(error.message || "An error occurred during submission.");
+    } catch (error: unknown) {
+      toast.error((error as Error).message || "An error occurred during submission.");
     } finally {
       setIsSubmitting(false);
       setProcessingStage("");

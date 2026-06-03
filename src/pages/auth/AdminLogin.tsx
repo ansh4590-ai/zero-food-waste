@@ -32,7 +32,7 @@ export default function AdminLogin() {
       });
 
       if (error) {
-        throw new Error(error.message);
+        throw new Error((error as Error).message);
       }
 
       // Admin-only routing validation
@@ -44,8 +44,8 @@ export default function AdminLogin() {
 
       toast.success("Logged in successfully");
       navigate("/admin");
-    } catch (err: any) {
-      toast.error(err.message || "An error occurred during login");
+    } catch (err: unknown) {
+      toast.error((err as Error).message || "An error occurred during login");
     } finally {
       setLoading(false);
     }

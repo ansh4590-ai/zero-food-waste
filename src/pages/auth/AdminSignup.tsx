@@ -57,8 +57,8 @@ export default function AdminSignup() {
 
       toast.success("Registration successful! Redirecting to admin panel...");
       setTimeout(() => navigate("/admin"), 1000);
-    } catch (err: any) {
-      toast.error(err.message || "An error occurred during registration");
+    } catch (err: unknown) {
+      toast.error((err as Error).message || "An error occurred during registration");
     } finally {
       setLoading(false);
     }
