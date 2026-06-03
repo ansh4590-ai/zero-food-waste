@@ -14,13 +14,18 @@ import { NotificationProvider } from "./contexts/NotificationContext";
 import { NotificationsListener } from "./components/NotificationsListener";
 
 import MainLayout from "./layouts/MainLayout";
-import Home from "./pages/Home";
-import Dashboard from "./pages/Dashboard";
-import Donate from "./pages/Donate";
-import Browse from "./pages/Browse";
-import Request from "./pages/Request";
-import AdminPanel from "./pages/AdminPanel";
-import Volunteer from "./pages/Volunteer";
+import { lazy, Suspense } from "react";
+
+const Home = lazy(() => import("./pages/Home"));
+const Dashboard = lazy(() => import("./pages/Dashboard"));
+const Donate = lazy(() => import("./pages/Donate"));
+const Browse = lazy(() => import("./pages/Browse"));
+const Request = lazy(() => import("./pages/Request"));
+const AdminPanel = lazy(() => import("./pages/AdminPanel"));
+const Volunteer = lazy(() => import("./pages/Volunteer"));
+const Profile = lazy(() => import("./pages/Profile"));
+
+// Keep auth and lightweight pages statically imported
 import AdminSignup from "./pages/auth/AdminSignup";
 import Login from "./pages/auth/Login";
 import AdminLogin from "./pages/auth/AdminLogin";
@@ -33,7 +38,6 @@ import SupabaseTest from "./pages/SupabaseTest";
 import Privacy from "./pages/Privacy";
 import Terms from "./pages/Terms";
 import Support from "./pages/Support";
-import Profile from "./pages/Profile";
 import Notifications from "./pages/Notifications";
 
 export default function App() {
@@ -48,47 +52,49 @@ export default function App() {
       <RBACProvider>
         <NotificationProvider>
         <Router>
-          <Routes>
-            <Route path="/" element={<MainLayout />}>
-              {/* Public Routes */}
-            <Route index element={<Home />} />
-            <Route path="test-db" element={<SupabaseTest />} />
-            <Route path="auth/login" element={<Login />} />
-            <Route path="register" element={<RoleSelection />} />
-            <Route path="register/donor" element={<DonorSignup />} />
-            <Route path="register/receiver" element={<ReceiverSignup />} />
-            <Route path="register/volunteer" element={<VolunteerSignup />} />
-            <Route path="admin/signup" element={<AdminSignup />} />
-            <Route path="admin-login" element={<AdminLogin />} />
-            
-            <Route path="privacy" element={<Privacy />} />
-            <Route path="terms" element={<Terms />} />
-            <Route path="support" element={<Support />} />
+          <Suspense fallback={<div className="flex min-h-screen items-center justify-center"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-500"></div></div>}>
+            <Routes>
+              <Route path="/" element={<MainLayout />}>
+                {/* Public Routes */}
+              <Route index element={<Home />} />
+              <Route path="test-db" element={<SupabaseTest />} />
+              <Route path="auth/login" element={<Login />} />
+              <Route path="register" element={<RoleSelection />} />
+              <Route path="register/donor" element={<DonorSignup />} />
+              <Route path="register/receiver" element={<ReceiverSignup />} />
+              <Route path="register/volunteer" element={<VolunteerSignup />} />
+              <Route path="admin/signup" element={<AdminSignup />} />
+              <Route path="admin-login" element={<AdminLogin />} />
+              
+              <Route path="privacy" element={<Privacy />} />
+              <Route path="terms" element={<Terms />} />
+              <Route path="support" element={<Support />} />
 
-            {/* Protected Routes - General Logged In Access */}
-            <Route element={<ProtectedRoute permission={[]} />}>
-              <Route path="dashboard" element={<Dashboard />} />
-              <Route path="browse" element={<Browse />} />
-              <Route path="requests" element={<Request />} />
-              <Route path="verify" element={<Verification />} />
-              <Route path="profile" element={<Profile />} />
-              <Route path="notifications" element={<Notifications />} />
-            </Route>
+              {/* Protected Routes - General Logged In Access */}
+              <Route element={<ProtectedRoute permission={[]} />}>
+                <Route path="dashboard" element={<Dashboard />} />
+                <Route path="browse" element={<Browse />} />
+                <Route path="requests" element={<Request />} />
+                <Route path="verify" element={<Verification />} />
+                <Route path="profile" element={<Profile />} />
+                <Route path="notifications" element={<Notifications />} />
+              </Route>
 
-            {/* Permission Based Routes */}
-            <Route element={<ProtectedRoute permission="food.create" />}>
-              <Route path="donate" element={<Donate />} />
-            </Route>
+              {/* Permission Based Routes */}
+              <Route element={<ProtectedRoute permission="food.create" />}>
+                <Route path="donate" element={<Donate />} />
+              </Route>
 
-            <Route element={<ProtectedRoute permission="tasks.view_assigned" />}>
-              <Route path="tasks" element={<Volunteer />} />
-            </Route>
+              <Route element={<ProtectedRoute permission="tasks.view_assigned" />}>
+                <Route path="tasks" element={<Volunteer />} />
+              </Route>
 
-            <Route element={<ProtectedRoute permission="users.read" />}>
-              <Route path="admin" element={<AdminPanel />} />
+              <Route element={<ProtectedRoute permission="users.read" />}>
+                <Route path="admin" element={<AdminPanel />} />
+              </Route>
             </Route>
-          </Route>
-        </Routes>
+          </Routes>
+        </Suspense>
           <NotificationsListener />
         </Router>
         </NotificationProvider>
