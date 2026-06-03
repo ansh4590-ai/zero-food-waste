@@ -44,7 +44,7 @@ test.describe('Authentication', () => {
     await page.getByRole('button', { name: /sign in|log in|login/i }).click();
     // Either HTML5 required validation or an error message should appear
     const invalid = await page.evaluate(() =>
-      document.querySelector('input[type="email"]')?.validity.valid === false
+      (document.querySelector('input[type="email"]') as HTMLInputElement)?.validity?.valid === false
     );
     expect(invalid).toBe(true);
   });

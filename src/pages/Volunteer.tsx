@@ -23,6 +23,8 @@ import { TaskAssignmentModal } from "../components/TaskAssignmentModal";
 import { OTPModal } from "../components/OTPModal";
 import { QRScannerModal } from "../components/QRVerification";
 import { ProgressTimeline, VOLUNTEER_TIMELINE_STAGES } from "../components/ProgressTimeline";
+import { NeonBadge } from "../components/ui/NeonBadge";
+import { AnimatedContainer } from "../components/ui/AnimatedContainer";
 
 // ─── LEAFLET SETUP ────────────────────────────────────────────────────────────
 if (typeof L !== "undefined" && L.Icon?.Default) {
@@ -1028,12 +1030,12 @@ export default function Volunteer() {
 
       {/* KYC Banner */}
       {verificationStatus !== "approved" && verificationStatus !== "loading" && (
-        <div className="bg-red-500/10 border-b border-red-500/20 px-6 py-3 flex items-center justify-between shrink-0">
+        <div className="neon-card neon-border-red mx-0 rounded-none border-x-0 border-t-0 px-6 py-3 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-3">
-            <ShieldCheck className="w-5 h-5 text-red-500 shrink-0" />
+            <ShieldCheck className="w-5 h-5 text-red-400 shrink-0" />
             <p className="text-sm font-medium text-white/90">Aadhaar KYC required to access live dispatches.</p>
           </div>
-          <Button asChild size="sm" className="bg-red-500 text-white hover:bg-red-600 h-8">
+          <Button asChild size="sm" className="bg-red-500/20 text-red-400 border border-red-500/40 hover:bg-red-500/30 h-8">
             <Link to="/verify">Complete KYC</Link>
           </Button>
         </div>
@@ -1041,7 +1043,7 @@ export default function Volunteer() {
 
       {/* Offline Banner */}
       {isOffline && (
-        <div className="bg-amber-500/10 border-b border-amber-500/20 px-6 py-2 flex justify-center text-sm font-semibold text-amber-400 items-center gap-2">
+        <div className="bg-amber-500/10 border-b border-amber-500/25 px-6 py-2 flex justify-center text-sm font-semibold text-amber-400 items-center gap-2 glow-pulse">
           <WifiOff className="w-4 h-4" /> Offline — Live dispatch suspended.
         </div>
       )}
@@ -1073,9 +1075,9 @@ export default function Volunteer() {
             <section>
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-xs font-bold text-white/60 uppercase tracking-widest">My Active Routes</h3>
-                <span className="bg-blue-500/15 text-blue-400 py-0.5 px-2 rounded-full border border-blue-500/25 text-[10px] tabular-nums font-semibold">
+                <NeonBadge variant="blue" dot pulse>
                   {myTasks.length} Active
-                </span>
+                </NeonBadge>
               </div>
 
               {myTasks.length === 0 ? (
@@ -1093,10 +1095,18 @@ export default function Volunteer() {
                     const progress = (stage.step / 3) * 100;
 
                     return (
-                      <div
+                      <AnimatedContainer
                         key={task.id}
+                        animation="fade-in-up"
+                        delay={([0, 100, 200, 300, 400, 500] as const)[Math.min(idx, 5)]}
+                      >
+                      <div
                         onClick={() => setActiveTaskId(task.id)}
-                        className={`relative overflow-hidden rounded-2xl border cursor-pointer transition-all duration-200 ${isActive ? "bg-[#1c2020] border-blue-500/50 shadow-lg shadow-blue-500/10 z-10" : "bg-[#171a1a] border-white/6 hover:border-white/15"}`}
+                        className={`relative overflow-hidden rounded-2xl border cursor-pointer transition-all duration-300 ${
+                          isActive
+                            ? "bg-[#1c2020] border-blue-500/60 shadow-[0_0_20px_rgba(59,130,246,0.15)] z-10"
+                            : "bg-[#171a1a] border-white/8 hover:border-[rgba(59,130,246,0.3)] hover:shadow-[0_0_12px_rgba(59,130,246,0.08)]"
+                        }`}
                       >
                         {isActive && <div className="absolute top-0 left-0 w-1 h-full bg-blue-500" />}
                         <div className="p-4 pl-5">
@@ -1284,6 +1294,7 @@ export default function Volunteer() {
                           </div>
                         </div>
                       </div>
+                      </AnimatedContainer>
                     );
                   })}
                 </div>
@@ -1294,9 +1305,9 @@ export default function Volunteer() {
             <section>
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-xs font-bold text-white/60 uppercase tracking-widest">Priority Broadcasts</h3>
-                <Badge className="bg-white/5 text-white/40 border-white/10 text-[10px] tabular-nums">
+                <NeonBadge variant="gray">
                   {liveOpenTasks.length} Open
-                </Badge>
+                </NeonBadge>
               </div>
 
               {liveOpenTasks.length === 0 ? (
@@ -1313,8 +1324,15 @@ export default function Volunteer() {
                       <div
                         key={task.id}
                         onClick={() => { if (!isSelected) setActiveTaskId(task.id); }}
-                        className={`relative overflow-hidden rounded-xl border p-4 transition-all duration-200 ${isSelected ? "bg-[#1a1d1d] border-white/20 shadow-lg" : "bg-[#141616] border-white/5 hover:border-white/10"
-                          } ${isUrgent && !isSelected ? "border-red-500/40 animate-pulse bg-red-500/[0.02]" : ""}`}
+                        className={`relative overflow-hidden rounded-xl border p-4 transition-all duration-300 ${
+                          isSelected
+                            ? "bg-[#1a1d1d] border-white/20 shadow-[0_0_16px_rgba(0,229,153,0.08)]"
+                            : "bg-[#141616] border-white/5 hover:border-white/12"
+                        } ${
+                          isUrgent && !isSelected
+                            ? "border-red-500/50 animate-pulse bg-red-500/[0.03] shadow-[0_0_12px_rgba(239,68,68,0.1)]"
+                            : ""
+                        }`}
                       >
                         {isUrgent && (
                           <div className="absolute top-0 right-0 w-2 h-2 m-2 rounded-full bg-red-500 animate-ping"></div>
@@ -1383,11 +1401,19 @@ export default function Volunteer() {
         <div className="relative h-full w-full bg-[#0a0c0c] z-0 pb-[88px] sm:pb-0">
           {/* ETA overlay */}
           <div className="absolute top-5 left-1/2 -translate-x-1/2 z-[400] pointer-events-auto px-4 w-full max-w-sm">
-            <div className="bg-[#171a1a]/95 backdrop-blur-xl border border-white/10 rounded-2xl px-5 py-3 shadow-2xl">
+            <div className="glass-panel px-5 py-3 shadow-2xl border-white/10">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2.5">
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center border ${isNavigating ? 'bg-blue-500/20 border-blue-500/40' : activeTask ? 'bg-blue-500/15 border-blue-500/30' : 'bg-white/5 border-white/10'}`}>
-                    <Route className={`w-4 h-4 ${isNavigating ? 'text-blue-400 animate-pulse' : activeTask ? 'text-blue-400' : 'text-white/30'}`} />
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center border ${
+                    isNavigating
+                      ? 'bg-blue-500/20 border-blue-500/50'
+                      : activeTask
+                        ? 'bg-blue-500/15 border-blue-500/30'
+                        : 'bg-white/5 border-white/10'
+                  }`}>
+                    <Route className={`w-4 h-4 ${
+                      isNavigating ? 'text-blue-400 animate-pulse' : activeTask ? 'text-blue-400' : 'text-white/30'
+                    }`} />
                   </div>
                   <div>
                     <p className="text-[9px] uppercase text-white/35 font-bold tracking-widest">
@@ -1441,7 +1467,7 @@ export default function Volunteer() {
 
             {/* Expanded step list when navigating */}
             {isNavigating && navSteps.length > 0 && (
-              <div className="mt-2 bg-[#171a1a]/95 backdrop-blur-xl border border-white/10 rounded-xl shadow-2xl max-h-48 overflow-y-auto">
+              <div className="mt-2 glass-panel border-white/10 rounded-xl shadow-2xl max-h-48 overflow-y-auto">
                 {navSteps.map((step, i) => (
                   <div
                     key={i}
