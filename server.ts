@@ -459,9 +459,9 @@ Return ONLY this JSON with no markdown or extra text:
   app.post("/api/auth/register-admin", async (req, res) => {
     const { fullName, email, password, adminSecret } = req.body;
 
-    const EXPECTED_SECRET = process.env.ADMIN_SECRET_KEY || "supersecretadmin123";
+    const EXPECTED_SECRET = process.env.ADMIN_SECRET_KEY;
     
-    if (adminSecret !== EXPECTED_SECRET) {
+    if (!EXPECTED_SECRET || adminSecret !== EXPECTED_SECRET) {
       return res.status(403).json({ error: "Invalid admin secret key" });
     }
 
