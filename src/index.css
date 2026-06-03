@@ -1,3 +1,9 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+@import "@fontsource-variable/sora";
+@import "@fontsource-variable/inter";
+
 html, body {
   margin: 0;
   scroll-behavior: smooth;
@@ -16,11 +22,6 @@ html, body {
   display: none;
 }
 
-@import "tailwindcss";
-@import "tw-animate-css";
-@import "shadcn/tailwind.css";
-@import "@fontsource-variable/sora";
-@import "@fontsource-variable/inter";
 
 @custom-variant dark (&:where(.dark, .dark *));
 
