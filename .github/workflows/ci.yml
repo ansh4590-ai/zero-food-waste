@@ -44,7 +44,7 @@ jobs:
         run: npx playwright install --with-deps chromium
 
       - name: Run E2E tests
-        run: npm run test:e2e -- --project=chromium-desktop --reporter=html
+        run: npm run test:e2e -- --project=chromium --reporter=html
         env:
           CI: true
           PLAYWRIGHT_BASE_URL: http://localhost:5173

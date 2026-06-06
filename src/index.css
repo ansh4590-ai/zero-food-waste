@@ -23,9 +23,9 @@ html, body {
 }
 
 
-@custom-variant dark (&:where(.dark, .dark *));
+@variant dark (&:where(.dark, .dark *));
 
-@theme inline {
+@theme {
     --font-heading: 'Sora Variable', sans-serif;
     --font-sans: 'Inter Variable', sans-serif;
 
@@ -434,7 +434,8 @@ html, body {
 }
 .neon-kpi-card .kpi-accent-bar {
   position: absolute;
-  inset-x: 0;
+  left: 0;
+  right: 0;
   bottom: 0;
   height: 2px;
   transform: scaleX(0);
