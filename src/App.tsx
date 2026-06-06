@@ -34,7 +34,6 @@ import DonorSignup from "./pages/auth/DonorSignup";
 import ReceiverSignup from "./pages/auth/ReceiverSignup";
 import VolunteerSignup from "./pages/auth/VolunteerSignup";
 import Verification from "./pages/Verification";
-import SupabaseTest from "./pages/SupabaseTest";
 import Privacy from "./pages/Privacy";
 import Terms from "./pages/Terms";
 import Support from "./pages/Support";
@@ -57,7 +56,6 @@ export default function App() {
               <Route path="/" element={<MainLayout />}>
                 {/* Public Routes */}
               <Route index element={<Home />} />
-              <Route path="test-db" element={<SupabaseTest />} />
               <Route path="auth/login" element={<Login />} />
               <Route path="register" element={<RoleSelection />} />
               <Route path="register/donor" element={<DonorSignup />} />
