@@ -7,6 +7,13 @@ import {
 } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { toast } from "sonner";
+import { supabase } from "../lib/supabase";
+
+/** Returns the current user's JWT or null if not logged in */
+async function getAuthToken(): Promise<string | null> {
+  const { data } = await supabase.auth.getSession();
+  return data.session?.access_token ?? null;
+}
 
 // Minimal type for the dynamically imported Html5Qrcode scanner
 interface Html5QrcodeScanner {
@@ -56,9 +63,14 @@ export function QRCodeCard({
   const generateToken = useCallback(async () => {
     setIsGenerating(true);
     try {
+      const authToken = await getAuthToken();
+      if (!authToken) return; // not logged in — skip silently
       const res = await fetch(`/api/tasks/${taskId}/generate-qr`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${authToken}`,
+        },
         body: JSON.stringify({ type }),
       });
       const data = await res.json();
@@ -385,9 +397,17 @@ export function QRScannerModal({
         html5QrRef.current.pause(true); // Stop scanning while verifying
       }
       
+      const authToken = await getAuthToken();
+      if (!authToken) {
+        setError("Not authenticated. Please log in again.");
+        return;
+      }
       const res = await fetch("/api/tasks/verify-qr", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${authToken}`,
+        },
         body: JSON.stringify({ token, volunteerId }),
       });
       const data = await res.json();

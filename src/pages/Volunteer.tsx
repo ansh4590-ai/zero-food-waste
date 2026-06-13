@@ -189,12 +189,12 @@ function getSafeExpirationInfo(expiryTime: string | null) {
 
 // ─── STATUS CONFIG (matches real volunteer_status enum) ─────────────────────
 const TASK_STAGES: Record<string, { label: string; color: string; icon: React.ReactNode; step: number }> = {
-  [VOLUNTEER_STATUS.OPEN]:               { label: "Open", color: "#6b7280", icon: <Package className="w-3.5 h-3.5" />, step: 0 },
+  [VOLUNTEER_STATUS.OPEN]: { label: "Open", color: "#6b7280", icon: <Package className="w-3.5 h-3.5" />, step: 0 },
   [VOLUNTEER_STATUS.PENDING_ACCEPTANCE]: { label: "Action Required", color: "#ef4444", icon: <ShieldCheck className="w-3.5 h-3.5" />, step: 0 },
-  [VOLUNTEER_STATUS.ASSIGNED]:           { label: "Heading to Pickup", color: "#f59e0b", icon: <Navigation className="w-3.5 h-3.5" />, step: 1 },
-  [VOLUNTEER_STATUS.PICKED_UP]:          { label: "Out for Delivery", color: "#3b82f6", icon: <Truck className="w-3.5 h-3.5" />, step: 2 },
-  [VOLUNTEER_STATUS.DELIVERED]:          { label: "Completed", color: "#10b981", icon: <CheckCircle2 className="w-3.5 h-3.5" />, step: 3 },
-  [VOLUNTEER_STATUS.CANCELLED]:          { label: "Cancelled", color: "#6b7280", icon: <Package className="w-3.5 h-3.5" />, step: 0 },
+  [VOLUNTEER_STATUS.ASSIGNED]: { label: "Heading to Pickup", color: "#f59e0b", icon: <Navigation className="w-3.5 h-3.5" />, step: 1 },
+  [VOLUNTEER_STATUS.PICKED_UP]: { label: "Out for Delivery", color: "#3b82f6", icon: <Truck className="w-3.5 h-3.5" />, step: 2 },
+  [VOLUNTEER_STATUS.DELIVERED]: { label: "Completed", color: "#10b981", icon: <CheckCircle2 className="w-3.5 h-3.5" />, step: 3 },
+  [VOLUNTEER_STATUS.CANCELLED]: { label: "Cancelled", color: "#6b7280", icon: <Package className="w-3.5 h-3.5" />, step: 0 },
 };
 
 // ─── MAIN COMPONENT ───────────────────────────────────────────────────────────
@@ -217,6 +217,8 @@ export default function Volunteer() {
   const [abortModal, setAbortModal] = useState<{ open: boolean; taskId: string }>({ open: false, taskId: '' });
   const [abortReason, setAbortReason] = useState("");
   const [isAborting, setIsAborting] = useState(false);
+
+  const [missingLocationModal, setMissingLocationModal] = useState(false);
 
   // OTP state
   const [otpModal, setOtpModal] = useState<{ open: boolean; taskId: string; type: 'pickup' | 'delivery' }>({ open: false, taskId: '', type: 'pickup' });
@@ -258,10 +260,12 @@ export default function Volunteer() {
         setLivePos(pos);
         lastGPSPos.current = pos;
         livePosRef.current = pos;
+      } else if (!useHardwareGPS) {
+        setMissingLocationModal(true);
       }
       setProfileLoaded(true);
     })();
-  }, [user]);
+  }, [user, useHardwareGPS]);
 
   // ─── NETWORK DETECTION ──────────────────────────────────────────────────────
   useEffect(() => {
@@ -367,6 +371,8 @@ export default function Volunteer() {
         }
       }
 
+      console.log("[DEBUG] Fetching tasks for user.id:", user.id);
+
       const { data: myTasksRaw, error: myError } = await supabase
         .from(TABLES.VOLUNTEER_TASKS)
         .select(`
@@ -382,7 +388,7 @@ export default function Volunteer() {
         .eq("volunteer_id", user.id)
         .in("status", MY_TASK_STATUSES as unknown as string[]);
 
-      if (myError && import.meta.env.DEV) console.error("Supabase error [myTasksRaw]:", myError);
+      console.log("[DEBUG] myTasksRaw:", myTasksRaw, "myError:", myError);
 
       const myRequestIds = new Set(
         (myTasksRaw ?? []).map((row: Record<string, unknown>) => row.request_id as string | undefined).filter(Boolean)
@@ -397,8 +403,7 @@ export default function Volunteer() {
             food_listings!inner ( id, pickup_lat, pickup_lng, title, pickup_window, pickup_window_start, pickup_window_end, quantity_description, location_name, expiry_time, priority_score, estimated_safe_hours, spoilage_risk )
           `)
         .in("status", OPEN_REQUEST_STATUSES as unknown as string[])
-        .is("volunteer_id", null)
-        .gt("food_listings.expiry_time", new Date().toISOString());
+        .is("volunteer_id", null);
 
       if (openError && import.meta.env.DEV) console.error("Supabase error [openData]:", openError);
 
@@ -712,7 +717,7 @@ export default function Volunteer() {
     if (loadingTaskId) return;
     if (isOffline) { toast.error("You are offline. Reconnect to claim tasks."); return; }
     if (!user || !isValidSupabaseId(user.id)) { toast.error("Please log in to claim tasks."); return; }
-    
+
     // Strict window check for claiming
     const windowStatus = getPickupWindowStatus(task.pickupWindowStart, task.pickupWindowEnd);
     if (windowStatus === 'upcoming') {
@@ -800,8 +805,8 @@ export default function Volunteer() {
   const checkGracePeriod = (task: VolunteerTask) => {
     const windowStatus = getPickupWindowStatus(task.pickupWindowStart, task.pickupWindowEnd);
     if (windowStatus === 'expired') {
-       toast.error("Pickup window has expired (including the 15m grace period). Action blocked.");
-       return false;
+      toast.error("Pickup window has expired (including the 15m grace period). Action blocked.");
+      return false;
     }
     return true;
   };
@@ -860,7 +865,7 @@ export default function Volunteer() {
             throw new Error(msg || "QR generation failed");
           }
         } catch (err: unknown) {
-          console.error(err); 
+          console.error(err);
           toast.error("Failed to generate delivery QR");
         }
       }
@@ -1063,7 +1068,7 @@ export default function Volunteer() {
                 {useHardwareGPS ? "Hardware GPS Active" : "Network Simulator"}
               </p>
             </div>
-            <Button variant="ghost" size="icon" onClick={() => fetchTasks()} className="text-white/40 hover:text-white hover:bg-white/5">
+            <Button aria-label="Refresh tasks" variant="ghost" size="icon" onClick={() => fetchTasks()} className="text-white/40 hover:text-white hover:bg-white/5">
               <RefreshCw className="w-4 h-4" />
             </Button>
           </div>
@@ -1100,200 +1105,198 @@ export default function Volunteer() {
                         animation="fade-in-up"
                         delay={([0, 100, 200, 300, 400, 500] as const)[Math.min(idx, 5)]}
                       >
-                      <div
-                        onClick={() => setActiveTaskId(task.id)}
-                        className={`relative overflow-hidden rounded-2xl border cursor-pointer transition-all duration-300 ${
-                          isActive
-                            ? "bg-[#1c2020] border-blue-500/60 shadow-[0_0_20px_rgba(59,130,246,0.15)] z-10"
-                            : "bg-[#171a1a] border-white/8 hover:border-[rgba(59,130,246,0.3)] hover:shadow-[0_0_12px_rgba(59,130,246,0.08)]"
-                        }`}
-                      >
-                        {isActive && <div className="absolute top-0 left-0 w-1 h-full bg-blue-500" />}
-                        <div className="p-4 pl-5">
-                          {/* Stage + ETA */}
-                          <div className="flex items-center justify-between mb-2">
-                            <div className="flex items-center gap-1.5">
-                              <span style={{ color: stage.color }}>{stage.icon}</span>
-                              <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: stage.color }}>
-                                {stage.label}{idx > 0 ? ` (Stop ${idx + 1})` : ""}
-                              </span>
+                        <div
+                          onClick={() => setActiveTaskId(task.id)}
+                          className={`relative overflow-hidden rounded-2xl border cursor-pointer transition-all duration-300 ${isActive
+                              ? "bg-[#1c2020] border-blue-500/60 shadow-[0_0_20px_rgba(59,130,246,0.15)] z-10"
+                              : "bg-[#171a1a] border-white/8 hover:border-[rgba(59,130,246,0.3)] hover:shadow-[0_0_12px_rgba(59,130,246,0.08)]"
+                            }`}
+                        >
+                          {isActive && <div className="absolute top-0 left-0 w-1 h-full bg-blue-500" />}
+                          <div className="p-4 pl-5">
+                            {/* Stage + ETA */}
+                            <div className="flex items-center justify-between mb-2">
+                              <div className="flex items-center gap-1.5">
+                                <span style={{ color: stage.color }}>{stage.icon}</span>
+                                <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: stage.color }}>
+                                  {stage.label}{idx > 0 ? ` (Stop ${idx + 1})` : ""}
+                                </span>
+                              </div>
+                              {isActive && dynamicETA && (
+                                <Badge className="text-blue-400 border-blue-500/30 bg-blue-500/10 text-[10px] flex gap-1">
+                                  <Clock className="w-3 h-3" /> ETA {dynamicETA}
+                                  {routeOne?.isFallback || routeTwo?.isFallback ? " *" : ""}
+                                </Badge>
+                              )}
+                              {isActive && isRouteFetching && !dynamicETA && (
+                                <span className="text-[10px] text-white/30 flex items-center gap-1">
+                                  <Loader2 className="w-3 h-3 animate-spin" /> Routing…
+                                </span>
+                              )}
                             </div>
-                            {isActive && dynamicETA && (
-                              <Badge className="text-blue-400 border-blue-500/30 bg-blue-500/10 text-[10px] flex gap-1">
-                                <Clock className="w-3 h-3" /> ETA {dynamicETA}
-                                {routeOne?.isFallback || routeTwo?.isFallback ? " *" : ""}
-                              </Badge>
-                            )}
-                            {isActive && isRouteFetching && !dynamicETA && (
-                              <span className="text-[10px] text-white/30 flex items-center gap-1">
-                                <Loader2 className="w-3 h-3 animate-spin" /> Routing…
-                              </span>
-                            )}
-                          </div>
 
-                          {/* Task name */}
-                          <div className="flex items-center justify-between gap-2 mb-2.5">
-                            <h4 className="text-base font-semibold text-white truncate pr-2">{task.name}</h4>
-                            {task.spoilageRisk && (
-                              <Badge variant="outline" className={`shrink-0 text-[10px] border ${getRiskColor(task.spoilageRisk)}`}>
-                                Risk: {task.spoilageRisk}
-                              </Badge>
-                            )}
-                          </div>
+                            {/* Task name */}
+                            <div className="flex items-center justify-between gap-2 mb-2.5">
+                              <h4 className="text-base font-semibold text-white truncate pr-2">{task.name}</h4>
+                              {task.spoilageRisk && (
+                                <Badge variant="outline" className={`shrink-0 text-[10px] border ${getRiskColor(task.spoilageRisk)}`}>
+                                  Risk: {task.spoilageRisk}
+                                </Badge>
+                              )}
+                            </div>
 
-                          {/* Pickup / Dropoff */}
-                          <div className="space-y-1 mb-3">
-                            {task.pickupWindowStart && task.pickupWindowEnd && (
+                            {/* Pickup / Dropoff */}
+                            <div className="space-y-1 mb-3">
+                              {task.pickupWindowStart && task.pickupWindowEnd && (
+                                <div className="flex items-start gap-2">
+                                  <Clock className="w-3.5 h-3.5 shrink-0 mt-0.5 text-blue-400" />
+                                  <p className={`text-xs leading-snug font-medium ${getPickupWindowStatus(task.pickupWindowStart, task.pickupWindowEnd) === 'expired' ? 'text-red-400' : 'text-blue-400'
+                                    }`}>
+                                    {formatPickupCountdown(task.pickupWindowStart, task.pickupWindowEnd)}
+                                  </p>
+                                </div>
+                              )}
                               <div className="flex items-start gap-2">
-                                <Clock className="w-3.5 h-3.5 shrink-0 mt-0.5 text-blue-400" />
-                                <p className={`text-xs leading-snug font-medium ${
-                                  getPickupWindowStatus(task.pickupWindowStart, task.pickupWindowEnd) === 'expired' ? 'text-red-400' : 'text-blue-400'
-                                }`}>
-                                  {formatPickupCountdown(task.pickupWindowStart, task.pickupWindowEnd)}
+                                <MapPin className={`w-3.5 h-3.5 shrink-0 mt-0.5 ${task.status !== "picked_up" ? "text-amber-400" : "text-white/20"}`} />
+                                <p className={`text-xs leading-snug ${task.status !== "picked_up" ? "text-white/80" : "text-white/25 line-through"}`}>
+                                  <span className="font-semibold">Pickup:</span> {task.pickupAddress}
                                 </p>
                               </div>
-                            )}
-                            <div className="flex items-start gap-2">
-                              <MapPin className={`w-3.5 h-3.5 shrink-0 mt-0.5 ${task.status !== "picked_up" ? "text-amber-400" : "text-white/20"}`} />
-                              <p className={`text-xs leading-snug ${task.status !== "picked_up" ? "text-white/80" : "text-white/25 line-through"}`}>
-                                <span className="font-semibold">Pickup:</span> {task.pickupAddress}
-                              </p>
+                              <div className="flex items-start gap-2">
+                                <MapPin className={`w-3.5 h-3.5 shrink-0 mt-0.5 ${task.status === "picked_up" ? "text-emerald-400" : "text-white/20"}`} />
+                                <p className={`text-xs leading-snug ${task.status === "picked_up" ? "text-white/80" : "text-white/40"}`}>
+                                  <span className="font-semibold">Drop:</span> {task.dropoffAddress}
+                                </p>
+                              </div>
                             </div>
-                            <div className="flex items-start gap-2">
-                              <MapPin className={`w-3.5 h-3.5 shrink-0 mt-0.5 ${task.status === "picked_up" ? "text-emerald-400" : "text-white/20"}`} />
-                              <p className={`text-xs leading-snug ${task.status === "picked_up" ? "text-white/80" : "text-white/40"}`}>
-                                <span className="font-semibold">Drop:</span> {task.dropoffAddress}
-                              </p>
+
+                            {/* Progress Timeline */}
+                            {isActive && (
+                              <div className="mb-3">
+                                <ProgressTimeline
+                                  stages={VOLUNTEER_TIMELINE_STAGES.slice(0, 5)}
+                                  currentStageKey={task.status}
+                                  direction="horizontal"
+                                />
+                              </div>
+                            )}
+
+                            {/* Progress bar (compact when not active) */}
+                            {!isActive && (
+                              <div className="h-1 bg-white/8 rounded-full overflow-hidden mb-3">
+                                <div
+                                  className="h-full rounded-full transition-all duration-500"
+                                  style={{ width: `${progress}%`, background: stage.color }}
+                                />
+                              </div>
+                            )}
+
+                            {/* Safety countdown for active tasks */}
+                            {isActive && task.estimatedSafeHours && (() => {
+                              const expInfo = getSafeExpirationInfo(task.expiryTime);
+                              if (!expInfo) return null;
+                              return (
+                                <div className={`text-[10px] font-semibold flex items-center gap-1.5 mb-3 px-2 py-1 rounded-lg border ${expInfo.expired ? 'bg-red-500/10 border-red-500/20 text-red-400' :
+                                  (expInfo.diffH ?? 99) < 2 ? 'bg-amber-500/10 border-amber-500/20 text-amber-400' :
+                                    'bg-emerald-500/10 border-emerald-500/20 text-emerald-400'
+                                  }`}>
+                                  <Clock className="w-3 h-3" />
+                                  {expInfo.expired ? '⚠ Food safety window expired' : `Safe for: ${expInfo.text}`}
+                                </div>
+                              );
+                            })()}
+
+                            {/* Action buttons */}
+                            <div className="flex items-center gap-2">
+                              {task.status === "pending_acceptance" && (
+                                <div className="flex gap-2 w-full">
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={e => { e.stopPropagation(); handleAssignment(task, "decline"); }}
+                                    className="h-8 flex-1 text-xs border-red-500/20 text-red-500 hover:text-red-400 hover:bg-red-500/10"
+                                    disabled={isWorking}
+                                  >
+                                    Decline
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    onClick={e => { e.stopPropagation(); handleAssignment(task, "accept"); }}
+                                    className="h-8 flex-1 text-xs font-bold bg-blue-500 text-white hover:bg-blue-400"
+                                    disabled={isWorking || isOffline}
+                                  >
+                                    {isWorking ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : "Accept Dispatch"}
+                                  </Button>
+                                </div>
+                              )}
+                              {task.status === "assigned" && (
+                                <div className="grid grid-cols-[auto_1fr] gap-2 w-full">
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={e => { e.stopPropagation(); handleNavigateInMap(task); }}
+                                    className={`h-8 px-3 text-xs border-blue-500/30 text-blue-400 hover:text-blue-300 hover:bg-blue-500/10 bg-transparent flex items-center justify-center gap-1.5 ${isNavigating && activeTaskId === task.id ? 'bg-blue-500/15 border-blue-500/50' : ''}`}
+                                    disabled={isWorking}
+                                    title="Navigate to Pickup"
+                                  >
+                                    <Navigation className="w-3.5 h-3.5" /> Navigate
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    onClick={e => { e.stopPropagation(); handleOpenPickupQR(task); }}
+                                    className="h-8 px-4 text-xs font-bold bg-amber-500 text-black hover:bg-amber-400 w-full"
+                                    disabled={isWorking || isOffline}
+                                  >
+                                    {isWorking ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : "📱 Scan Pickup QR"}
+                                  </Button>
+                                </div>
+                              )}
+                              {task.status === "picked_up" && (
+                                <div className="grid grid-cols-[auto_1fr] gap-2 w-full">
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={e => { e.stopPropagation(); handleNavigateInMap(task); }}
+                                    className={`h-8 px-3 text-xs border-blue-500/30 text-blue-400 hover:text-blue-300 hover:bg-blue-500/10 bg-transparent flex items-center justify-center gap-1.5 ${isNavigating && activeTaskId === task.id ? 'bg-blue-500/15 border-blue-500/50' : ''}`}
+                                    disabled={isWorking}
+                                    title="Navigate to Dropoff"
+                                  >
+                                    <Navigation className="w-3.5 h-3.5" /> Navigate
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    onClick={e => { e.stopPropagation(); handleOpenDeliveryQR(task); }}
+                                    className="h-8 text-xs font-bold bg-emerald-500 text-black hover:bg-emerald-400 w-full flex gap-1.5"
+                                    disabled={isWorking || isOffline}
+                                  >
+                                    <ShieldCheck className="w-3.5 h-3.5 shrink-0" /> 📱 Scan Delivery QR
+                                  </Button>
+                                </div>
+                              )}
+
+                              {/* Abort button for assigned/picked_up tasks */}
+                              {(task.status === "assigned" || task.status === "picked_up") && (
+                                <div className="mt-2 flex w-full">
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={e => { e.stopPropagation(); setAbortModal({ open: true, taskId: task.id }); setAbortReason(''); }}
+                                    className="w-full h-7 text-[10px] uppercase tracking-wider text-red-500 hover:text-red-400 hover:bg-red-500/10"
+                                    disabled={isWorking || isOffline}
+                                  >
+                                    Abort Task
+                                  </Button>
+                                </div>
+                              )}
+
+                              {task.status === "delivered" && (
+                                <span className="text-xs text-emerald-400 flex items-center gap-1.5 w-full justify-center font-semibold">
+                                  <CheckCircle2 className="w-3.5 h-3.5" /> Delivery Completed
+                                </span>
+                              )}
                             </div>
-                          </div>
-
-                          {/* Progress Timeline */}
-                          {isActive && (
-                            <div className="mb-3">
-                              <ProgressTimeline
-                                stages={VOLUNTEER_TIMELINE_STAGES.slice(0, 5)}
-                                currentStageKey={task.status}
-                                direction="horizontal"
-                              />
-                            </div>
-                          )}
-
-                          {/* Progress bar (compact when not active) */}
-                          {!isActive && (
-                            <div className="h-1 bg-white/8 rounded-full overflow-hidden mb-3">
-                              <div
-                                className="h-full rounded-full transition-all duration-500"
-                                style={{ width: `${progress}%`, background: stage.color }}
-                              />
-                            </div>
-                          )}
-
-                          {/* Safety countdown for active tasks */}
-                          {isActive && task.estimatedSafeHours && (() => {
-                            const expInfo = getSafeExpirationInfo(task.expiryTime);
-                            if (!expInfo) return null;
-                            return (
-                              <div className={`text-[10px] font-semibold flex items-center gap-1.5 mb-3 px-2 py-1 rounded-lg border ${expInfo.expired ? 'bg-red-500/10 border-red-500/20 text-red-400' :
-                                (expInfo.diffH ?? 99) < 2 ? 'bg-amber-500/10 border-amber-500/20 text-amber-400' :
-                                  'bg-emerald-500/10 border-emerald-500/20 text-emerald-400'
-                                }`}>
-                                <Clock className="w-3 h-3" />
-                                {expInfo.expired ? '⚠ Food safety window expired' : `Safe for: ${expInfo.text}`}
-                              </div>
-                            );
-                          })()}
-
-                          {/* Action buttons */}
-                          <div className="flex items-center gap-2">
-                            {task.status === "pending_acceptance" && (
-                              <div className="flex gap-2 w-full">
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={e => { e.stopPropagation(); handleAssignment(task, "decline"); }}
-                                  className="h-8 flex-1 text-xs border-red-500/20 text-red-500 hover:text-red-400 hover:bg-red-500/10"
-                                  disabled={isWorking}
-                                >
-                                  Decline
-                                </Button>
-                                <Button
-                                  size="sm"
-                                  onClick={e => { e.stopPropagation(); handleAssignment(task, "accept"); }}
-                                  className="h-8 flex-1 text-xs font-bold bg-blue-500 text-white hover:bg-blue-400"
-                                  disabled={isWorking || isOffline}
-                                >
-                                  {isWorking ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : "Accept Dispatch"}
-                                </Button>
-                              </div>
-                            )}
-                            {task.status === "assigned" && (
-                              <div className="grid grid-cols-[auto_1fr] gap-2 w-full">
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={e => { e.stopPropagation(); handleNavigateInMap(task); }}
-                                  className={`h-8 px-3 text-xs border-blue-500/30 text-blue-400 hover:text-blue-300 hover:bg-blue-500/10 bg-transparent flex items-center justify-center gap-1.5 ${isNavigating && activeTaskId === task.id ? 'bg-blue-500/15 border-blue-500/50' : ''}`}
-                                  disabled={isWorking}
-                                  title="Navigate to Pickup"
-                                >
-                                  <Navigation className="w-3.5 h-3.5" /> Navigate
-                                </Button>
-                                <Button
-                                  size="sm"
-                                  onClick={e => { e.stopPropagation(); handleOpenPickupQR(task); }}
-                                  className="h-8 px-4 text-xs font-bold bg-amber-500 text-black hover:bg-amber-400 w-full"
-                                  disabled={isWorking || isOffline}
-                                >
-                                  {isWorking ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : "📱 Scan Pickup QR"}
-                                </Button>
-                              </div>
-                            )}
-                            {task.status === "picked_up" && (
-                              <div className="grid grid-cols-[auto_1fr] gap-2 w-full">
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={e => { e.stopPropagation(); handleNavigateInMap(task); }}
-                                  className={`h-8 px-3 text-xs border-blue-500/30 text-blue-400 hover:text-blue-300 hover:bg-blue-500/10 bg-transparent flex items-center justify-center gap-1.5 ${isNavigating && activeTaskId === task.id ? 'bg-blue-500/15 border-blue-500/50' : ''}`}
-                                  disabled={isWorking}
-                                  title="Navigate to Dropoff"
-                                >
-                                  <Navigation className="w-3.5 h-3.5" /> Navigate
-                                </Button>
-                                <Button
-                                  size="sm"
-                                  onClick={e => { e.stopPropagation(); handleOpenDeliveryQR(task); }}
-                                  className="h-8 text-xs font-bold bg-emerald-500 text-black hover:bg-emerald-400 w-full flex gap-1.5"
-                                  disabled={isWorking || isOffline}
-                                >
-                                  <ShieldCheck className="w-3.5 h-3.5 shrink-0" /> 📱 Scan Delivery QR
-                                </Button>
-                              </div>
-                            )}
-
-                            {/* Abort button for assigned/picked_up tasks */}
-                            {(task.status === "assigned" || task.status === "picked_up") && (
-                              <div className="mt-2 flex w-full">
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={e => { e.stopPropagation(); setAbortModal({ open: true, taskId: task.id }); setAbortReason(''); }}
-                                  className="w-full h-7 text-[10px] uppercase tracking-wider text-red-500 hover:text-red-400 hover:bg-red-500/10"
-                                  disabled={isWorking || isOffline}
-                                >
-                                  Abort Task
-                                </Button>
-                              </div>
-                            )}
-
-                            {task.status === "delivered" && (
-                              <span className="text-xs text-emerald-400 flex items-center gap-1.5 w-full justify-center font-semibold">
-                                <CheckCircle2 className="w-3.5 h-3.5" /> Delivery Completed
-                              </span>
-                            )}
                           </div>
                         </div>
-                      </div>
                       </AnimatedContainer>
                     );
                   })}
@@ -1324,15 +1327,13 @@ export default function Volunteer() {
                       <div
                         key={task.id}
                         onClick={() => { if (!isSelected) setActiveTaskId(task.id); }}
-                        className={`relative overflow-hidden rounded-xl border p-4 transition-all duration-300 ${
-                          isSelected
+                        className={`relative overflow-hidden rounded-xl border p-4 transition-all duration-300 ${isSelected
                             ? "bg-[#1a1d1d] border-white/20 shadow-[0_0_16px_rgba(0,229,153,0.08)]"
                             : "bg-[#141616] border-white/5 hover:border-white/12"
-                        } ${
-                          isUrgent && !isSelected
+                          } ${isUrgent && !isSelected
                             ? "border-red-500/50 animate-pulse bg-red-500/[0.03] shadow-[0_0_12px_rgba(239,68,68,0.1)]"
                             : ""
-                        }`}
+                          }`}
                       >
                         {isUrgent && (
                           <div className="absolute top-0 right-0 w-2 h-2 m-2 rounded-full bg-red-500 animate-ping"></div>
@@ -1357,10 +1358,9 @@ export default function Volunteer() {
 
                         <div className="text-xs text-white/50 space-y-1 mb-3">
                           {task.pickupWindowStart && task.pickupWindowEnd && (
-                            <p className={`flex items-center gap-1.5 font-medium ${
-                              getPickupWindowStatus(task.pickupWindowStart, task.pickupWindowEnd) === 'expired' ? 'text-red-400' : 'text-blue-400'
-                            }`}>
-                              <Clock className="w-3.5 h-3.5" /> 
+                            <p className={`flex items-center gap-1.5 font-medium ${getPickupWindowStatus(task.pickupWindowStart, task.pickupWindowEnd) === 'expired' ? 'text-red-400' : 'text-blue-400'
+                              }`}>
+                              <Clock className="w-3.5 h-3.5" />
                               {formatPickupCountdown(task.pickupWindowStart, task.pickupWindowEnd)}
                             </p>
                           )}
@@ -1404,16 +1404,14 @@ export default function Volunteer() {
             <div className="glass-panel px-5 py-3 shadow-2xl border-white/10">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2.5">
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center border ${
-                    isNavigating
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center border ${isNavigating
                       ? 'bg-blue-500/20 border-blue-500/50'
                       : activeTask
                         ? 'bg-blue-500/15 border-blue-500/30'
                         : 'bg-white/5 border-white/10'
-                  }`}>
-                    <Route className={`w-4 h-4 ${
-                      isNavigating ? 'text-blue-400 animate-pulse' : activeTask ? 'text-blue-400' : 'text-white/30'
-                    }`} />
+                    }`}>
+                    <Route className={`w-4 h-4 ${isNavigating ? 'text-blue-400 animate-pulse' : activeTask ? 'text-blue-400' : 'text-white/30'
+                      }`} />
                   </div>
                   <div>
                     <p className="text-[9px] uppercase text-white/35 font-bold tracking-widest">
@@ -1690,6 +1688,30 @@ export default function Volunteer() {
             >
               {isAborting ? <Loader2 className="w-4 h-4 animate-spin" /> : "Confirm Abort"}
             </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Missing Profile Location Modal */}
+      <Dialog open={missingLocationModal} onOpenChange={setMissingLocationModal}>
+        <DialogContent className="sm:max-w-md bg-[#171a1a] text-white border border-amber-500/30 rounded-2xl shadow-[0_0_40px_rgba(245,158,11,0.15)]">
+          <DialogHeader>
+            <DialogTitle className="text-lg font-bold flex items-center gap-2 text-amber-500">
+              <AlertTriangle className="w-5 h-5" /> Location Profile Incomplete
+            </DialogTitle>
+            <DialogDescription className="text-white/60 text-sm pt-2">
+              Your profile is missing location details. We need your location to show you nearby pickup tasks and accurately calculate dispatch routes.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex justify-end gap-3 mt-4">
+            <Button variant="outline" className="border-white/10 text-white/60 hover:bg-white/5" onClick={() => setMissingLocationModal(false)}>
+              Dismiss
+            </Button>
+            <Link to="/profile">
+              <Button className="bg-amber-500 hover:bg-amber-600 text-black font-bold">
+                Set Location in Profile
+              </Button>
+            </Link>
           </div>
         </DialogContent>
       </Dialog>
