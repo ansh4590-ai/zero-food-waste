@@ -224,19 +224,19 @@ export default function MainLayout() {
         <Outlet />
       </main>
 
-      <footer className="mt-auto w-full bg-[#09090b] border-t border-white/10 py-8 md:py-10 transition-colors duration-200 shrink-0 text-white">
+      <footer className="mt-auto w-full bg-background border-t border-border py-8 md:py-10 transition-colors duration-200 shrink-0 text-foreground">
         <div className="max-w-7xl mx-auto px-6 sm:px-8">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 md:gap-12 mb-8 text-left">
             {/* Column 1: Brand & Identity */}
             <div className="flex flex-col items-start">
               <div className="flex items-center gap-3 mb-4">
-                <HeartHandshake className="h-6 w-6 text-emerald-500" />
-                <span className="font-bold text-lg text-white tracking-tight">Zero Food Waste</span>
+                <HeartHandshake className="h-6 w-6 text-primary" />
+                <span className="font-bold text-lg text-foreground tracking-tight">Zero Food Waste</span>
               </div>
-              <p className="text-sm text-slate-400 leading-relaxed max-w-sm mb-4">
+              <p className="text-sm text-muted-foreground leading-relaxed max-w-sm mb-4">
                 Our mission is to eliminate hunger and reduce food waste in India by connecting local communities, surplus food, and verified volunteers in real-time.
               </p>
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-white/10 bg-white/5 backdrop-blur-md text-xs font-semibold text-slate-300 shadow-sm">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-border bg-muted/50 backdrop-blur-md text-xs font-semibold text-muted-foreground shadow-sm">
                 <span className="relative flex h-2 w-2">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                   <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
@@ -247,20 +247,20 @@ export default function MainLayout() {
             
             {/* Column 2: Network */}
             <div className="flex flex-col items-start">
-              <h4 className="font-semibold text-xs text-slate-500 mb-4 uppercase tracking-widest">Network</h4>
-              <ul className="space-y-2 text-sm text-slate-400">
+              <h4 className="font-semibold text-xs text-muted-foreground mb-4 uppercase tracking-widest">Network</h4>
+              <ul className="space-y-2 text-sm text-muted-foreground">
                 <li>
-                  <Link to="/register/donor" className="hover:text-white hover:translate-x-1 inline-block transition-all duration-200">
+                  <Link to="/register/donor" className="hover:text-foreground hover:translate-x-1 inline-block transition-all duration-200">
                     For Donors
                   </Link>
                 </li>
                 <li>
-                  <Link to="/register/receiver" className="hover:text-white hover:translate-x-1 inline-block transition-all duration-200">
+                  <Link to="/register/receiver" className="hover:text-foreground hover:translate-x-1 inline-block transition-all duration-200">
                     For NGOs & Shelters
                   </Link>
                 </li>
                 <li>
-                  <Link to="/register/volunteer" className="hover:text-white hover:translate-x-1 inline-block transition-all duration-200">
+                  <Link to="/register/volunteer" className="hover:text-foreground hover:translate-x-1 inline-block transition-all duration-200">
                     For Volunteers
                   </Link>
                 </li>
@@ -269,20 +269,20 @@ export default function MainLayout() {
 
             {/* Column 3: Legal & Support */}
             <div className="flex flex-col items-start">
-              <h4 className="font-semibold text-xs text-slate-500 mb-4 uppercase tracking-widest">Legal & Support</h4>
-              <ul className="space-y-2 text-sm text-slate-400">
+              <h4 className="font-semibold text-xs text-muted-foreground mb-4 uppercase tracking-widest">Legal & Support</h4>
+              <ul className="space-y-2 text-sm text-muted-foreground">
                 <li>
-                  <Link to="/privacy" className="hover:text-white hover:translate-x-1 inline-block transition-all duration-200">
+                  <Link to="/privacy" className="hover:text-foreground hover:translate-x-1 inline-block transition-all duration-200">
                     Privacy Policy
                   </Link>
                 </li>
                 <li>
-                  <Link to="/terms" className="hover:text-white hover:translate-x-1 inline-block transition-all duration-200">
+                  <Link to="/terms" className="hover:text-foreground hover:translate-x-1 inline-block transition-all duration-200">
                     Terms of Service
                   </Link>
                 </li>
                 <li>
-                  <Link to="/support" className="hover:text-white hover:translate-x-1 inline-block transition-all duration-200">
+                  <Link to="/support" className="hover:text-foreground hover:translate-x-1 inline-block transition-all duration-200">
                     Contact Support
                   </Link>
                 </li>
@@ -291,13 +291,13 @@ export default function MainLayout() {
           </div>
           
           {/* Bottom Bar */}
-          <div className="pt-4 border-t border-white/10 flex flex-col md:flex-row justify-between items-center gap-3">
-            <p className="text-xs text-slate-500 text-center md:text-left">
+          <div className="pt-4 border-t border-border flex flex-col md:flex-row justify-between items-center gap-3">
+            <p className="text-xs text-muted-foreground text-center md:text-left">
               &copy; {new Date().getFullYear()} Zero Food Waste. Operating across major Indian cities.
             </p>
-            <div className="flex gap-4 text-xs text-slate-500">
-              <Link to="/privacy" className="hover:text-white transition-colors duration-200">Privacy</Link>
-              <Link to="/terms" className="hover:text-white transition-colors duration-200">Terms</Link>
+            <div className="flex gap-4 text-xs text-muted-foreground">
+              <Link to="/privacy" className="hover:text-foreground transition-colors duration-200">Privacy</Link>
+              <Link to="/terms" className="hover:text-foreground transition-colors duration-200">Terms</Link>
             </div>
           </div>
         </div>

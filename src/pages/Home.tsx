@@ -478,7 +478,7 @@ function InteractiveRoleCard({ role, index, onClick }: { role: (typeof ROLES)[nu
       onMouseLeave={() => setIsHovered(false)}
       whileHover={{ scale: 1.02, y: -4 }}
       whileTap={{ scale: 0.98 }}
-      className="group w-full relative flex flex-col p-8 rounded-[1.5rem] backdrop-blur-xl transition-all duration-500 text-left min-h-[340px] h-auto cursor-pointer overflow-hidden outline-none bg-[#030404] border"
+      className="group w-full relative flex flex-col p-8 rounded-[1.5rem] backdrop-blur-xl transition-all duration-500 text-left min-h-[340px] h-auto cursor-pointer overflow-hidden outline-none bg-card dark:bg-[#030404] border"
       style={{
         borderColor: isHovered ? theme.main : theme.border,
         boxShadow: isHovered 
@@ -505,8 +505,8 @@ function InteractiveRoleCard({ role, index, onClick }: { role: (typeof ROLES)[nu
       
       {/* Typography Enhancement */}
       <div className="relative z-10 flex-1 flex flex-col">
-        <h3 className="text-2xl font-bold text-white mb-3 transition-colors duration-300">{role.title}</h3>
-        <p className="text-sm text-gray-400 leading-relaxed mb-6 transition-colors duration-300 group-hover:text-gray-300">{role.desc}</p>
+        <h3 className="text-2xl font-bold text-foreground mb-3 transition-colors duration-300">{role.title}</h3>
+        <p className="text-sm text-muted-foreground leading-relaxed mb-6 transition-colors duration-300 group-hover:text-foreground/80">{role.desc}</p>
         
         <div className="mt-auto flex items-center text-sm font-bold transition-colors duration-300" style={{ color: theme.main }}>
           Get Started 
@@ -729,19 +729,19 @@ export default function Home() {
       </section>
 
       {/* ────────────────── ROLE PATHWAYS (Modal Expansions) ────────────────── */}
-      <section className="w-full py-24 flex flex-col items-center bg-[#020303] relative overflow-hidden transition-colors duration-300">
+      <section className="w-full py-24 flex flex-col items-center bg-background dark:bg-[#020303] relative overflow-hidden transition-colors duration-300">
         {/* Cinematic Background Elements */}
         <div className="absolute inset-0 z-0 pointer-events-none">
-          {/* Radial dark green glow */}
-          <div className="absolute top-[10%] left-1/2 -translate-x-1/2 w-[200vw] max-w-[1200px] h-[40vh] md:h-[600px] bg-[#00e599]/10 blur-[150px] rounded-[100%]" />
+          {/* Radial dark green glow - hidden in light mode for cleaner look */}
+          <div className="absolute top-[10%] left-1/2 -translate-x-1/2 w-[200vw] max-w-[1200px] h-[40vh] md:h-[600px] bg-primary/5 dark:bg-[#00e599]/10 blur-[150px] rounded-[100%]" />
           
-          {/* Particles/Stars */}
-          <div className="absolute top-1/4 left-[15%] w-1.5 h-1.5 rounded-full bg-[#00e599] shadow-[0_0_15px_2px_#00e599]" />
-          <div className="absolute top-[35%] right-[12%] w-2 h-2 rounded-full bg-[#3b82f6] shadow-[0_0_20px_2px_#3b82f6]" />
-          <div className="absolute bottom-[40%] left-[8%] w-1.5 h-1.5 rounded-full bg-[#34d399] shadow-[0_0_15px_2px_#34d399] opacity-80" />
-          <div className="absolute bottom-1/4 right-[20%] w-1.5 h-1.5 rounded-full bg-[#ffaa00] shadow-[0_0_15px_2px_#ffaa00] opacity-90" />
-          <div className="absolute top-[12%] right-[28%] w-1 h-1 rounded-full bg-white shadow-[0_0_10px_1px_white] opacity-60" />
-          <div className="absolute bottom-[15%] left-[35%] w-2 h-2 rounded-full bg-[#00e599] shadow-[0_0_20px_3px_#00e599] opacity-40 blur-[1px]" />
+          {/* Particles/Stars - opacity adjusted for light mode */}
+          <div className="absolute top-1/4 left-[15%] w-1.5 h-1.5 rounded-full bg-primary dark:bg-[#00e599] shadow-[0_0_15px_2px_rgba(45,106,79,0.3)] dark:shadow-[0_0_15px_2px_#00e599]" />
+          <div className="absolute top-[35%] right-[12%] w-2 h-2 rounded-full bg-blue-500 shadow-[0_0_20px_2px_rgba(59,130,246,0.3)] dark:shadow-[0_0_20px_2px_#3b82f6]" />
+          <div className="absolute bottom-[40%] left-[8%] w-1.5 h-1.5 rounded-full bg-emerald-400 dark:bg-[#34d399] shadow-[0_0_15px_2px_rgba(16,185,129,0.3)] dark:shadow-[0_0_15px_2px_#34d399] opacity-80" />
+          <div className="absolute bottom-1/4 right-[20%] w-1.5 h-1.5 rounded-full bg-orange-400 dark:bg-[#ffaa00] shadow-[0_0_15px_2px_rgba(249,115,22,0.3)] dark:shadow-[0_0_15px_2px_#ffaa00] opacity-90" />
+          <div className="absolute top-[12%] right-[28%] w-1 h-1 rounded-full bg-foreground/20 dark:bg-white shadow-[0_0_10px_1px_rgba(0,0,0,0.1)] dark:shadow-[0_0_10px_1px_white] opacity-60" />
+          <div className="absolute bottom-[15%] left-[35%] w-2 h-2 rounded-full bg-primary dark:bg-[#00e599] shadow-[0_0_20px_3px_rgba(45,106,79,0.3)] dark:shadow-[0_0_20px_3px_#00e599] opacity-40 blur-[1px]" />
         </div>
 
         <div className="max-w-6xl w-full px-6 relative z-10">
@@ -749,13 +749,13 @@ export default function Home() {
             initial={{ opacity: 0, y: -20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.6 }}
             className="mb-20 max-w-3xl text-center mx-auto flex flex-col items-center"
           >
-            <span className="inline-flex items-center px-4 py-1.5 rounded-full border border-[#00e599]/40 bg-[#00e599]/10 text-[#00e599] text-[10px] md:text-xs font-extrabold tracking-widest uppercase mb-6 shadow-[0_0_20px_rgba(0,229,153,0.15)]">
+            <span className="inline-flex items-center px-4 py-1.5 rounded-full border border-primary/20 dark:border-[#00e599]/40 bg-primary/10 dark:bg-[#00e599]/10 text-primary dark:text-[#00e599] text-[10px] md:text-xs font-extrabold tracking-widest uppercase mb-6 shadow-sm dark:shadow-[0_0_20px_rgba(0,229,153,0.15)]">
               Be the reason someone eats today
             </span>
-            <h2 className="text-5xl md:text-6xl lg:text-7xl font-black tracking-tight mb-6 text-white drop-shadow-lg">
-              Join the <span className="text-[#00e599] drop-shadow-[0_0_30px_rgba(0,229,153,0.4)]">Movement</span>
+            <h2 className="text-5xl md:text-6xl lg:text-7xl font-black tracking-tight mb-6 text-foreground drop-shadow-sm dark:drop-shadow-lg">
+              Join the <span className="text-primary dark:text-[#00e599] drop-shadow-[0_0_20px_rgba(45,106,79,0.2)] dark:drop-shadow-[0_0_30px_rgba(0,229,153,0.4)]">Movement</span>
             </h2>
-            <p className="text-center text-lg md:text-xl text-gray-400 font-medium">Choose your role and start creating impact today.</p>
+            <p className="text-center text-lg md:text-xl text-muted-foreground font-medium">Choose your role and start creating impact today.</p>
           </motion.div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8 place-items-center relative z-20">
@@ -779,13 +779,13 @@ export default function Home() {
               { icon: Users, title: "Trusted Community", desc: "Verified donors, NGOs, and volunteers across India.", color: "#3b82f6" },
               { icon: Leaf, title: "Real Impact", desc: "Track your contribution and see the difference you make.", color: "#ffaa00" }
             ].map((badge, idx) => (
-              <div key={idx} className="flex items-center gap-5 p-5 rounded-2xl bg-[#080a0a]/90 border border-white/5 backdrop-blur-xl shadow-[0_10px_30px_rgba(0,0,0,0.5)]">
-                <div className="w-12 h-12 shrink-0 rounded-xl bg-[#111414] flex items-center justify-center border border-white/5 shadow-inner">
+              <div key={idx} className="flex items-center gap-5 p-5 rounded-2xl bg-card dark:bg-[#080a0a]/90 border border-border dark:border-white/5 backdrop-blur-xl shadow-sm hover:shadow-md transition-shadow dark:shadow-[0_10px_30px_rgba(0,0,0,0.5)]">
+                <div className="w-12 h-12 shrink-0 rounded-xl bg-muted dark:bg-[#111414] flex items-center justify-center border border-border dark:border-white/5 shadow-inner">
                   <badge.icon className="w-5 h-5" style={{ color: badge.color }} />
                 </div>
                 <div>
-                  <h4 className="text-sm font-bold text-white mb-1">{badge.title}</h4>
-                  <p className="text-xs text-gray-500 leading-relaxed">{badge.desc}</p>
+                  <h4 className="text-sm font-bold text-foreground mb-1">{badge.title}</h4>
+                  <p className="text-xs text-muted-foreground leading-relaxed">{badge.desc}</p>
                 </div>
               </div>
             ))}

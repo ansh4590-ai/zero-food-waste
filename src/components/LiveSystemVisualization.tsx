@@ -138,7 +138,7 @@ export function LiveSystemVisualization() {
         }
       `}</style>
 
-      <div className="w-full bg-[#0a0c0c]/90 backdrop-blur-2xl border border-white/5 rounded-[2rem] py-8 px-6 lg:px-8 relative overflow-hidden shadow-[0_20px_60px_-15px_rgba(0,0,0,0.8)]">
+      <div className="w-full bg-card dark:bg-[#0a0c0c]/90 backdrop-blur-2xl border border-border dark:border-white/5 rounded-[2rem] py-8 px-6 lg:px-8 relative overflow-hidden shadow-sm dark:shadow-[0_20px_60px_-15px_rgba(0,0,0,0.8)]">
 
         {/* Soft Ambient Glow Behind Center Steps */}
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[60%] h-[80%] bg-[#10b981]/10 blur-[80px] pointer-events-none rounded-full" />
@@ -148,12 +148,12 @@ export function LiveSystemVisualization() {
           {/* 1. Left Info Block */}
           <div className="shrink-0 text-center xl:text-left flex flex-col justify-center">
             <div className="flex items-center gap-2 justify-center xl:justify-start mb-1.5">
-              <Activity className="w-4 h-4 text-[#10b981]" />
-              <span className="text-[15px] font-bold text-white tracking-tight">
+              <Activity className="w-4 h-4 text-primary dark:text-[#10b981]" />
+              <span className="text-[15px] font-bold text-foreground tracking-tight">
                 Real-Time Rescue Flow
               </span>
             </div>
-            <p className="text-[11px] text-white/40 leading-relaxed font-medium">
+            <p className="text-[11px] text-muted-foreground leading-relaxed font-medium">
               Every step happens in minutes, <br className="hidden xl:block" />saving food and bringing hope.
             </p>
           </div>
@@ -176,15 +176,20 @@ export function LiveSystemVisualization() {
                     <motion.div
                       animate={{
                         y: isActive ? -4 : 0,
-                        borderColor: isActive ? `${node.color}50` : isPast ? `${node.color}30` : "rgba(255,255,255,0.06)",
-                        backgroundColor: isActive ? "rgba(255,255,255,0.04)" : "rgba(255,255,255,0.02)",
                         boxShadow: isActive
                           ? `inset 0 0 10px ${node.color}20, 0 0 25px ${node.color}40`
-                          : "inset 0 0 6px rgba(255,255,255,0.02)",
+                          : "none",
                         scale: isActive ? 1.08 : 1,
                       }}
+                      style={{
+                        borderColor: isActive ? `${node.color}50` : isPast ? `${node.color}30` : undefined,
+                      }}
                       transition={{ duration: 0.4, ease: "easeOut" }}
-                      className="w-14 h-14 md:w-[72px] md:h-[72px] rounded-[16px] md:rounded-[20px] border backdrop-blur-[20px] flex items-center justify-center relative z-10 overflow-hidden"
+                      className={`w-14 h-14 md:w-[72px] md:h-[72px] rounded-[16px] md:rounded-[20px] border backdrop-blur-[20px] flex items-center justify-center relative z-10 overflow-hidden transition-colors ${
+                        isActive 
+                          ? "bg-muted dark:bg-white/10" 
+                          : "bg-background/50 dark:bg-white/5 border-border dark:border-white/5"
+                      }`}
                     >
                       {/* Inner Radial Glow Background (adds lighting contrast to icon) */}
                       {(isActive || isPast) && (
@@ -206,16 +211,15 @@ export function LiveSystemVisualization() {
 
                       {/* Completed State Tick */}
                       {isPast && (
-                        <div className="absolute -bottom-1.5 -right-1.5 w-5 h-5 md:w-6 md:h-6 bg-[#10b981] rounded-full flex items-center justify-center shadow-lg border-2 border-[#0a0c0c] z-30">
-                          <CheckCircle2 className="w-3 h-3 md:w-3.5 md:h-3.5 text-[#0a0c0c]" strokeWidth={3} />
+                        <div className="absolute -bottom-1.5 -right-1.5 w-5 h-5 md:w-6 md:h-6 bg-[#10b981] rounded-full flex items-center justify-center shadow-lg border-2 border-card dark:border-[#0a0c0c] z-30">
+                          <CheckCircle2 className="w-3 h-3 md:w-3.5 md:h-3.5 text-white dark:text-[#0a0c0c]" strokeWidth={3} />
                         </div>
                       )}
                     </motion.div>
 
                     {/* Label */}
                     <span
-                      className="text-[9px] md:text-[11px] font-bold tracking-wider text-center leading-tight whitespace-nowrap hidden sm:block uppercase"
-                      style={{ color: isActive || isPast ? "#ffffff" : "rgba(255,255,255,0.6)" }}
+                      className={`text-[9px] md:text-[11px] font-bold tracking-wider text-center leading-tight whitespace-nowrap hidden sm:block uppercase ${isActive || isPast ? "text-foreground" : "text-muted-foreground"}`}
                     >
                       {node.label}
                     </span>
@@ -251,15 +255,15 @@ export function LiveSystemVisualization() {
           </div>
 
           {/* 4. Right Metric */}
-          <div className="shrink-0 text-center xl:text-right flex flex-col justify-center xl:border-l border-white/5 pt-6 xl:pt-0 xl:pl-8 mt-2 xl:mt-0">
+          <div className="shrink-0 text-center xl:text-right flex flex-col justify-center xl:border-l border-border dark:border-white/5 pt-6 xl:pt-0 xl:pl-8 mt-2 xl:mt-0">
             <div className="flex items-center gap-1.5 justify-center xl:justify-end mb-1">
-              <Clock className="w-3.5 h-3.5 text-[#10b981]/50" />
-              <span className="text-[10px] text-white/30 uppercase tracking-widest font-bold">
+              <Clock className="w-3.5 h-3.5 text-primary/70 dark:text-[#10b981]/50" />
+              <span className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold">
                 Avg. Delivery Time
               </span>
             </div>
-            <div className="text-2xl md:text-3xl font-black text-white tracking-tight drop-shadow-sm">
-              28 <span className="text-sm font-semibold text-white/40">mins</span>
+            <div className="text-2xl md:text-3xl font-black text-foreground tracking-tight drop-shadow-sm">
+              28 <span className="text-sm font-semibold text-muted-foreground">mins</span>
             </div>
           </div>
 

@@ -77,48 +77,72 @@ html, body {
 
 @layer base {
   :root, .light {
-      /* Light Mode Base Colors */
-      --background: #f9fafb;
-      --surface: #ffffff;
-      --surface-soft: #f3f4f6;
-      
-      --foreground: #0f1111;
-      --text-muted: #6b7280;
+      color-scheme: light;
 
-      --primary: #2f6f57;
+      /* ── Premium Light Mode Palette ─────────────────────────────────────
+         Philosophy: warm off-white backgrounds, layered depth,
+         forest green primary, amber warm accent, sharp contrast text.
+         Inspired by Linear / Vercel / Craft docs light mode.
+      ──────────────────────────────────────────────────────────────────── */
+
+      /* Page background — warm off-white, NOT pure white */
+      --background: #f7f6f3;
+
+      /* Card surfaces — clean white for elevation effect */
+      --surface: #ffffff;
+      --surface-soft: #f0eeea;
+
+      /* Primary text — near-black with warmth, avoids harsh pure black */
+      --foreground: #1a1a18;
+      --text-muted: #6b7165;
+
+      /* Brand primary — forest / sage green */
+      --primary: #2d6a4f;
       --primary-foreground: #ffffff;
-      --accent-warm: #c6923b;
-      
+
+      /* Warm amber accent — for highlights, tags, CTAs secondary */
+      --accent-warm: #b5621e;
+
+      /* Cards */
       --card: #ffffff;
-      --card-foreground: #0f1111;
-      
+      --card-foreground: #1a1a18;
+
+      /* Popovers / dropdowns — slightly elevated from card */
       --popover: #ffffff;
-      --popover-foreground: #0f1111;
-      
-      --secondary: #f3f4f6;
-      --secondary-foreground: #0f1111;
-      
-      --muted: #f3f4f6;
-      --muted-foreground: #6b7280;
-      
-      --accent: #f3f4f6;
-      --accent-foreground: #0f1111;
-      
-      --destructive: #ef4444;
-      --success: #22c55e;
-      
-      --border: #e5e7eb;
-      --input: #e5e7eb;
-      --ring: #2f6f57;
-      
-      --sidebar: #ffffff;
-      --sidebar-foreground: #0f1111;
-      --sidebar-primary: #2f6f57;
+      --popover-foreground: #1a1a18;
+
+      /* Secondary — warm light gray for chips, badges, backgrounds */
+      --secondary: #eeecea;
+      --secondary-foreground: #3a3a35;
+
+      /* Muted — subtle backgrounds for code blocks, empty states */
+      --muted: #f0eeea;
+      --muted-foreground: #7a7870;
+
+      /* Accent — used for hover states and highlights */
+      --accent: #e8f5ee;
+      --accent-foreground: #1a4035;
+
+      /* Status colors */
+      --destructive: #c0392b;
+      --success: #1e7e4a;
+      --warning: #b45309;
+
+      /* Borders — warm gray, not cold */
+      --border: #dddbd6;
+      --input: #dddbd6;
+      --ring: #2d6a4f;
+
+      /* ── Sidebar ─────────────────────────────────────────────────────── */
+      /* Sidebar gets a slightly darker warm tint — differentiates from page */
+      --sidebar: #f0eeea;
+      --sidebar-foreground: #1a1a18;
+      --sidebar-primary: #2d6a4f;
       --sidebar-primary-foreground: #ffffff;
-      --sidebar-accent: #f3f4f6;
-      --sidebar-accent-foreground: #0f1111;
-      --sidebar-border: #e5e7eb;
-      --sidebar-ring: #2f6f57;
+      --sidebar-accent: #e4e2de;
+      --sidebar-accent-foreground: #1a1a18;
+      --sidebar-border: #dddbd6;
+      --sidebar-ring: #2d6a4f;
 
       --radius: 0.5rem;
   }
@@ -179,6 +203,17 @@ html, body {
       -webkit-text-fill-color: #f5f3ef !important;
       transition: background-color 5000s ease-in-out 0s;
       box-shadow: inset 0 0 20px 20px #171a1a !important;
+  }
+
+  /* Fix for autofill backgrounds in light mode */
+  :root input:-webkit-autofill,
+  .light input:-webkit-autofill,
+  :root input:-webkit-autofill:hover,
+  :root input:-webkit-autofill:focus {
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: #1a1a18 !important;
+      transition: background-color 5000s ease-in-out 0s;
+      box-shadow: inset 0 0 20px 20px #ffffff !important;
   }
 }
 
@@ -248,6 +283,15 @@ html, body {
     #050a0a;
 }
 
+.light .bg-auth-gradient,
+:root:not(.dark) .bg-auth-gradient {
+  background: 
+    radial-gradient(circle at 15% 50%, rgba(45, 106, 79, 0.08) 0%, transparent 50%),
+    radial-gradient(circle at 85% 30%, rgba(20, 184, 166, 0.07) 0%, transparent 50%),
+    radial-gradient(circle at 50% 80%, rgba(181, 98, 30, 0.06) 0%, transparent 50%),
+    #f7f6f3;
+}
+
 /* ─────────────────────────────────────────────────────────────────────────────
    NEON / CINEMATIC DESIGN SYSTEM
    Reusable utilities applied across Dashboard, Volunteer, AdminPanel, and more.
@@ -274,6 +318,25 @@ html, body {
     0 0 24px rgba(47, 111, 87, 0.15),
     0 8px 32px rgba(0, 0, 0, 0.5),
     inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  transform: translateY(-2px);
+}
+
+/* Light mode overrides */
+:root:not(.dark) .neon-card,
+.light .neon-card {
+  background: #ffffff;
+  border: 1px solid #dddbd6;
+  box-shadow:
+    0 1px 3px rgba(0, 0, 0, 0.06),
+    0 4px 16px rgba(0, 0, 0, 0.04);
+}
+:root:not(.dark) .neon-card:hover,
+.light .neon-card:hover {
+  border-color: rgba(45, 106, 79, 0.4);
+  box-shadow:
+    0 0 0 1px rgba(45, 106, 79, 0.15),
+    0 4px 20px rgba(45, 106, 79, 0.08),
+    0 8px 32px rgba(0, 0, 0, 0.06);
   transform: translateY(-2px);
 }
 
@@ -328,6 +391,13 @@ html, body {
   border: 1px solid rgba(255, 255, 255, 0.06);
   border-radius: 1rem;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+}
+
+:root:not(.dark) .glass-panel,
+.light .glass-panel {
+  background: rgba(255, 255, 255, 0.85);
+  border: 1px solid rgba(221, 219, 214, 0.8);
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.06), 0 1px 4px rgba(0,0,0,0.04);
 }
 
 /* ── Neon Border ── */
@@ -441,10 +511,28 @@ html, body {
   transform: scaleX(0);
   transform-origin: left;
   transition: transform 0.3s ease;
-  background: linear-gradient(90deg, #2f6f57, #00e599);
+  background: linear-gradient(90deg, #2d6a4f, #52b788);
 }
 .neon-kpi-card:hover .kpi-accent-bar {
   transform: scaleX(1);
+}
+
+/* Light mode KPI card overrides */
+:root:not(.dark) .neon-kpi-card,
+.light .neon-kpi-card {
+  background: #ffffff;
+  border: 1px solid #dddbd6;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.05), 0 4px 16px rgba(0,0,0,0.03);
+}
+:root:not(.dark) .neon-kpi-card::before,
+.light .neon-kpi-card::before {
+  background: radial-gradient(circle at top left, rgba(45, 106, 79, 0.05), transparent 70%);
+}
+:root:not(.dark) .neon-kpi-card:hover,
+.light .neon-kpi-card:hover {
+  border-color: rgba(45, 106, 79, 0.35);
+  box-shadow: 0 0 0 1px rgba(45, 106, 79, 0.12), 0 4px 20px rgba(45, 106, 79, 0.08), 0 8px 32px rgba(0,0,0,0.05);
+  transform: translateY(-3px);
 }
 
 /* ─────────────────────────────────────────────────────────────────────────────
@@ -519,3 +607,236 @@ html, body {
 .delay-300 { animation-delay: 0.3s; }
 .delay-400 { animation-delay: 0.4s; }
 .delay-500 { animation-delay: 0.5s; }
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   APP LAYOUT SYSTEM — Sidebar + Header Shell
+   Used by AppLayout.tsx for authenticated SaaS routes.
+───────────────────────────────────────────────────────────────────────────── */
+
+:root {
+  --sidebar-width: 248px;
+  --sidebar-collapsed-width: 68px;
+  --header-height: 64px;
+}
+
+/* ── Sidebar ── */
+.app-sidebar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: var(--sidebar-width);
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  background: var(--sidebar);
+  border-right: 1px solid var(--sidebar-border);
+  transition: width 0.25s cubic-bezier(0.4, 0, 0.2, 1), transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow: hidden;
+}
+
+.app-sidebar-collapsed {
+  width: var(--sidebar-collapsed-width);
+}
+
+/* Hide label text when sidebar is collapsed */
+.app-sidebar-collapsed .sidebar-label {
+  opacity: 0;
+  width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  transition: opacity 0.15s ease, width 0.15s ease;
+}
+
+.app-sidebar:not(.app-sidebar-collapsed) .sidebar-label {
+  opacity: 1;
+  width: auto;
+  transition: opacity 0.2s ease 0.1s;
+}
+
+/* ── Sidebar Nav Item ── */
+.sidebar-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem 0.75rem;
+  margin: 0 0.5rem;
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--sidebar-foreground);
+  opacity: 0.7;
+  text-decoration: none;
+  transition: all 0.15s ease;
+  min-height: 40px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.sidebar-nav-item:hover {
+  background: var(--sidebar-accent);
+  color: var(--sidebar-accent-foreground);
+  opacity: 1;
+}
+
+.sidebar-nav-item:focus-visible {
+  outline: 2px solid var(--sidebar-ring);
+  outline-offset: -2px;
+}
+
+.sidebar-nav-item.active {
+  background: rgba(47, 111, 87, 0.15);
+  color: var(--sidebar-primary);
+  opacity: 1;
+  font-weight: 600;
+}
+
+.sidebar-nav-item .nav-icon {
+  width: 1.25rem;
+  height: 1.25rem;
+  flex-shrink: 0;
+}
+
+/* ── Header ── */
+.app-header {
+  position: fixed;
+  top: 0;
+  right: 0;
+  height: var(--header-height);
+  z-index: 35;
+  display: flex;
+  align-items: center;
+  padding: 0 1.5rem;
+  background: var(--background);
+  border-bottom: 1px solid var(--border);
+  transition: left 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ── Content area ── */
+.app-content {
+  margin-left: var(--sidebar-width);
+  padding-top: var(--header-height);
+  min-height: 100vh;
+  transition: margin-left 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.app-content-collapsed {
+  margin-left: var(--sidebar-collapsed-width);
+}
+
+/* ── Mobile Drawer Overlay ── */
+.sidebar-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 39;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s ease;
+}
+
+.sidebar-overlay.visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* ── Responsive Layout ── */
+
+/* Tablet: collapsed by default */
+@media (min-width: 768px) and (max-width: 1023px) {
+  .app-sidebar:not(.app-sidebar-mobile-open) {
+    width: var(--sidebar-collapsed-width);
+  }
+  .app-sidebar:not(.app-sidebar-mobile-open) .sidebar-label {
+    opacity: 0;
+    width: 0;
+    overflow: hidden;
+  }
+  .app-content {
+    margin-left: var(--sidebar-collapsed-width);
+  }
+  .app-header {
+    left: var(--sidebar-collapsed-width);
+  }
+}
+
+/* Mobile: sidebar off-screen, opens as drawer */
+@media (max-width: 767px) {
+  .app-sidebar {
+    transform: translateX(-100%);
+    width: var(--sidebar-width);
+    z-index: 45;
+  }
+  .app-sidebar.app-sidebar-mobile-open {
+    transform: translateX(0);
+  }
+  .app-content {
+    margin-left: 0;
+  }
+  .app-header {
+    left: 0;
+  }
+}
+
+/* Desktop: full sidebar */
+@media (min-width: 1024px) {
+  .app-header {
+    left: var(--sidebar-width);
+  }
+  .app-sidebar-collapsed ~ .app-content,
+  .app-content-collapsed {
+    margin-left: var(--sidebar-collapsed-width);
+  }
+  .app-sidebar-collapsed + * .app-header,
+  .app-header.header-collapsed {
+    left: var(--sidebar-collapsed-width);
+  }
+}
+
+/* ── Reduced Motion ── */
+@media (prefers-reduced-motion: reduce) {
+  .app-sidebar,
+  .app-header,
+  .app-content,
+  .sidebar-overlay,
+  .sidebar-nav-item,
+  .sidebar-label {
+    transition: none !important;
+    animation: none !important;
+  }
+}
+
+/* ── Global Search ── */
+.global-search {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  background: var(--muted);
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+  color: var(--muted-foreground);
+  font-size: 0.875rem;
+  min-width: 220px;
+  max-width: 400px;
+  transition: border-color 0.2s ease, background 0.2s ease;
+}
+
+.global-search:focus-within {
+  border-color: var(--ring);
+  background: var(--background);
+}
+
+.global-search input {
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--foreground);
+  width: 100%;
+  font-size: inherit;
+}
+
+.global-search input::placeholder {
+  color: var(--muted-foreground);
+}

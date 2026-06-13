@@ -13,8 +13,10 @@ import { RBACProvider } from "./contexts/RBACContext";
 import { NotificationProvider } from "./contexts/NotificationContext";
 import { NotificationsListener } from "./components/NotificationsListener";
 
-import MainLayout from "./layouts/MainLayout";
 import { lazy, Suspense } from "react";
+
+import MainLayout from "./layouts/MainLayout";
+import AppLayout from "./layouts/AppLayout";
 
 const Home = lazy(() => import("./pages/Home"));
 const Dashboard = lazy(() => import("./pages/Dashboard"));
@@ -24,6 +26,10 @@ const Request = lazy(() => import("./pages/Request"));
 const AdminPanel = lazy(() => import("./pages/AdminPanel"));
 const Volunteer = lazy(() => import("./pages/Volunteer"));
 const Profile = lazy(() => import("./pages/Profile"));
+const Listings = lazy(() => import("./pages/Listings"));
+const Activity = lazy(() => import("./pages/Activity"));
+const Analytics = lazy(() => import("./pages/Analytics"));
+const Settings = lazy(() => import("./pages/Settings"));
 
 // Keep auth and lightweight pages statically imported
 import AdminSignup from "./pages/auth/AdminSignup";
@@ -47,57 +53,63 @@ export default function App() {
   }, [initializeAuth]);
 
   return (
-    <ThemeProvider defaultTheme="light" storageKey="vite-ui-theme">
+    <ThemeProvider defaultTheme="dark" storageKey="vite-ui-theme">
       <RBACProvider>
         <NotificationProvider>
         <Router>
-          <Suspense fallback={<div className="flex min-h-screen items-center justify-center"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-500"></div></div>}>
+          <Suspense fallback={<div className="flex min-h-screen items-center justify-center bg-background"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div></div>}>
             <Routes>
+              {/* Public Routes - using MainLayout (Top Nav + Footer) */}
               <Route path="/" element={<MainLayout />}>
-                {/* Public Routes */}
-              <Route index element={<Home />} />
-              <Route path="auth/login" element={<Login />} />
-              <Route path="register" element={<RoleSelection />} />
-              <Route path="register/donor" element={<DonorSignup />} />
-              <Route path="register/receiver" element={<ReceiverSignup />} />
-              <Route path="register/volunteer" element={<VolunteerSignup />} />
-              <Route path="admin/signup" element={<AdminSignup />} />
-              <Route path="admin-login" element={<AdminLogin />} />
-              
-              <Route path="privacy" element={<Privacy />} />
-              <Route path="terms" element={<Terms />} />
-              <Route path="support" element={<Support />} />
+                <Route index element={<Home />} />
+                <Route path="auth/login" element={<Login />} />
+                <Route path="register" element={<RoleSelection />} />
+                <Route path="register/donor" element={<DonorSignup />} />
+                <Route path="register/receiver" element={<ReceiverSignup />} />
+                <Route path="register/volunteer" element={<VolunteerSignup />} />
+                <Route path="admin/signup" element={<AdminSignup />} />
+                <Route path="admin-login" element={<AdminLogin />} />
+                
+                <Route path="privacy" element={<Privacy />} />
+                <Route path="terms" element={<Terms />} />
+                <Route path="support" element={<Support />} />
+              </Route>
 
-              {/* Protected Routes - General Logged In Access */}
+              {/* Protected Routes - using AppLayout (Sidebar + Header) */}
               <Route element={<ProtectedRoute permission={[]} />}>
-                <Route path="dashboard" element={<Dashboard />} />
-                <Route path="browse" element={<Browse />} />
-                <Route path="requests" element={<Request />} />
-                <Route path="verify" element={<Verification />} />
-                <Route path="profile" element={<Profile />} />
-                <Route path="notifications" element={<Notifications />} />
-              </Route>
+                <Route element={<AppLayout />}>
+                  <Route path="dashboard" element={<Dashboard />} />
+                  <Route path="browse" element={<Browse />} />
+                  <Route path="requests" element={<Request />} />
+                  <Route path="verify" element={<Verification />} />
+                  <Route path="profile" element={<Profile />} />
+                  <Route path="notifications" element={<Notifications />} />
+                  <Route path="listings" element={<Listings />} />
+                  <Route path="activity" element={<Activity />} />
+                  <Route path="analytics" element={<Analytics />} />
+                  <Route path="settings" element={<Settings />} />
 
-              {/* Permission Based Routes */}
-              <Route element={<ProtectedRoute permission="food.create" />}>
-                <Route path="donate" element={<Donate />} />
-              </Route>
+                  {/* Permission Based Routes */}
+                  <Route element={<ProtectedRoute permission="food.create" />}>
+                    <Route path="donate" element={<Donate />} />
+                  </Route>
 
-              <Route element={<ProtectedRoute permission="tasks.view_assigned" />}>
-                <Route path="tasks" element={<Volunteer />} />
-              </Route>
+                  <Route element={<ProtectedRoute permission="tasks.view_assigned" />}>
+                    <Route path="tasks" element={<Volunteer />} />
+                  </Route>
 
-              <Route element={<ProtectedRoute permission="users.read" />}>
-                <Route path="admin" element={<AdminPanel />} />
+                  <Route element={<ProtectedRoute permission="users.read" />}>
+                    <Route path="admin" element={<AdminPanel />} />
+                  </Route>
+                </Route>
               </Route>
-            </Route>
-          </Routes>
-        </Suspense>
+            </Routes>
+          </Suspense>
           <NotificationsListener />
         </Router>
         </NotificationProvider>
       </RBACProvider>
-      <Toaster position="top-center" richColors />
+      <Toaster position="top-center" richColors theme="dark" />
     </ThemeProvider>
   );
 }
