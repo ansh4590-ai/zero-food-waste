@@ -25,6 +25,7 @@ import { QRScannerModal } from "../components/QRVerification";
 import { ProgressTimeline, VOLUNTEER_TIMELINE_STAGES } from "../components/ProgressTimeline";
 import { NeonBadge } from "../components/ui/NeonBadge";
 import { AnimatedContainer } from "../components/ui/AnimatedContainer";
+import { AIRouteAdvisor } from "../components/AIRouteAdvisor";
 
 // ─── LEAFLET SETUP ────────────────────────────────────────────────────────────
 if (typeof L !== "undefined" && L.Icon?.Default) {
@@ -1093,6 +1094,20 @@ export default function Volunteer() {
                 </div>
               ) : (
                 <div className="space-y-3">
+                  {/* AI Route Optimizer — shown when 2+ active tasks */}
+                  <AIRouteAdvisor
+                    tasks={myTasks}
+                    onApply={(reorderedIds) => {
+                      setMyTasks((prev) => {
+                        const sorted = reorderedIds
+                          .map((id) => prev.find((t) => t.id === id))
+                          .filter(Boolean) as typeof prev;
+                        // Append any tasks not in the AI order (edge case)
+                        const remaining = prev.filter((t) => !reorderedIds.includes(t.id));
+                        return [...sorted, ...remaining];
+                      });
+                    }}
+                  />
                   {myTasks.map((task, idx) => {
                     const stage = TASK_STAGES[task.status] ?? TASK_STAGES.assigned;
                     const isActive = activeTaskId === task.id;

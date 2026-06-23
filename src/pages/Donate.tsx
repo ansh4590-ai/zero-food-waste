@@ -22,6 +22,9 @@ import {
   ArrowRight,
   HeartHandshake,
   Check,
+  Sparkles,
+  Zap,
+  X,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useLoadingStore, useAuthStore } from "../store";
@@ -32,6 +35,14 @@ import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 import { AddressAutocomplete } from "../components/common/AddressAutocomplete";
 import type { Suggestion } from "../hooks/useAddressAutocomplete";
+import {
+  suggestListingDetails,
+  classifyFoodFromText,
+  crossValidateClassification,
+  type AISuggestion,
+  type AIClassification,
+} from "../lib/aiService";
+import { toast as sonnerToast } from "sonner";
 
 // Fix Leaflet default marker icon
 delete (L.Icon.Default.prototype as any)._getIconUrl;
@@ -69,6 +80,15 @@ export default function Donate() {
   const [addressInput, setAddressInput] = useState("");
   const [mapCenter, setMapCenter] = useState<[number, number]>([0, 0]);
   const [hasLocation, setHasLocation] = useState(false);
+
+  // ─── AI Feature State ─────────────────────────────────────────────────────
+  const [aiSuggestion, setAiSuggestion] = useState<AISuggestion | null>(null);
+  const [isAiSuggesting, setIsAiSuggesting] = useState(false);
+  const [aiCooldown, setAiCooldown] = useState(false);
+  const [textClassification, setTextClassification] = useState<AIClassification | null>(null);
+  const [isTextClassifying, setIsTextClassifying] = useState(false);
+  const [crossValidation, setCrossValidation] = useState<string | null>(null);
+  const [isCrossValidating, setIsCrossValidating] = useState(false);
 
   // Load donor's profile location first, then try browser geolocation
   useEffect(() => {
@@ -175,6 +195,84 @@ export default function Donate() {
 
     reader.readAsDataURL(file);
   };
+
+  // ─── AI SUGGEST HANDLER (3s cooldown) ───────────────────────────────────────
+  const handleAiSuggest = async () => {
+    if (!title.trim() || aiCooldown || isAiSuggesting) return;
+
+    setIsAiSuggesting(true);
+    setAiSuggestion(null);
+
+    const result = await suggestListingDetails(title, foodType);
+
+    if (result) {
+      setAiSuggestion(result);
+    } else {
+      sonnerToast.info("AI suggestion unavailable right now", {
+        description: "You can still fill in the details manually.",
+        duration: 3000,
+      });
+    }
+
+    setIsAiSuggesting(false);
+
+    // 3-second cooldown
+    setAiCooldown(true);
+    setTimeout(() => setAiCooldown(false), 3000);
+  };
+
+  const applyAiSuggestion = () => {
+    if (!aiSuggestion) return;
+    if (aiSuggestion.title) setTitle(aiSuggestion.title);
+    if (aiSuggestion.quantity) setQuantity(aiSuggestion.quantity);
+    if (aiSuggestion.category) {
+      const valid = FOOD_CATEGORIES.find((c) => c.value === aiSuggestion.category);
+      if (valid) setFoodType(valid.value);
+    }
+    setAiSuggestion(null);
+    sonnerToast.success("AI suggestions applied!");
+  };
+
+  // ─── TEXT-BASED CLASSIFICATION (button-click only) ─────────────────────────
+  const handleTextClassify = async () => {
+    if (!title.trim() || isTextClassifying) return;
+
+    setIsTextClassifying(true);
+    setTextClassification(null);
+
+    const result = await classifyFoodFromText(title);
+
+    if (result) {
+      setTextClassification(result);
+      if (result.category) {
+        const valid = FOOD_CATEGORIES.find((c) => c.value === result.category);
+        if (valid) setFoodType(valid.value);
+      }
+    } else {
+      sonnerToast.info("AI classification unavailable", { duration: 3000 });
+    }
+
+    setIsTextClassifying(false);
+  };
+
+  // ─── CROSS-VALIDATE after image classification ────────────────────────────
+  useEffect(() => {
+    if (!classificationResult || isCrossValidating) return;
+
+    const validate = async () => {
+      setIsCrossValidating(true);
+      const result = await crossValidateClassification(
+        classificationResult.predicted_category || foodType,
+        classificationResult.title || title,
+        classificationResult.quantity_description || quantity
+      );
+      if (result) setCrossValidation(result);
+      setIsCrossValidating(false);
+    };
+
+    validate();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [classificationResult]);
 
   const uploadToStorage = async (file: File) => {
     if (!user || !isValidSupabaseId(user.id)) throw new Error("Must be logged in");
@@ -567,6 +665,98 @@ export default function Donate() {
                         className="bg-muted/30 focus-visible:ring-emerald-500/50"
                         required
                       />
+                      {/* AI Suggest Button */}
+                      <div className="flex items-center gap-2 mt-2">
+                        <button
+                          type="button"
+                          onClick={handleAiSuggest}
+                          disabled={!title.trim() || aiCooldown || isAiSuggesting}
+                          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-purple-500/10 border border-purple-500/25 text-purple-400 hover:bg-purple-500/20 hover:text-purple-300 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                        >
+                          {isAiSuggesting ? (
+                            <Loader2 className="w-3 h-3 animate-spin" />
+                          ) : (
+                            <Sparkles className="w-3 h-3" />
+                          )}
+                          {isAiSuggesting ? "Thinking..." : aiCooldown ? "Wait..." : "AI Suggest"}
+                        </button>
+                        {!imagePreview && !isClassifying && (
+                          <button
+                            type="button"
+                            onClick={handleTextClassify}
+                            disabled={!title.trim() || isTextClassifying}
+                            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-blue-500/10 border border-blue-500/25 text-blue-400 hover:bg-blue-500/20 hover:text-blue-300 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                          >
+                            {isTextClassifying ? (
+                              <Loader2 className="w-3 h-3 animate-spin" />
+                            ) : (
+                              <Zap className="w-3 h-3" />
+                            )}
+                            {isTextClassifying ? "Classifying..." : "Classify from Text"}
+                          </button>
+                        )}
+                      </div>
+
+                      {/* AI Suggestion Card */}
+                      {aiSuggestion && (
+                        <div className="mt-3 p-3 rounded-xl bg-purple-500/5 border border-purple-500/20 space-y-2 animate-fade-in">
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs font-semibold text-purple-400 flex items-center gap-1.5">
+                              <Sparkles className="w-3 h-3" /> AI Suggestions
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => setAiSuggestion(null)}
+                              className="p-1 hover:bg-purple-500/10 rounded text-muted-foreground hover:text-foreground transition-colors"
+                            >
+                              <X className="w-3 h-3" />
+                            </button>
+                          </div>
+                          <div className="grid grid-cols-2 gap-2 text-xs">
+                            <div><span className="text-muted-foreground">Title:</span> <span className="text-foreground font-medium">{aiSuggestion.title}</span></div>
+                            <div><span className="text-muted-foreground">Qty:</span> <span className="text-foreground font-medium">{aiSuggestion.quantity}</span></div>
+                            <div><span className="text-muted-foreground">Safe for:</span> <span className="text-foreground font-medium">~{aiSuggestion.expiryHours}h</span></div>
+                            <div><span className="text-muted-foreground">Category:</span> <span className="text-foreground font-medium">{aiSuggestion.category}</span></div>
+                          </div>
+                          {aiSuggestion.allergens?.length > 0 && (
+                            <div className="text-xs text-amber-400 flex items-center gap-1">
+                              <AlertTriangle className="w-3 h-3" /> Allergens: {aiSuggestion.allergens.join(", ")}
+                            </div>
+                          )}
+                          {aiSuggestion.safetyNotes && (
+                            <p className="text-xs text-muted-foreground italic">{aiSuggestion.safetyNotes}</p>
+                          )}
+                          <button
+                            type="button"
+                            onClick={applyAiSuggestion}
+                            className="w-full mt-1 py-1.5 text-xs font-medium rounded-lg bg-purple-500/15 border border-purple-500/30 text-purple-400 hover:bg-purple-500/25 transition-colors"
+                          >
+                            Apply Suggestions
+                          </button>
+                        </div>
+                      )}
+
+                      {/* Text Classification Result */}
+                      {textClassification && (
+                        <div className="mt-2 p-2.5 rounded-lg bg-blue-500/5 border border-blue-500/20 text-xs space-y-1 animate-fade-in">
+                          <div className="flex items-center gap-1.5 text-blue-400 font-semibold">
+                            <Zap className="w-3 h-3" /> AI Text Classification
+                          </div>
+                          <p className="text-foreground">Category: <span className="font-medium">{textClassification.category}</span> ({textClassification.confidence}% confidence)</p>
+                          {textClassification.allergens?.length > 0 && (
+                            <p className="text-amber-400"><AlertTriangle className="w-3 h-3 inline mr-1" />Allergens: {textClassification.allergens.join(", ")}</p>
+                          )}
+                          {textClassification.notes && <p className="text-muted-foreground">{textClassification.notes}</p>}
+                        </div>
+                      )}
+
+                      {/* Cross-validation note (after image classification) */}
+                      {crossValidation && classificationResult && (
+                        <div className="mt-2 p-2 rounded-lg bg-emerald-500/5 border border-emerald-500/15 text-xs text-emerald-400 flex items-start gap-1.5 animate-fade-in">
+                          <CheckCircle2 className="w-3 h-3 shrink-0 mt-0.5" />
+                          <span>{crossValidation}</span>
+                        </div>
+                      )}
                     </div>
 
                     {/* Category & Quantity */}

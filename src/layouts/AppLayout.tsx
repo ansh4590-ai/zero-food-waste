@@ -22,6 +22,7 @@ import { usePermissions, useUserRole } from "../hooks/useRBAC";
 import { useTheme } from "../components/ThemeProvider";
 import { NotificationBell } from "../components/NotificationBell";
 import { Button } from "../components/ui/button";
+import { AIChatbot } from "../components/AIChatbot";
 
 export default function AppLayout() {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
@@ -271,6 +272,9 @@ export default function AppLayout() {
           <Outlet />
         </div>
       </main>
+
+      {/* AI Chatbot — floating widget for all authenticated pages */}
+      <AIChatbot />
       
     </div>
   );
