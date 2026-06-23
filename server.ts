@@ -782,6 +782,46 @@ Return ONLY this JSON with no markdown or extra text:
     }
   });
 
+  // ─── 25. LOCAL LLM PROXY ──────────────────────────────────────────────────
+  // Forwards /api/llm/* → LLM_BASE_URL/* to avoid browser CORS restrictions.
+  // The API key stays server-side and is never exposed to the frontend bundle.
+  app.post("/api/llm/chat/completions", async (req, res) => {
+    const llmBaseUrl = process.env.LLM_BASE_URL || "http://localhost:3001/v1";
+    const llmApiKey  = process.env.LLM_API_KEY  || "";
+
+    try {
+      const controller = new AbortController();
+      const timeoutId  = setTimeout(() => controller.abort(), 15_000);
+
+      const upstream = await fetch(`${llmBaseUrl}/chat/completions`, {
+        method:  "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(llmApiKey ? { Authorization: `Bearer ${llmApiKey}` } : {}),
+        },
+        body:   JSON.stringify(req.body),
+        signal: controller.signal,
+      });
+
+      clearTimeout(timeoutId);
+
+      if (!upstream.ok) {
+        const text = await upstream.text();
+        return res.status(upstream.status).json({ error: text });
+      }
+
+      const data = await upstream.json();
+      res.json(data);
+    } catch (err: unknown) {
+      const name = (err as Error)?.name;
+      if (name === "AbortError") {
+        return res.status(504).json({ error: "LLM request timed out" });
+      }
+      console.error("[LLM Proxy] error:", err);
+      res.status(503).json({ error: "LLM service unavailable" });
+    }
+  });
+
   // Vite middleware for development
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({

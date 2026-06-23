@@ -12,9 +12,10 @@
  */
 
 // ─── CONFIGURATION ──────────────────────────────────────────────────────────
-const LLM_BASE_URL = import.meta.env.VITE_LLM_BASE_URL || "http://localhost:3001/v1";
-const LLM_API_KEY = import.meta.env.VITE_LLM_API_KEY || "";
-const REQUEST_TIMEOUT_MS = 10_000;
+// Route through the Express proxy (/api/llm) to avoid browser CORS restrictions.
+// The Express server forwards to the real LLM at LLM_BASE_URL (server-side env var).
+const LLM_PROXY_URL = "/api/llm";
+const REQUEST_TIMEOUT_MS = 12_000;
 
 // ─── TYPES ──────────────────────────────────────────────────────────────────
 
@@ -54,11 +55,10 @@ async function llmChat(
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
 
-    const response = await fetch(`${LLM_BASE_URL}/chat/completions`, {
+    const response = await fetch(`${LLM_PROXY_URL}/chat/completions`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        ...(LLM_API_KEY ? { Authorization: `Bearer ${LLM_API_KEY}` } : {}),
       },
       body: JSON.stringify({
         model: "auto",
@@ -296,12 +296,17 @@ export async function askAssistant(
 export async function checkLLMHealth(): Promise<boolean> {
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 3000);
+    const timeoutId = setTimeout(() => controller.abort(), 4000);
 
-    const response = await fetch(`${LLM_BASE_URL}/models`, {
-      headers: {
-        ...(LLM_API_KEY ? { Authorization: `Bearer ${LLM_API_KEY}` } : {}),
-      },
+    // Ping the proxy with a minimal request
+    const response = await fetch(`${LLM_PROXY_URL}/chat/completions`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "auto",
+        messages: [{ role: "user", content: "ping" }],
+        max_tokens: 1,
+      }),
       signal: controller.signal,
     });
 
