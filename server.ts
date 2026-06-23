@@ -782,44 +782,66 @@ Return ONLY this JSON with no markdown or extra text:
     }
   });
 
-  // ─── 25. LOCAL LLM PROXY ──────────────────────────────────────────────────
-  // Forwards /api/llm/* → LLM_BASE_URL/* to avoid browser CORS restrictions.
-  // The API key stays server-side and is never exposed to the frontend bundle.
+  // ─── 25. GOOGLE GEMINI PROXY ────────────────────────────────────────────────
+  // Replaces the local mock LLM with the production Gemini API key already in the project.
+  // Adapts OpenAI's format from the frontend to Gemini's native format.
   app.post("/api/llm/chat/completions", async (req, res) => {
-    // Hardcoded configuration for local LLM (no env vars needed)
-    const llmBaseUrl = "http://localhost:3001/v1";
-    const llmApiKey  = "freellmapi-2ee66a5d6d569eeafaa3e346c0e8ba1a1061dcbb1f519296";
+    if (!ai) {
+      return res.status(503).json({ error: "Gemini API key not configured on server" });
+    }
 
     try {
-      const controller = new AbortController();
-      const timeoutId  = setTimeout(() => controller.abort(), 15_000);
+      const { messages, temperature } = req.body;
+      
+      if (!Array.isArray(messages) || messages.length === 0) {
+        return res.json({ choices: [{ message: { content: "pong" } }] });
+      }
 
-      const upstream = await fetch(`${llmBaseUrl}/chat/completions`, {
-        method:  "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...(llmApiKey ? { Authorization: `Bearer ${llmApiKey}` } : {}),
-        },
-        body:   JSON.stringify(req.body),
-        signal: controller.signal,
+      let systemContext = "";
+      const contents = [];
+      
+      for (const msg of messages) {
+        if (msg.role === "system") {
+          systemContext += msg.content + "\n\n";
+        } else {
+          contents.push({
+            role: msg.role === "assistant" ? "model" : "user",
+            parts: [{ text: msg.content }]
+          });
+        }
+      }
+
+      // Prepend system prompt to the first user message
+      if (systemContext && contents.length > 0 && contents[0].role === "user") {
+        contents[0].parts[0].text = `System Instructions:\n${systemContext}\n\nUser Request:\n${contents[0].parts[0].text}`;
+      }
+
+      // Quick ping bypass for health checks
+      if (contents.length === 1 && contents[0].parts[0].text === "ping") {
+        return res.json({ choices: [{ message: { content: "pong" } }] });
+      }
+
+      const response = await ai.models.generateContent({
+        model: "gemini-2.5-flash",
+        contents,
+        config: {
+          temperature: temperature ?? 0.7,
+        }
       });
 
-      clearTimeout(timeoutId);
-
-      if (!upstream.ok) {
-        const text = await upstream.text();
-        return res.status(upstream.status).json({ error: text });
-      }
-
-      const data = await upstream.json();
-      res.json(data);
+      // Return in OpenAI format for the frontend aiService
+      res.json({
+        choices: [
+          {
+            message: {
+              content: response.text || ""
+            }
+          }
+        ]
+      });
     } catch (err: unknown) {
-      const name = (err as Error)?.name;
-      if (name === "AbortError") {
-        return res.status(504).json({ error: "LLM request timed out" });
-      }
-      console.error("[LLM Proxy] error:", err);
-      res.status(503).json({ error: "LLM service unavailable" });
+      console.error("[Gemini Chat] error:", err);
+      res.status(503).json({ error: "AI service unavailable" });
     }
   });
 
