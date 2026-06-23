@@ -786,8 +786,9 @@ Return ONLY this JSON with no markdown or extra text:
   // Forwards /api/llm/* → LLM_BASE_URL/* to avoid browser CORS restrictions.
   // The API key stays server-side and is never exposed to the frontend bundle.
   app.post("/api/llm/chat/completions", async (req, res) => {
-    const llmBaseUrl = process.env.LLM_BASE_URL || "http://localhost:3001/v1";
-    const llmApiKey  = process.env.LLM_API_KEY  || "";
+    // Express reads VITE_LLM_* via dotenv at runtime — prefix is only special to Vite's bundler
+    const llmBaseUrl = process.env.VITE_LLM_BASE_URL || "http://localhost:3001/v1";
+    const llmApiKey  = process.env.VITE_LLM_API_KEY  || "";
 
     try {
       const controller = new AbortController();
