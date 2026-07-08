@@ -8,7 +8,7 @@
     "build": "vite build",
     "build:prod": "npm run clean && vite build",
     "preview": "vite preview",
-    "clean": "rm -rf dist",
+    "clean": "node -e \"const fs = require('fs'); fs.rmSync('dist', { recursive: true, force: true });\"",
     "kill": "npx kill-port 3000 24678",
     "lint": "tsc --noEmit",
     "test:e2e": "playwright test",
