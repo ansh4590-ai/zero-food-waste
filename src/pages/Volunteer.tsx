@@ -355,23 +355,28 @@ export default function Volunteer() {
     };
   };
 
-  // ─── FETCH TASKS ────────────────────────────────────────────────────────────
-  const fetchTasks = useCallback(async () => {
+  // ─── FETCH PROFILE (separate from tasks — profile changes rarely) ──────────
+  useEffect(() => {
     if (!user || !isValidSupabaseId(user.id)) return;
-    try {
+    (async () => {
       const { data: profile } = await supabase
         .from(TABLES.PROFILES)
         .select("verification_status, location_lat, location_lng")
         .eq("id", user.id)
         .single();
-
       if (profile) {
         setVerificationStatus(profile.verification_status ?? "unset");
         if (!useHardwareGPS && profile.location_lat && profile.location_lng) {
           setLivePos({ lat: profile.location_lat, lng: profile.location_lng });
         }
       }
+    })();
+  }, [user, useHardwareGPS]);
 
+  // ─── FETCH TASKS (no profile query — called on every realtime event) ────────
+  const fetchTasks = useCallback(async () => {
+    if (!user || !isValidSupabaseId(user.id)) return;
+    try {
       console.log("[DEBUG] Fetching tasks for user.id:", user.id);
 
       const { data: myTasksRaw, error: myError } = await supabase
@@ -480,7 +485,7 @@ export default function Volunteer() {
     } catch (err) {
       console.error("fetchTasks error:", err);
     }
-  }, [user, useHardwareGPS]);
+  }, [user]);
 
   useEffect(() => { fetchTasks(); }, [fetchTasks]);
 
@@ -488,6 +493,8 @@ export default function Volunteer() {
   useRealtimeHealth(fetchTasks);
 
   // ─── REALTIME SUBSCRIPTIONS ─────────────────────────────────────────────────
+  // Row-level filter on volunteer_tasks reduces cross-user event noise.
+  // food_listings narrowed to INSERT only (new listings are what volunteers care about).
   useEffect(() => {
     if (!user || !isValidSupabaseId(user.id)) return;
     let debounceTimer: NodeJS.Timeout;
@@ -495,13 +502,16 @@ export default function Volunteer() {
       clearTimeout(debounceTimer);
       debounceTimer = setTimeout(() => {
         fetchTasks();
-      }, 300);
+      }, 500); // increased from 300ms to reduce query storms under load
     };
     const channel = supabase
-      .channel("volunteer-logistics-v3")
-      .on("postgres_changes", { event: "*", schema: "public", table: TABLES.VOLUNTEER_TASKS }, refresh)
+      .channel("volunteer-logistics-v4")
+      .on("postgres_changes", {
+        event: "*", schema: "public", table: TABLES.VOLUNTEER_TASKS,
+        filter: `volunteer_id=eq.${user.id}`,
+      }, refresh)
       .on("postgres_changes", { event: "*", schema: "public", table: TABLES.FOOD_REQUESTS }, refresh)
-      .on("postgres_changes", { event: "*", schema: "public", table: TABLES.FOOD_LISTINGS }, refresh)
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: TABLES.FOOD_LISTINGS }, refresh)
       .subscribe();
     return () => { supabase.removeChannel(channel); };
   }, [user, fetchTasks]);

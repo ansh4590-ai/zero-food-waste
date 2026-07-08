@@ -32,9 +32,9 @@ export default function Settings() {
               </div>
               <Button onClick={() => navigate("/profile")} variant="outline">Edit Profile</Button>
             </div>
-            {user?.phone && (
+            {(user as any)?.phone && (
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Smartphone className="w-4 h-4" /> {user.phone}
+                <Smartphone className="w-4 h-4" /> {(user as any).phone}
               </div>
             )}
           </CardContent>

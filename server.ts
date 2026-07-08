@@ -6,8 +6,24 @@ import path from "path";
 import dotenv from "dotenv";
 import { RekognitionClient, CompareFacesCommand } from "@aws-sdk/client-rekognition";
 import vision from "@google-cloud/vision";
+import cors from "cors";
+import compression from "compression";
+import rateLimit from "express-rate-limit";
 
 dotenv.config();
+
+// ─── PROCESS CRASH HANDLERS ──────────────────────────────────────────────────
+// Prevent the entire server from dying on unhandled errors.
+// In production, use pm2 or similar to auto-restart on exit.
+process.on('uncaughtException', (err) => {
+  console.error('[FATAL] Uncaught exception:', err);
+  // Give logger time to flush, then exit (pm2 will restart)
+  setTimeout(() => process.exit(1), 1000);
+});
+
+process.on('unhandledRejection', (reason) => {
+  console.error('[FATAL] Unhandled rejection:', reason);
+});
 
 console.log("GOOGLE_APPLICATION_CREDENTIALS:", process.env.GOOGLE_APPLICATION_CREDENTIALS);
 
@@ -15,14 +31,69 @@ async function startServer() {
   const app = express();
   const PORT = 3000;
 
+  // ─── SECURITY & PERFORMANCE MIDDLEWARE ─────────────────────────────────────
+  // CORS: restrict to known origins in production
+  const allowedOrigins = process.env.APP_URL
+    ? [process.env.APP_URL, `http://localhost:${PORT}`]
+    : [`http://localhost:${PORT}`];
+  app.use(cors({
+    origin: (origin, callback) => {
+      // Allow requests with no origin (server-to-server, curl, mobile apps)
+      if (!origin || allowedOrigins.some(o => origin.startsWith(o))) {
+        callback(null, true);
+      } else {
+        callback(null, true); // permissive for now; tighten after deploy
+      }
+    },
+    credentials: true,
+  }));
+
+  // Gzip/Brotli compression for all responses
+  app.use(compression());
+
   // Increase payload limit for base64 images (capped at 10MB for production)
   app.use(express.json({ limit: '10mb' }));
+
+  // ─── RATE LIMITERS ─────────────────────────────────────────────────────────
+  const aiLimiter = rateLimit({
+    windowMs: 60 * 1000,
+    max: 10,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: 'Too many AI requests. Please wait 60 seconds.' },
+  });
+
+  const kycLimiter = rateLimit({
+    windowMs: 60 * 1000,
+    max: 3,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: 'Too many KYC requests. Please wait 60 seconds.' },
+  });
+
+  const adminRegisterLimiter = rateLimit({
+    windowMs: 60 * 60 * 1000, // 1 hour
+    max: 3,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: 'Too many admin registration attempts. Try again later.' },
+  });
+
+  // ─── HEALTH CHECK ──────────────────────────────────────────────────────────
+  app.get('/health', (_req, res) => {
+    res.json({
+      status: 'ok',
+      uptime: process.uptime(),
+      timestamp: Date.now(),
+      memoryMB: Math.round(process.memoryUsage().heapUsed / 1024 / 1024),
+    });
+  });
 
   // Initialize Gemini safely
   const ai = process.env.GEMINI_API_KEY ? new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY }) : null;
 
   // 11. Food Image Classifier
-  app.post("/api/classify", async (req, res) => {
+  app.post("/api/classify", aiLimiter, async (req, res) => {
     try {
       const { imageBase64 } = req.body;
       if (!imageBase64) return res.status(400).json({ error: "imageBase64 is required" });
@@ -360,8 +431,11 @@ Return ONLY this JSON with no markdown or extra text:
       };
     }
 
-    const faceScore = await compareFaces(aadhaarBuffer, selfieBuffer);
-    const text = await extractText(aadhaarBuffer);
+    // Run both AI calls in parallel (was sequential — 2x faster now)
+    const [faceScore, text] = await Promise.all([
+      compareFaces(aadhaarBuffer, selfieBuffer),
+      extractText(aadhaarBuffer),
+    ]);
     const parsed = parseAadhaar(text);
   
     let kycScore = 0;
@@ -429,7 +503,7 @@ Return ONLY this JSON with no markdown or extra text:
   const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
   // 16. KYC AI Endpoint
-  app.post("/api/kyc-verify", async (req, res) => {
+  app.post("/api/kyc-verify", kycLimiter, async (req, res) => {
     try {
       const { aadhaar_path, selfie_path } = req.body;
       if (!aadhaar_path || !selfie_path) {
@@ -460,7 +534,7 @@ Return ONLY this JSON with no markdown or extra text:
   });
 
   // 16. Secure Admin Register endpoint
-  app.post("/api/auth/register-admin", async (req, res) => {
+  app.post("/api/auth/register-admin", adminRegisterLimiter, async (req, res) => {
     const { fullName, email, password, adminSecret } = req.body;
 
     const EXPECTED_SECRET = process.env.ADMIN_SECRET_KEY;
@@ -508,31 +582,33 @@ Return ONLY this JSON with no markdown or extra text:
     }
   });
 
-  // 17. Auth Login (Mock)
-  app.post("/api/auth/login", (req, res) => {
-    const { email, password } = req.body;
+  // 17. Auth Login (Mock) — DISABLED in production to prevent privilege escalation
+  if (process.env.NODE_ENV !== "production") {
+    app.post("/api/auth/login", (req, res) => {
+      const { email, password } = req.body;
 
-    if (!email || !password) {
-      return res.status(400).json({ error: "Email and password are required" });
-    }
+      if (!email || !password) {
+        return res.status(400).json({ error: "Email and password are required" });
+      }
 
-    // Mock role detection based on email for demonstration
-    let role = "donor"; // Default
-    if (email.includes("admin")) role = "admin";
-    else if (email.includes("volunteer")) role = "volunteer";
-    else if (email.includes("receiver")) role = "receiver";
+      // Mock role detection based on email for demonstration
+      let role = "donor"; // Default
+      if (email.includes("admin")) role = "admin";
+      else if (email.includes("volunteer")) role = "volunteer";
+      else if (email.includes("receiver")) role = "receiver";
 
-    // Mock successful login
-    res.json({
-      success: true,
-      user: {
-        id: "u_" + Math.random().toString(36).substr(2, 9),
-        email,
-        role
-      },
-      token: "mock_jwt_token_" + Date.now()
+      // Mock successful login
+      res.json({
+        success: true,
+        user: {
+          id: "u_" + Math.random().toString(36).substr(2, 9),
+          email,
+          role
+        },
+        token: "mock_jwt_token_" + Date.now()
+      });
     });
-  });
+  }
 
   // ─── 18. OTP GENERATION (DISABLED — QR-only flow active) ─────────────────
   // Kept for future fallback if camera unavailable on older devices.
@@ -785,7 +861,7 @@ Return ONLY this JSON with no markdown or extra text:
   // ─── 25. GOOGLE GEMINI PROXY ────────────────────────────────────────────────
   // Replaces the local mock LLM with the production Gemini API key already in the project.
   // Adapts OpenAI's format from the frontend to Gemini's native format.
-  app.post("/api/llm/chat/completions", async (req, res) => {
+  app.post("/api/llm/chat/completions", aiLimiter, async (req, res) => {
     if (!ai) {
       return res.status(503).json({ error: "Gemini API key not configured on server" });
     }
@@ -860,9 +936,25 @@ Return ONLY this JSON with no markdown or extra text:
     });
   }
 
-  app.listen(PORT, "0.0.0.0", () => {
+  const server = app.listen(PORT, "0.0.0.0", () => {
     console.log(`Server running on http://localhost:${PORT}`);
   });
+
+  // ─── GRACEFUL SHUTDOWN ───────────────────────────────────────────────────
+  const shutdown = (signal: string) => {
+    console.log(`\n[${signal}] Shutting down gracefully...`);
+    server.close(() => {
+      console.log('HTTP server closed.');
+      process.exit(0);
+    });
+    // Force exit after 10s if connections aren't drained
+    setTimeout(() => {
+      console.error('Forced shutdown after timeout.');
+      process.exit(1);
+    }, 10_000);
+  };
+  process.on('SIGTERM', () => shutdown('SIGTERM'));
+  process.on('SIGINT', () => shutdown('SIGINT'));
 }
 
 startServer();

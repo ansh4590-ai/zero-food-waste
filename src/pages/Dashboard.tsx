@@ -538,19 +538,23 @@ function AdminDashboard() {
   useEffect(() => {
     async function fetchData() {
       try {
-        const [usersRes, listingsRes] = await Promise.all([
-          supabase.from("profiles").select("id, verification_status, created_at").order("created_at", { ascending: false }),
-          supabase.from("food_listings").select("id, status")
+        // Use count queries instead of fetching all rows (scales to millions of rows)
+        const [totalUsersRes, pendingKycRes, activeListingsRes, recentPendingRes] = await Promise.all([
+          supabase.from("profiles").select("id", { count: "exact", head: true }),
+          supabase.from("profiles").select("id", { count: "exact", head: true }).eq("verification_status", "pending"),
+          supabase.from("food_listings").select("id", { count: "exact", head: true }).in("status", LISTING_ACTIVE_STATUSES),
+          supabase.from("profiles").select("id, verification_status, created_at")
+            .eq("verification_status", "pending")
+            .order("created_at", { ascending: false })
+            .limit(5),
         ]);
 
-        if (usersRes.data && listingsRes.data) {
-          const totalUsers = usersRes.data.length;
-          const pendingKyc = usersRes.data.filter(u => u.verification_status === 'pending').length;
-          const activeListings = listingsRes.data.filter(l => LISTING_ACTIVE_STATUSES.includes(l.status)).length;
+        const totalUsers = totalUsersRes.count ?? 0;
+        const pendingKyc = pendingKycRes.count ?? 0;
+        const activeListings = activeListingsRes.count ?? 0;
 
-          setStats({ totalUsers, activeListings, pendingKyc, platformHealth: 100 });
-          setRecentVerifications(usersRes.data.filter(u => u.verification_status === 'pending').slice(0, 5));
-        }
+        setStats({ totalUsers, activeListings, pendingKyc, platformHealth: 100 });
+        setRecentVerifications(recentPendingRes.data ?? []);
       } catch (e) {
         console.error(e);
       } finally {

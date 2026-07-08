@@ -10,6 +10,18 @@ const CustomIcons = {
       alt="Food Upload"
       className="w-[120%] h-[120%] object-contain scale-110"
       style={{ ...props.style, filter: props.style?.filter ? props.style.filter.replace('grayscale(100%)', 'grayscale(100%) opacity(0.6)') : 'none' }}
+      onError={(e) => {
+        // CDN fallback: replace broken img with an emoji span
+        const parent = (e.target as HTMLImageElement).parentElement;
+        if (parent && !(parent as any).__fallbackSet) {
+          (parent as any).__fallbackSet = true;
+          (e.target as HTMLImageElement).style.display = 'none';
+          const span = document.createElement('span');
+          span.textContent = '🍲';
+          span.style.cssText = 'font-size:1.8rem;line-height:1;display:flex;align-items:center;justify-content:center;';
+          parent.appendChild(span);
+        }
+      }}
     />
   ),
   AICheck: (props: React.SVGProps<SVGSVGElement>) => (

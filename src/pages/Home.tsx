@@ -535,11 +535,18 @@ export default function Home() {
   const smoothMouseX = useSpring(mouseX, springConfig);
   const smoothMouseY = useSpring(mouseY, springConfig);
 
+  // RAF-throttled mousemove: fires at most once per frame, not on every pixel
+  const rafId = useRef<number | null>(null);
   const handleMouseMove = (e: React.MouseEvent) => {
+    if (shouldReduceMotion) return; // skip entirely for accessibility/perf
+    if (rafId.current !== null) return; // already have a pending frame
     const { clientX, clientY } = e;
-    const { innerWidth, innerHeight } = window;
-    mouseX.set((clientX / innerWidth) * 2 - 1);
-    mouseY.set((clientY / innerHeight) * 2 - 1);
+    rafId.current = requestAnimationFrame(() => {
+      const { innerWidth, innerHeight } = window;
+      mouseX.set((clientX / innerWidth) * 2 - 1);
+      mouseY.set((clientY / innerHeight) * 2 - 1);
+      rafId.current = null;
+    });
   };
 
   const shouldReduceMotion = useReducedMotion();
