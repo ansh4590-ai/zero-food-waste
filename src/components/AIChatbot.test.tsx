@@ -47,7 +47,7 @@ describe('AIChatbot', () => {
     expect(screen.getByText('Hello')).toBeDefined();
     
     await waitFor(() => {
-      expect(screen.getByText("I'm sorry, I'm currently unavailable. Please try again in a moment.")).toBeDefined();
+      expect(screen.getByText("I'm having trouble connecting right now. Please try again in a moment.")).toBeDefined();
     });
   });
 
