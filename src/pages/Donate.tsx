@@ -20,11 +20,15 @@ import {
   AlertTriangle,
   ShieldCheck,
   ArrowRight,
+  ArrowLeft,
   HeartHandshake,
   Check,
   Sparkles,
   Zap,
   X,
+  PartyPopper,
+  Eye,
+  Send,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useLoadingStore, useAuthStore } from "../store";
@@ -66,6 +70,21 @@ export default function Donate() {
   const { isLoading, setLoading } = useLoadingStore();
   const { user } = useAuthStore();
   const navigate = useNavigate();
+
+  // ─── Step State ───────────────────────────────────────────────────────────
+  const [currentStep, setCurrentStep] = useState(1);
+  // Snapshot of form values captured when advancing to Review
+  const [reviewData, setReviewData] = useState<{
+    title: string;
+    quantity: string;
+    foodType: string;
+    expiry: string;
+    pickupStart: string;
+    pickupEnd: string;
+    address: string;
+    imagePreview: string | null;
+    mapCenter: [number, number];
+  } | null>(null);
 
   const [isClassifying, setIsClassifying] = useState(false);
   const [classificationResult, setClassificationResult] = useState<any>(null);
@@ -273,7 +292,6 @@ export default function Donate() {
     validate();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [classificationResult]);
-
   const uploadToStorage = async (file: File) => {
     if (!user || !isValidSupabaseId(user.id)) throw new Error("Must be logged in");
 
@@ -298,7 +316,7 @@ export default function Donate() {
     return publicUrl;
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleNextStep = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!user || !isValidSupabaseId(user.id)) {
@@ -322,74 +340,71 @@ export default function Donate() {
     const pickupStart = (form.elements.namedItem("pickupStart") as HTMLInputElement).value;
     const pickupEnd = (form.elements.namedItem("pickupEnd") as HTMLInputElement).value;
 
-    // Form Validations
     if (!title.trim() || title.trim().length < 3) {
       toast.error("Please provide a descriptive title (at least 3 characters).");
       return;
     }
-
     if (!quantity.trim()) {
       toast.error("Please specify the quantity of food.");
       return;
     }
-
     if (!address || address.length < 4) {
       toast.error("Please provide a valid pickup address or pincode.");
       return;
     }
-
     if (!expiryStr) {
       toast.error("Please set an expiry time for the food.");
       return;
     }
-
     const expiryDate = new Date(expiryStr);
     if (expiryDate.getTime() <= Date.now()) {
       toast.error("Expiry time must be in the future.");
       return;
     }
-
     if (!pickupStart || !pickupEnd) {
       toast.error("Please specify both start and end times for the pickup window.");
       return;
     }
-
     const startD = new Date(pickupStart);
     const endD = new Date(pickupEnd);
-    
     if (endD.getTime() <= startD.getTime()) {
       toast.error("Pickup end time must be after the start time.");
       return;
     }
-    
     if (endD.getTime() - startD.getTime() < 15 * 60000) {
       toast.error("Pickup window must be at least 15 minutes long.");
       return;
     }
-    
     if (startD.getTime() < Date.now() - 5 * 60000) {
       toast.error("Pickup start time cannot be significantly in the past.");
       return;
     }
 
-    setLoading(true);
+    setReviewData({ title, quantity, foodType, expiry: expiryStr, pickupStart, pickupEnd, address, imagePreview, mapCenter });
+    setCurrentStep(2);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
 
+  const handleConfirmPublish = async () => {
+    if (!reviewData || !selectedFile || !user || !isValidSupabaseId(user.id)) return;
+    setLoading(true);
     try {
       const imageUrl = await uploadToStorage(selectedFile);
-
+      const startD = new Date(reviewData.pickupStart);
+      const endD = new Date(reviewData.pickupEnd);
       const { error } = await supabase.from("food_listings").insert({
         donor_id: user.id,
-        title: title || `${quantity} of ${foodType} food`,
-        food_category: foodType,
-        quantity_description: quantity,
+        title: reviewData.title || `${reviewData.quantity} of ${reviewData.foodType} food`,
+        food_category: reviewData.foodType,
+        quantity_description: reviewData.quantity,
         image_url: imageUrl,
-        expiry_time: new Date(expiryStr).toISOString(),
+        expiry_time: new Date(reviewData.expiry).toISOString(),
         pickup_window_start: startD.toISOString(),
         pickup_window_end: endD.toISOString(),
-        pickup_window: `${startD.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})} - ${endD.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}`,
-        location_name: address,
-        pickup_lat:  mapCenter[0],
-        pickup_lng:  mapCenter[1],
+        pickup_window: `${startD.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})} - ${endD.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}`,
+        location_name: reviewData.address,
+        pickup_lat: reviewData.mapCenter[0],
+        pickup_lng: reviewData.mapCenter[1],
         status: "active",
         estimated_safe_hours: classificationResult?.estimated_safe_hours || null,
         spoilage_risk: classificationResult?.spoilage_risk || null,
@@ -399,27 +414,28 @@ export default function Donate() {
         freshness_score: classificationResult?.freshness_score || null,
         quality_status: classificationResult?.quality_status || null,
       });
-
       if (error) throw error;
-
-      toast.success("✅ Food listing created with smart recognition!");
-
-      setImagePreview(null);
-      setClassificationResult(null);
-      setFoodType("cooked_meal");
-      setTitle("");
-      setQuantity("");
-      setSelectedFile(null);
-      setAddressInput("");
-      setHasLocation(false);
-      form.reset();
-
-      if (fileInputRef.current) fileInputRef.current.value = "";
+      setCurrentStep(3);
+      window.scrollTo({ top: 0, behavior: "smooth" });
     } catch (error: unknown) {
       toast.error((error as Error).message || "Failed to create listing");
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleStartOver = () => {
+    setCurrentStep(1);
+    setReviewData(null);
+    setImagePreview(null);
+    setClassificationResult(null);
+    setFoodType("cooked_meal");
+    setTitle("");
+    setQuantity("");
+    setSelectedFile(null);
+    setAddressInput("");
+    setHasLocation(false);
+    if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
   return (
@@ -453,32 +469,45 @@ export default function Donate() {
       {/* Stepper */}
       <div className="mb-6 bg-card border border-border rounded-xl p-3 sm:px-6 flex items-center justify-between overflow-x-auto gap-4 shadow-sm">
         <div className="flex items-center gap-3 shrink-0">
-          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-500 text-white font-bold text-sm shadow-md shadow-emerald-500/20">1</div>
+          <div className={`flex h-8 w-8 items-center justify-center rounded-full font-bold text-sm ${
+            currentStep > 1 ? 'bg-emerald-500/20 text-emerald-500 border-2 border-emerald-500' :
+            currentStep === 1 ? 'bg-emerald-500 text-white shadow-md shadow-emerald-500/20' :
+            'bg-muted border border-border text-muted-foreground'
+          }`}>{currentStep > 1 ? <Check className="h-4 w-4" /> : '1'}</div>
           <div>
-            <p className="text-sm font-semibold text-foreground">Food Details</p>
+            <p className={`text-sm font-semibold ${currentStep === 1 ? 'text-foreground' : 'text-muted-foreground'}`}>Food Details</p>
             <p className="text-[11px] text-muted-foreground">Add details about the food</p>
           </div>
         </div>
-        <div className="h-px bg-border flex-grow mx-4 hidden sm:block"></div>
-        <div className="flex items-center gap-3 shrink-0 opacity-60 grayscale">
-          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-muted border border-border text-muted-foreground font-bold text-sm">2</div>
+        <div className={`h-px flex-grow mx-4 hidden sm:block transition-colors ${currentStep >= 2 ? 'bg-emerald-500/50' : 'bg-border'}`}></div>
+        <div className={`flex items-center gap-3 shrink-0 transition-opacity ${currentStep >= 2 ? 'opacity-100' : 'opacity-50'}`}>
+          <div className={`flex h-8 w-8 items-center justify-center rounded-full font-bold text-sm ${
+            currentStep > 2 ? 'bg-emerald-500/20 text-emerald-500 border-2 border-emerald-500' :
+            currentStep === 2 ? 'bg-emerald-500 text-white shadow-md shadow-emerald-500/20' :
+            'bg-muted border border-border text-muted-foreground'
+          }`}>{currentStep > 2 ? <Check className="h-4 w-4" /> : '2'}</div>
           <div>
             <p className="text-sm font-semibold text-foreground">Review</p>
             <p className="text-[11px] text-muted-foreground">Review your information</p>
           </div>
         </div>
-        <div className="h-px bg-border flex-grow mx-4 hidden sm:block"></div>
-        <div className="flex items-center gap-3 shrink-0 opacity-60 grayscale">
-          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-muted border border-border text-muted-foreground font-bold text-sm">3</div>
+        <div className={`h-px flex-grow mx-4 hidden sm:block transition-colors ${currentStep >= 3 ? 'bg-emerald-500/50' : 'bg-border'}`}></div>
+        <div className={`flex items-center gap-3 shrink-0 transition-opacity ${currentStep >= 3 ? 'opacity-100' : 'opacity-50'}`}>
+          <div className={`flex h-8 w-8 items-center justify-center rounded-full font-bold text-sm ${
+            currentStep === 3 ? 'bg-emerald-500 text-white shadow-md shadow-emerald-500/20' :
+            'bg-muted border border-border text-muted-foreground'
+          }`}>3</div>
           <div>
-            <p className="text-sm font-semibold text-foreground">Submit</p>
+            <p className={`text-sm font-semibold ${currentStep === 3 ? 'text-foreground' : 'text-muted-foreground'}`}>Submit</p>
             <p className="text-[11px] text-muted-foreground">Publish your listing</p>
           </div>
         </div>
       </div>
 
       <Card className="border-border shadow-lg bg-card/50 backdrop-blur-sm overflow-hidden">
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleNextStep}>
+          {/* ── STEP 1: Food Details ── */}
+          {currentStep === 1 && (
           <CardContent className="p-0">
             <div className="grid grid-cols-1 lg:grid-cols-[0.8fr_1.5fr] divide-y lg:divide-y-0 lg:divide-x divide-border">
               
@@ -889,25 +918,146 @@ export default function Donate() {
               </div>
             </div>
           </CardContent>
+          )} {/* end step 1 */}
 
-          {/* Bottom Action Bar */}
-          <CardFooter className="bg-muted/20 flex flex-col-reverse sm:flex-row justify-end items-center py-4 px-6 lg:px-8 border-t border-border gap-3 sm:gap-4 sticky bottom-0 z-10 backdrop-blur-md">
-            <Button type="button" variant="ghost" className="w-full sm:w-auto text-muted-foreground hover:text-foreground" onClick={() => navigate(-1)}>
-              Cancel
-            </Button>
-            <Button type="submit" size="lg" className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 text-white font-medium shadow-md shadow-emerald-900/20" disabled={isLoading || !selectedFile}>
-              {isLoading ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Listing...
-                </>
-              ) : (
-                <>
-                  Save & Continue <ArrowRight className="ml-2 h-4 w-4" />
-                </>
-              )}
-            </Button>
-          </CardFooter>
+          {/* ── STEP 2: Review ── */}
+          {currentStep === 2 && reviewData && (
+            <CardContent className="p-6 lg:p-10">
+              <div className="max-w-3xl mx-auto space-y-8">
+                <div className="flex items-center gap-3">
+                  <Eye className="h-6 w-6 text-emerald-500" />
+                  <h3 className="text-xl font-bold text-foreground">Review Your Donation</h3>
+                </div>
+                <p className="text-sm text-muted-foreground -mt-4">Please confirm the details below before publishing your listing.</p>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* Food Photo */}
+                  {reviewData.imagePreview && (
+                    <div className="md:col-span-2">
+                      <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Food Photo</p>
+                      <img src={reviewData.imagePreview} alt="Food" className="w-full max-h-56 object-cover rounded-xl border border-border shadow-sm" />
+                    </div>
+                  )}
+
+                  {/* Title */}
+                  <div className="bg-muted/30 rounded-xl p-4 border border-border">
+                    <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">Post Title</p>
+                    <p className="text-sm font-medium text-foreground">{reviewData.title}</p>
+                  </div>
+
+                  {/* Category */}
+                  <div className="bg-muted/30 rounded-xl p-4 border border-border">
+                    <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">Category</p>
+                    <p className="text-sm font-medium text-foreground capitalize">
+                      {FOOD_CATEGORIES.find(c => c.value === reviewData.foodType)?.label || reviewData.foodType}
+                    </p>
+                  </div>
+
+                  {/* Quantity */}
+                  <div className="bg-muted/30 rounded-xl p-4 border border-border">
+                    <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">Quantity</p>
+                    <p className="text-sm font-medium text-foreground">{reviewData.quantity}</p>
+                  </div>
+
+                  {/* Expiry */}
+                  <div className="bg-muted/30 rounded-xl p-4 border border-border">
+                    <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">Expiry / Best Before</p>
+                    <p className="text-sm font-medium text-foreground">{new Date(reviewData.expiry).toLocaleString()}</p>
+                  </div>
+
+                  {/* Pickup Window */}
+                  <div className="bg-emerald-500/5 border border-emerald-500/20 rounded-xl p-4 md:col-span-2">
+                    <p className="text-xs font-semibold uppercase tracking-wider text-emerald-600 mb-2">Pickup Window</p>
+                    <div className="flex flex-wrap items-center gap-3 text-sm font-medium text-foreground">
+                      <span className="flex items-center gap-1.5"><Clock className="h-4 w-4 text-muted-foreground" />{new Date(reviewData.pickupStart).toLocaleString()}</span>
+                      <ArrowRight className="h-4 w-4 text-muted-foreground" />
+                      <span className="flex items-center gap-1.5"><Clock className="h-4 w-4 text-muted-foreground" />{new Date(reviewData.pickupEnd).toLocaleString()}</span>
+                    </div>
+                  </div>
+
+                  {/* Address */}
+                  <div className="bg-muted/30 rounded-xl p-4 border border-border md:col-span-2">
+                    <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">Pickup Address</p>
+                    <p className="text-sm font-medium text-foreground flex items-center gap-2"><MapPin className="h-4 w-4 text-emerald-500" />{reviewData.address}</p>
+                  </div>
+
+                  {/* AI Scores (if available) */}
+                  {classificationResult && (
+                    <div className="bg-muted/30 rounded-xl p-4 border border-border md:col-span-2">
+                      <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">AI Quality Analysis</p>
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                        <div className="text-center"><p className="text-xs text-muted-foreground">Priority</p><p className="font-bold text-sm text-foreground">{classificationResult.priority_score ?? 'N/A'}/100</p></div>
+                        <div className="text-center"><p className="text-xs text-muted-foreground">Freshness</p><p className="font-bold text-sm text-emerald-600">{classificationResult.freshness_score ?? 'N/A'}/100</p></div>
+                        <div className="text-center"><p className="text-xs text-muted-foreground">Quality</p><p className="font-bold text-sm text-foreground capitalize">{classificationResult.quality_status ?? 'N/A'}</p></div>
+                        <div className="text-center"><p className="text-xs text-muted-foreground">Shelf Life</p><p className="font-bold text-sm text-foreground">{classificationResult.estimated_safe_hours ? `~${classificationResult.estimated_safe_hours}h` : 'N/A'}</p></div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex items-center gap-3 p-4 rounded-xl bg-amber-500/5 border border-amber-500/20">
+                  <AlertTriangle className="h-5 w-5 text-amber-500 shrink-0" />
+                  <p className="text-sm text-muted-foreground">Please double-check all details. Once published, recipients can immediately see and request this listing.</p>
+                </div>
+              </div>
+            </CardContent>
+          )}
+
+          {/* ── STEP 3: Success ── */}
+          {currentStep === 3 && (
+            <CardContent className="p-10 flex flex-col items-center justify-center text-center min-h-[480px] space-y-6">
+              <div className="relative">
+                <div className="absolute inset-0 bg-emerald-500/20 rounded-full blur-2xl animate-pulse" />
+                <div className="relative bg-emerald-500/10 border-2 border-emerald-500/30 rounded-full p-8">
+                  <PartyPopper className="h-16 w-16 text-emerald-500" />
+                </div>
+              </div>
+              <div>
+                <h3 className="text-2xl font-bold text-foreground mb-2">Listing Published! 🎉</h3>
+                <p className="text-muted-foreground max-w-sm">Your food donation is now live. Nearby recipients will be notified and can request a pickup right away.</p>
+              </div>
+              <div className="flex flex-col sm:flex-row gap-3 w-full max-w-sm">
+                <Button type="button" variant="outline" className="flex-1" onClick={handleStartOver}>
+                  Donate More
+                </Button>
+                <Button type="button" className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white" onClick={() => navigate('/dashboard')}>
+                  View Dashboard <ArrowRight className="ml-2 h-4 w-4" />
+                </Button>
+              </div>
+            </CardContent>
+          )}
+
+          {/* Bottom Action Bar — hidden on success step */}
+          {currentStep !== 3 && (
+            <CardFooter className="bg-muted/20 flex flex-col-reverse sm:flex-row justify-between items-center py-4 px-6 lg:px-8 border-t border-border gap-3 sm:gap-4 sticky bottom-0 z-10 backdrop-blur-md">
+              <div className="flex gap-2 w-full sm:w-auto">
+                {currentStep === 2 ? (
+                  <Button type="button" variant="outline" className="w-full sm:w-auto" onClick={() => { setCurrentStep(1); window.scrollTo({ top: 0, behavior: 'smooth' }); }}>
+                    <ArrowLeft className="mr-2 h-4 w-4" /> Back to Edit
+                  </Button>
+                ) : (
+                  <Button type="button" variant="ghost" className="w-full sm:w-auto text-muted-foreground hover:text-foreground" onClick={() => navigate(-1)}>
+                    Cancel
+                  </Button>
+                )}
+              </div>
+              <div className="w-full sm:w-auto">
+                {currentStep === 1 ? (
+                  <Button type="submit" size="lg" className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 text-white font-medium shadow-md shadow-emerald-900/20" disabled={isLoading || !selectedFile}>
+                    Next: Review <Eye className="ml-2 h-4 w-4" />
+                  </Button>
+                ) : (
+                  <Button type="button" size="lg" onClick={handleConfirmPublish} className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 text-white font-medium shadow-md shadow-emerald-900/20" disabled={isLoading}>
+                    {isLoading ? (
+                      <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Publishing...</>
+                    ) : (
+                      <><Send className="mr-2 h-4 w-4" />Confirm & Publish</>
+                    )}
+                  </Button>
+                )}
+              </div>
+            </CardFooter>
+          )}
         </form>
       </Card>
     </div>

@@ -177,7 +177,8 @@ Return ONLY this JSON with no markdown or extra text:
         }
       });
 
-      const rawResult = JSON.parse(response.text || "{}");
+      const cleanedText = (response.text || "{}").replace(/```json\n?|```\n?/g, "").trim();
+      const rawResult = JSON.parse(cleanedText);
 
       // Handle non-food images gracefully
       if (rawResult.is_food === false) {

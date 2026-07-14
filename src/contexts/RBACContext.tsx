@@ -44,7 +44,9 @@ export function RBACProvider({ children }: { children: React.ReactNode }) {
         return;
       }
 
-      setIsLoading(true);
+      if (roles.length === 0) {
+        setIsLoading(true);
+      }
 
       try {
         // 1. Fetch user role from profiles
@@ -100,7 +102,7 @@ export function RBACProvider({ children }: { children: React.ReactNode }) {
     return () => {
       isMounted = false;
     };
-  }, [user, isAuthenticated, isInitialized]);
+  }, [user?.id, user?.role, isAuthenticated, isInitialized]);
 
   // Helper functions
   const can = (perm: AppPermission | AppPermission[]) => {

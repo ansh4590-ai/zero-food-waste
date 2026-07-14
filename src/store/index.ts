@@ -66,6 +66,12 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
     // ── Supabase: listen for session changes (login / logout / token refresh) ─
     supabase.auth.onAuthStateChange((_event, session) => {
       if (session?.user) {
+        // Prevent unnecessary state updates on tab focus/token refresh if it's the same user
+        const current = get().user;
+        if (current && current.id === session.user.id && current.role === session.user.user_metadata?.role) {
+          return;
+        }
+
         // Supabase session always wins – overwrite any Firebase state
         set({
           user: {

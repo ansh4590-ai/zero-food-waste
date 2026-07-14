@@ -73,7 +73,7 @@ export default function Browse() {
           quantity: item.quantity_description,
           locationText: item.location_name || "Location not provided",
           expiresIn: item.expiry_time
-            ? new Date(item.expiry_time).toLocaleDateString("en-IN", { day: "numeric", month: "short" })
+            ? new Date(item.expiry_time).toLocaleString("en-IN", { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" })
             : "Not specified",
           expiryTime: item.expiry_time,
           image: item.image_url || null,
@@ -364,11 +364,9 @@ export default function Browse() {
                           {windowStatus === 'upcoming' ? '⏳ Upcoming • ' : windowStatus === 'available' ? '✅ Available • ' : '❌ Expired • '}{countdown}
                         </div>
                       )}
-                      {!countdown && (
-                        <div className="flex items-center text-xs text-muted-foreground mt-2 pl-6">
-                          Expires: {item.expiresIn}
-                        </div>
-                      )}
+                      <div className="flex items-center text-xs text-muted-foreground mt-1.5 pl-6">
+                        ⚠️ Expires: {item.expiresIn}
+                      </div>
                     </div>
                   </div>
                   <Button
