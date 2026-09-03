@@ -41,6 +41,7 @@ if (process.env.NODE_ENV !== "production") {
 // function. Indentation below is left as-is from the old function body to
 // keep this diff reviewable; run a formatter whenever it's convenient.
 const app = express();
+app.set('trust proxy', 1); // Fixes express-rate-limit behind Vercel reverse proxy
 // Vercel doesn't use this at all — it invokes the exported app directly,
 // no port involved. Only matters for local dev / a non-Vercel host.
 const PORT = parseInt(process.env.PORT || '3000', 10);
