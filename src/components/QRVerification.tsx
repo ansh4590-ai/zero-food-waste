@@ -417,7 +417,8 @@ export function QRScannerModal({
         if (typeof navigator !== "undefined" && navigator.vibrate) {
           navigator.vibrate([100, 50, 100]);
         }
-        onVerified(data.newStatus);
+        // Server returns new_status (snake_case) — support both for safety
+        onVerified(data.new_status ?? data.newStatus);
         // Auto-close modal after brief success display
         setTimeout(() => {
           onOpenChange(false);

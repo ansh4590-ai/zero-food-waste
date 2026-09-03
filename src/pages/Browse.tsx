@@ -2,7 +2,8 @@ import { useState, useEffect } from "react";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Badge } from "../components/ui/badge";
-import { Search, MapPin, Clock, Filter, ShieldCheck, Utensils, ArrowUpDown, Leaf, Package } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "../components/ui/dialog";
+import { Search, MapPin, Clock, Filter, ShieldCheck, Utensils, ArrowUpDown, Leaf, Package, AlertTriangle, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
 import { useAuthStore } from "../store";
 import { supabase, isValidSupabaseId } from "../lib/supabase";
@@ -41,6 +42,7 @@ export default function Browse() {
   const [filterCategory, setFilterCategory] = useState<string>('all');
   // Per-card requesting state — prevents double-clicks
   const [requestingIds, setRequestingIds] = useState<Set<string>>(new Set());
+  const [confirmItem, setConfirmItem] = useState<FoodItem | null>(null);
   const [, forceTick] = useState(0);
 
   // Upgrade: Force live UI update every 30s to re-filter expired items
@@ -371,7 +373,7 @@ export default function Browse() {
                   </div>
                   <Button
                     className="w-full mt-auto"
-                    onClick={() => handleRequestFood(item)}
+                    onClick={() => setConfirmItem(item)}
                     disabled={requestingIds.has(item.id) || !isRequestable}
                   >
                     {!isRequestable ? (windowStatus === 'upcoming' ? "Not Yet Open" : "Window Closed") : requestingIds.has(item.id) ? "Requesting…" : "Request Pickup"}
@@ -382,6 +384,71 @@ export default function Browse() {
           })}
         </div>
       )}
+
+      {/* ── Confirmation Dialog ── */}
+      <Dialog open={!!confirmItem} onOpenChange={open => { if (!open) setConfirmItem(null); }}>
+        <DialogContent className="sm:max-w-md bg-card text-card-foreground border border-border rounded-2xl shadow-2xl">
+          <DialogHeader>
+            <DialogTitle className="text-lg font-bold flex items-center gap-2">
+              <AlertTriangle className="w-5 h-5 text-amber-500" /> Confirm Food Request
+            </DialogTitle>
+            <DialogDescription className="text-muted-foreground text-sm">
+              Please double-check the details below before confirming your request.
+            </DialogDescription>
+          </DialogHeader>
+          {confirmItem && (
+            <div className="py-4 space-y-4">
+              <div className="rounded-xl border border-border bg-muted/30 p-4 space-y-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                    <Utensils className="w-5 h-5 text-primary" />
+                  </div>
+                  <div className="min-w-0">
+                    <h4 className="font-semibold text-foreground truncate">{confirmItem.foodType}</h4>
+                    <p className="text-xs text-muted-foreground">by {confirmItem.donor}</p>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3 text-sm">
+                  <div className="flex items-center gap-1.5 text-muted-foreground">
+                    <Package className="w-3.5 h-3.5" /> {confirmItem.quantity}
+                  </div>
+                  <div className="flex items-center gap-1.5 text-muted-foreground">
+                    <MapPin className="w-3.5 h-3.5" /> {confirmItem.locationText}
+                  </div>
+                </div>
+                {confirmItem.expiresIn && (
+                  <div className="flex items-center gap-1.5 text-xs text-amber-600 dark:text-amber-400 font-medium">
+                    <Clock className="w-3.5 h-3.5" /> Expires: {confirmItem.expiresIn}
+                  </div>
+                )}
+              </div>
+              <p className="text-sm text-center text-muted-foreground">
+                Are you sure you want to request this food?
+              </p>
+              <div className="flex gap-3 pt-2">
+                <Button
+                  variant="outline"
+                  className="flex-1"
+                  onClick={() => setConfirmItem(null)}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  className="flex-1 gap-2"
+                  disabled={requestingIds.has(confirmItem.id)}
+                  onClick={() => {
+                    handleRequestFood(confirmItem);
+                    setConfirmItem(null);
+                  }}
+                >
+                  <CheckCircle2 className="w-4 h-4" />
+                  {requestingIds.has(confirmItem.id) ? "Requesting…" : "Yes, Request Food"}
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

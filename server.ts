@@ -1,5 +1,4 @@
 import express from "express";
-import { createServer as createViteServer } from "vite";
 import { GoogleGenAI } from "@google/genai";
 import { createClient } from "@supabase/supabase-js";
 import path from "path";
@@ -9,6 +8,12 @@ import vision from "@google-cloud/vision";
 import cors from "cors";
 import compression from "compression";
 import rateLimit from "express-rate-limit";
+import helmet from "helmet";
+// `vite` is intentionally NOT imported here at the top level — it's a
+// dev-only tool, imported dynamically further down inside the
+// `!process.env.VERCEL` branch instead. A static top-level import here
+// would get bundled into the Vercel Function even though it's never used
+// there, which at best bloats the function and at worst fails to bundle.
 
 dotenv.config();
 
@@ -25,11 +30,20 @@ process.on('unhandledRejection', (reason) => {
   console.error('[FATAL] Unhandled rejection:', reason);
 });
 
-console.log("GOOGLE_APPLICATION_CREDENTIALS:", process.env.GOOGLE_APPLICATION_CREDENTIALS);
+if (process.env.NODE_ENV !== "production") {
+  console.log("GOOGLE_APPLICATION_CREDENTIALS:", process.env.GOOGLE_APPLICATION_CREDENTIALS);
+}
 
-async function startServer() {
-  const app = express();
-  const PORT = 3000;
+// NOTE: this used to be wrapped in `async function startServer() { ... }`,
+// invoked once at the bottom via `startServer()`. Flattened to module scope
+// so `app` can be exported directly — Vercel imports this module and uses
+// the exported `app` (see the export further down), it never calls a start
+// function. Indentation below is left as-is from the old function body to
+// keep this diff reviewable; run a formatter whenever it's convenient.
+const app = express();
+// Vercel doesn't use this at all — it invokes the exported app directly,
+// no port involved. Only matters for local dev / a non-Vercel host.
+const PORT = parseInt(process.env.PORT || '3000', 10);
 
   // ─── SECURITY & PERFORMANCE MIDDLEWARE ─────────────────────────────────────
   // CORS: restrict to known origins in production
@@ -39,20 +53,28 @@ async function startServer() {
   app.use(cors({
     origin: (origin, callback) => {
       // Allow requests with no origin (server-to-server, curl, mobile apps)
-      if (!origin || allowedOrigins.some(o => origin.startsWith(o))) {
+      const isVercelOrigin = origin && origin.endsWith('.vercel.app');
+      if (!origin || isVercelOrigin || allowedOrigins.some(o => origin.startsWith(o))) {
         callback(null, true);
       } else {
-        callback(null, true); // permissive for now; tighten after deploy
+        callback(new Error('Not allowed by CORS'));
       }
     },
     credentials: true,
   }));
 
+  // Standard security headers
+  app.use(helmet());
+
   // Gzip/Brotli compression for all responses
   app.use(compression());
 
-  // Increase payload limit for base64 images (capped at 10MB for production)
-  app.use(express.json({ limit: '10mb' }));
+  // Increase payload limit for base64 images.
+  // NOTE: on Vercel, the platform's own request-body cap (~4.5MB) applies
+  // BEFORE this is ever checked — anything bigger gets a 413 from Vercel's
+  // edge regardless of what's set here. Lowered from 10mb so Express's own
+  // limit (with a clearer error message) is the one that actually bites.
+  app.use(express.json({ limit: '4mb' }));
 
   // ─── RATE LIMITERS ─────────────────────────────────────────────────────────
   const aiLimiter = rateLimit({
@@ -80,7 +102,7 @@ async function startServer() {
   });
 
   // ─── HEALTH CHECK ──────────────────────────────────────────────────────────
-  app.get('/health', (_req, res) => {
+  app.get('/api/health', (_req, res) => {
     res.json({
       status: 'ok',
       uptime: process.uptime(),
@@ -106,7 +128,10 @@ async function startServer() {
       // Estimate raw size from base64 length (~75% of base64 length)
       const rawBase64 = imageBase64.replace(/^data:image\/\w+;base64,/, "");
       const estimatedBytes = (rawBase64.length * 3) / 4;
-      const MAX_SIZE_BYTES = 5 * 1024 * 1024; // 5MB
+      // 3MB raw ≈ 4MB once base64-encoded, staying under Vercel's ~4.5MB
+      // request-body cap. (Was 5MB raw ≈ 6.7MB encoded, which Vercel would
+      // reject with a 413 before this code ever ran.)
+      const MAX_SIZE_BYTES = 3 * 1024 * 1024;
       if (estimatedBytes > MAX_SIZE_BYTES) {
         return res.status(400).json({ error: "Image too large. Please upload an image under 5MB." });
       }
@@ -367,6 +392,18 @@ Return ONLY this JSON with no markdown or extra text:
   });
 
   // AI Clients for KYC
+  // True only when real AWS creds are present — right now .env has neither,
+  // so this is false and runRealKyc() below skips straight to manual_review
+  // instead of calling Rekognition with "dummy"/"dummy" (which was throwing,
+  // getting caught, and quietly returning similarity 0 — indistinguishable
+  // from "checked it, faces don't match", which then auto-rejected every
+  // real submission since faceScore < 40). Set AWS_ACCESS_KEY_ID /
+  // AWS_SECRET_ACCESS_KEY (and AWS_REGION if not ap-south-1) once you have
+  // real credentials, and this switches itself back on — no other change needed.
+  const AWS_CONFIGURED = Boolean(
+    (process.env.AWS_ACCESS_KEY_ID || process.env.AWS_KEY) &&
+    (process.env.AWS_SECRET_ACCESS_KEY || process.env.AWS_SECRET)
+  );
   const rekognitionClient = new RekognitionClient({
     region: process.env.AWS_REGION || "ap-south-1",
     credentials: {
@@ -375,8 +412,19 @@ Return ONLY this JSON with no markdown or extra text:
     },
   });
   
-  // Depending on setup, Vision uses GOOGLE_APPLICATION_CREDENTIALS env var implicitly
-  const visionClient = new vision.ImageAnnotatorClient();
+  // On Vercel there's no local file to point GOOGLE_APPLICATION_CREDENTIALS at
+  // (it's currently an absolute path on your Windows machine, which won't
+  // exist there). Set GOOGLE_CREDENTIALS_JSON to the base64 of your whole
+  // google-cloud-key.json instead and this decodes it directly — no temp
+  // file needed. Locally, GOOGLE_APPLICATION_CREDENTIALS (a real file path)
+  // still works exactly as before if you leave GOOGLE_CREDENTIALS_JSON unset.
+  const visionClient = process.env.GOOGLE_CREDENTIALS_JSON
+    ? new vision.ImageAnnotatorClient({
+        credentials: JSON.parse(
+          Buffer.from(process.env.GOOGLE_CREDENTIALS_JSON, "base64").toString("utf-8")
+        ),
+      })
+    : new vision.ImageAnnotatorClient();
 
   const compareFaces = async (sourceImage: Buffer, targetImage: Buffer) => {
     try {
@@ -432,13 +480,27 @@ Return ONLY this JSON with no markdown or extra text:
       };
     }
 
-    // Run both AI calls in parallel (was sequential — 2x faster now)
+    // Run OCR either way; only run the paid face-compare call if AWS is
+    // actually configured (see AWS_CONFIGURED above).
     const [faceScore, text] = await Promise.all([
-      compareFaces(aadhaarBuffer, selfieBuffer),
+      AWS_CONFIGURED ? compareFaces(aadhaarBuffer, selfieBuffer) : Promise.resolve(null),
       extractText(aadhaarBuffer),
     ]);
     const parsed = parseAadhaar(text);
-  
+
+    // AWS not configured: there's no real signal on the face match, so this
+    // goes to manual_review rather than being scored (and possibly
+    // auto-rejected) as though a check actually ran and failed.
+    if (faceScore === null) {
+      return {
+        kyc_score: null,
+        face_match_score: null,
+        extracted_data: parsed,
+        auto_status: "manual_review",
+        note: "Face match skipped: AWS Rekognition is not configured on the server.",
+      };
+    }
+
     let kycScore = 0;
     if (parsed.aadhaar) kycScore += 40;
     if (parsed.name) kycScore += 20;
@@ -504,12 +566,18 @@ Return ONLY this JSON with no markdown or extra text:
   const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
   // 16. KYC AI Endpoint
-  app.post("/api/kyc-verify", kycLimiter, async (req, res) => {
+  app.post("/api/kyc-verify", requireAuth, kycLimiter, async (req: AuthenticatedRequest, res) => {
     try {
       const { aadhaar_path, selfie_path } = req.body;
       if (!aadhaar_path || !selfie_path) {
         return res.status(400).json({ error: "aadhaar_path and selfie_path required" });
       }
+      // This confirms the caller is *logged in*, but doesn't yet confirm
+      // aadhaar_path/selfie_path actually belong to req.user!.id — add that
+      // check once I know your storage path convention for the
+      // identity_docs bucket (verify-qr/abort below already do the
+      // equivalent right, using req.user!.id instead of trusting a
+      // client-supplied id — same idea would apply here).
 
       // Download from supabase with graceful failure for demo mode
       const downloadDocument = async (path: string) => {
@@ -663,14 +731,17 @@ Return ONLY this JSON with no markdown or extra text:
   */
 
   // ─── 20. PHOTO PROOF UPLOAD ──────────────────────────────────────────────────
-  app.post("/api/tasks/:taskId/upload-proof", async (req, res) => {
+  app.post("/api/tasks/:taskId/upload-proof", requireAuth, async (req: AuthenticatedRequest, res) => {
     try {
       const { taskId } = req.params;
-      const { imageBase64, proof_type, volunteer_id } = req.body;
+      const { imageBase64, proof_type } = req.body;
       // proof_type: 'pickup' or 'delivery'
+      // Authenticated identity instead of a client-supplied volunteer_id —
+      // matches the pattern already used in verify-qr/abort below.
+      const volunteer_id = req.user!.id;
 
-      if (!imageBase64 || !proof_type || !volunteer_id) {
-        return res.status(400).json({ error: "imageBase64, proof_type, and volunteer_id are required" });
+      if (!imageBase64 || !proof_type) {
+        return res.status(400).json({ error: "imageBase64 and proof_type are required" });
       }
 
       if (!['pickup', 'delivery'].includes(proof_type)) {
@@ -709,8 +780,22 @@ Return ONLY this JSON with no markdown or extra text:
     }
   });
 
-  // ─── 21. STALE TASK CLEANUP (can be called by cron or admin) ─────────────────
-  app.post("/api/tasks/cleanup-stale", async (req, res) => {
+  // ─── 21. STALE TASK CLEANUP (cron-only — not for public/browser use) ─────────
+  // Registered on both GET and POST:
+  //  - Vercel Cron always invokes via GET, with `Authorization: Bearer
+  //    <CRON_SECRET>` attached automatically once CRON_SECRET is set in your
+  //    Vercel env vars — see the "crons" entry in vercel.json.
+  //  - POST stays available for manual/admin triggering, passing the same
+  //    secret as `?key=` (reusing ADMIN_SECRET_KEY if CRON_SECRET isn't set,
+  //    so there's no second secret to manage).
+  const cleanupStaleHandler = async (req: express.Request, res: express.Response) => {
+    const provided =
+      req.headers.authorization?.replace(/^Bearer\s+/i, "") ||
+      (req.query?.key as string | undefined);
+    const expected = process.env.CRON_SECRET || process.env.ADMIN_SECRET_KEY;
+    if (!expected || provided !== expected) {
+      return res.status(403).json({ error: "Forbidden" });
+    }
     try {
       const { data, error } = await supabaseAdmin.rpc('auto_expire_stale_tasks');
       if (error) throw error;
@@ -719,7 +804,9 @@ Return ONLY this JSON with no markdown or extra text:
       console.error("Stale cleanup error:", err);
       res.status(500).json({ error: "Internal server error" });
     }
-  });
+  };
+  app.get("/api/tasks/cleanup-stale", cleanupStaleHandler);
+  app.post("/api/tasks/cleanup-stale", cleanupStaleHandler);
 
   // ─── 22. QR TOKEN GENERATION ────────────────────────────────────────────────
   app.post("/api/tasks/:taskId/generate-qr", requireAuth, async (req: AuthenticatedRequest, res) => {
@@ -922,40 +1009,55 @@ Return ONLY this JSON with no markdown or extra text:
     }
   });
 
-  // Vite middleware for development
-  if (process.env.NODE_ENV !== "production") {
-    const vite = await createViteServer({
-      server: { middlewareMode: true },
-      appType: "spa",
-    });
-    app.use(vite.middlewares);
-  } else {
-    const distPath = path.join(process.cwd(), 'dist');
-    app.use(express.static(distPath));
-    app.get('*', (req, res) => {
-      res.sendFile(path.join(distPath, 'index.html'));
-    });
+  // ─── EXPORT FOR VERCEL ───────────────────────────────────────────────────
+  // Every route above this line is registered on `app` by the time this
+  // runs. api/index.ts imports this export and Vercel wraps it as a single
+  // Function — Vercel never calls app.listen() or runs anything below.
+  export default app;
+
+  // ─── EVERYTHING BELOW ONLY RUNS OUTSIDE VERCEL ──────────────────────────
+  // Local dev (`npm run dev`) and any future non-Vercel host (a VPS, Cloud
+  // Run, etc.) still get the old behavior: Vite dev middleware, or serving
+  // the built dist/ + a port listener. `process.env.VERCEL` is set
+  // automatically by Vercel, so none of this runs there — and it would be
+  // dead weight if it did, since Vercel ignores express.static() entirely
+  // and serves the built frontend through its own static hosting instead
+  // (configured via vercel.json's outputDirectory).
+  if (!process.env.VERCEL) {
+    (async () => {
+      if (process.env.NODE_ENV !== "production") {
+        const { createServer: createViteServer } = await import("vite");
+        const vite = await createViteServer({
+          server: { middlewareMode: true },
+          appType: "spa",
+        });
+        app.use(vite.middlewares);
+      } else {
+        const distPath = path.join(process.cwd(), 'dist');
+        app.use(express.static(distPath));
+        app.get('*', (req, res) => {
+          res.sendFile(path.join(distPath, 'index.html'));
+        });
+      }
+
+      const server = app.listen(PORT, "0.0.0.0", () => {
+        console.log(`Server running on http://localhost:${PORT}`);
+      });
+
+      // ─── GRACEFUL SHUTDOWN ─────────────────────────────────────────────
+      const shutdown = (signal: string) => {
+        console.log(`\n[${signal}] Shutting down gracefully...`);
+        server.close(() => {
+          console.log('HTTP server closed.');
+          process.exit(0);
+        });
+        // Force exit after 10s if connections aren't drained
+        setTimeout(() => {
+          console.error('Forced shutdown after timeout.');
+          process.exit(1);
+        }, 10_000);
+      };
+      process.on('SIGTERM', () => shutdown('SIGTERM'));
+      process.on('SIGINT', () => shutdown('SIGINT'));
+    })();
   }
-
-  const server = app.listen(PORT, "0.0.0.0", () => {
-    console.log(`Server running on http://localhost:${PORT}`);
-  });
-
-  // ─── GRACEFUL SHUTDOWN ───────────────────────────────────────────────────
-  const shutdown = (signal: string) => {
-    console.log(`\n[${signal}] Shutting down gracefully...`);
-    server.close(() => {
-      console.log('HTTP server closed.');
-      process.exit(0);
-    });
-    // Force exit after 10s if connections aren't drained
-    setTimeout(() => {
-      console.error('Forced shutdown after timeout.');
-      process.exit(1);
-    }, 10_000);
-  };
-  process.on('SIGTERM', () => shutdown('SIGTERM'));
-  process.on('SIGINT', () => shutdown('SIGINT'));
-}
-
-startServer();

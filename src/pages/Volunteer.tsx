@@ -377,8 +377,6 @@ export default function Volunteer() {
   const fetchTasks = useCallback(async () => {
     if (!user || !isValidSupabaseId(user.id)) return;
     try {
-      console.log("[DEBUG] Fetching tasks for user.id:", user.id);
-
       const { data: myTasksRaw, error: myError } = await supabase
         .from(TABLES.VOLUNTEER_TASKS)
         .select(`
@@ -393,8 +391,6 @@ export default function Volunteer() {
         `)
         .eq("volunteer_id", user.id)
         .in("status", MY_TASK_STATUSES as unknown as string[]);
-
-      console.log("[DEBUG] myTasksRaw:", myTasksRaw, "myError:", myError);
 
       const myRequestIds = new Set(
         (myTasksRaw ?? []).map((row: Record<string, unknown>) => row.request_id as string | undefined).filter(Boolean)
@@ -1532,8 +1528,10 @@ export default function Volunteer() {
               osrmGeometry={routeOne?.geometry ?? routeTwo?.geometry}
             />
 
-            {/* Volunteer live position */}
-            <Marker position={[livePos.lat, livePos.lng]} icon={liveGPSIcon} zIndexOffset={200} />
+            {/* Volunteer live position — only render when GPS has valid coords */}
+            {livePos.lat !== 0 && livePos.lng !== 0 && (
+              <Marker position={[livePos.lat, livePos.lng]} icon={liveGPSIcon} zIndexOffset={200} />
+            )}
 
             {/* Task markers + routes */}
             {combinedTasks.map(task => {
@@ -1653,17 +1651,17 @@ export default function Volunteer() {
         </DialogContent>
       </Dialog>
 
-      {/* OTP Verification Modal — kept for fallback, hidden from primary flow */}
+      {/* OTP Verification Modal — kept for fallback, hidden from primary flow (Avoids SMS charges) */}
       {/* <OTPModal
-          open={otpModal.open}
-          onOpenChange={open => setOtpModal(prev => ({ ...prev, open }))}
-          taskId={otpModal.taskId}
-          volunteerId={user?.id ?? ''}
-          otpType={otpModal.type}
-          onVerified={handleOTPVerified}
-          showPhotoPrompt={true}
-          onPhotoCapture={handleProofPhoto}
-        /> */}
+        open={otpModal.open}
+        onOpenChange={open => setOtpModal(prev => ({ ...prev, open }))}
+        taskId={otpModal.taskId}
+        volunteerId={user?.id ?? ''}
+        otpType={otpModal.type}
+        onVerified={handleOTPVerified}
+        showPhotoPrompt={true}
+        onPhotoCapture={handleProofPhoto}
+      /> */}
 
       {/* QR Scanner Modal */}
       <QRScannerModal
@@ -1672,12 +1670,6 @@ export default function Volunteer() {
         scanType={qrScan.type}
         volunteerId={user?.id ?? ''}
         onVerified={handleQRVerified}
-        onFallbackOTP={() => {
-          // Fallback: open OTP modal for the specific task captured when QR was opened
-          if (qrScan.taskId) {
-            setOtpModal({ open: true, taskId: qrScan.taskId, type: qrScan.type });
-          }
-        }}
       />
 
       {/* Abort Confirmation Dialog */}

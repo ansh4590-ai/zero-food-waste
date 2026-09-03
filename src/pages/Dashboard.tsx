@@ -8,12 +8,15 @@ import { Badge } from "../components/ui/badge";
 import { 
   HeartHandshake, Utensils, Activity, Truck, CheckCircle2,
   Users, AlertCircle, ArrowRight, Package, MapPin, 
-  Search, PlusCircle, LayoutList, ShieldCheck, PieChart, QrCode
+  Search, PlusCircle, LayoutList, ShieldCheck, PieChart, QrCode,
+  Navigation, Clock
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { LISTING_DELIVERED_STATUSES, LISTING_ACTIVE_STATUSES } from "../lib/constants";
 import { EmptyState } from "../components/ui/EmptyState";
 import { useRealtimeHealth } from "../hooks/useRealtimeHealth";
+import { QRCodeCard } from "../components/QRVerification";
+import { StatusTimeline } from "../components/ui/StatusTimeline";
 
 // ─── DASHBOARD OVERVIEWS ──────────────────────────────────────────────────
 
@@ -31,7 +34,7 @@ function DonorDashboard() {
       try {
         const { data: listings } = await supabase
           .from("food_listings")
-          .select("id, title, status, quantity_description, created_at, food_requests(volunteer_tasks(status, id))")
+          .select("id, title, status, quantity_description, created_at, food_requests(volunteer_tasks(status, id, pickup_qr_token, pickup_qr_expires_at))")
           .eq("donor_id", user.id)
           .order("created_at", { ascending: false });
 
@@ -55,7 +58,12 @@ function DonorDashboard() {
               const tasks = Array.isArray(r.volunteer_tasks) ? r.volunteer_tasks : r.volunteer_tasks ? [r.volunteer_tasks] : [];
               for (const t of tasks) {
                 if (t.status === 'assigned') {
-                  upcoming.push({ ...l, taskId: t.id });
+                  upcoming.push({ 
+                    ...l, 
+                    taskId: t.id, 
+                    pickup_qr_token: t.pickup_qr_token, 
+                    pickup_qr_expires_at: t.pickup_qr_expires_at 
+                  });
                 }
               }
             }
@@ -172,14 +180,25 @@ function DonorDashboard() {
             ) : (
               <div className="space-y-4">
                 {upcomingPickups.map((p, i) => (
-                  <div key={i} className="flex items-center justify-between p-3 rounded-lg border border-blue-500/20 bg-blue-500/5">
+                  <div key={i} className="flex flex-col p-4 rounded-xl border border-blue-500/20 bg-blue-500/5 space-y-4">
                     <div className="flex items-center gap-3">
                       <div className="p-2 rounded-full bg-blue-500/20"><Truck className="w-4 h-4 text-blue-500" /></div>
                       <div>
                         <p className="font-medium text-sm">{p.title}</p>
-                        <p className="text-xs text-blue-500 font-medium mt-0.5">Volunteer En Route</p>
+                        <p className="text-xs text-blue-500 font-medium mt-0.5">Volunteer En Route for Pickup</p>
                       </div>
                     </div>
+                    {p.taskId && p.pickup_qr_token && (
+                      <div className="pt-2 border-t border-blue-500/10">
+                        <QRCodeCard
+                          taskId={p.taskId}
+                          type="pickup"
+                          token={p.pickup_qr_token}
+                          expiresAt={p.pickup_qr_expires_at}
+                          compact
+                        />
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
@@ -196,46 +215,82 @@ function ReceiverDashboard() {
   const { user } = useAuthStore();
   const [stats, setStats] = useState({ mealsReceived: 0, activeReservations: 0, completedDeliveries: 0, partnerCount: 0 });
   const [recentRequests, setRecentRequests] = useState<any[]>([]);
+  const [activeDeliveries, setActiveDeliveries] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
-    async function fetchData() {
-      if (!user || !isValidSupabaseId(user.id)) return;
-      try {
-        const { data: requests } = await supabase
-          .from("food_requests")
-          .select("id, status, created_at, food_listings(title, donor_id, quantity_description)")
-          .eq("receiver_id", user.id)
-          .order("created_at", { ascending: false });
+  const fetchData = async () => {
+    if (!user || !isValidSupabaseId(user.id)) return;
+    try {
+      const { data: requests } = await supabase
+        .from("food_requests")
+        .select(`
+          id, status, created_at, updated_at,
+          food_listings(title, donor_id, quantity_description, location_name, food_category,
+            profiles(full_name)
+          ),
+          volunteer_tasks(id, status, delivery_qr_token, delivery_qr_expires_at)
+        `)
+        .eq("receiver_id", user.id)
+        .order("created_at", { ascending: false });
 
-        if (requests) {
-          let meals = 0;
-          let active = 0;
-          let deliveries = 0;
-          const partners = new Set();
+      if (requests) {
+        let meals = 0;
+        let active = 0;
+        let deliveries = 0;
+        const partners = new Set();
+        const liveDeliveries: any[] = [];
 
-          requests.forEach(r => {
-            const l = Array.isArray(r.food_listings) ? r.food_listings[0] : r.food_listings;
-            if (['pending', 'assigned', 'picked_up'].includes(r.status)) active++;
-            if (['delivered', 'fulfilled'].includes(r.status)) {
-              deliveries++;
-              if (l?.donor_id) partners.add(l.donor_id);
-              const match = String(l?.quantity_description || "").match(/(\d+)/);
-              meals += match ? parseInt(match[1], 10) : 15;
-            }
-          });
+        requests.forEach(r => {
+          const l = Array.isArray(r.food_listings) ? r.food_listings[0] : r.food_listings;
+          const taskObj = Array.isArray(r.volunteer_tasks) ? r.volunteer_tasks[0] : r.volunteer_tasks;
+          const profileObj = Array.isArray(l?.profiles) ? l.profiles[0] : l?.profiles;
+          if (['pending', 'assigned', 'picked_up'].includes(r.status)) {
+            active++;
+            liveDeliveries.push({
+              ...r,
+              listing: l,
+              task: taskObj,
+              donor_name: profileObj?.full_name || 'Verified Donor',
+            });
+          }
+          if (['delivered', 'fulfilled'].includes(r.status)) {
+            deliveries++;
+            if (l?.donor_id) partners.add(l.donor_id);
+            const match = String(l?.quantity_description || "").match(/(\d+)/);
+            meals += match ? parseInt(match[1], 10) : 15;
+          }
+        });
 
-          setStats({ mealsReceived: meals, activeReservations: active, completedDeliveries: deliveries, partnerCount: partners.size });
-          setRecentRequests(requests.slice(0, 5));
-        }
-      } catch (e) {
-        console.error(e);
-      } finally {
-        setIsLoading(false);
+        setStats({ mealsReceived: meals, activeReservations: active, completedDeliveries: deliveries, partnerCount: partners.size });
+        setRecentRequests(requests.slice(0, 5));
+        setActiveDeliveries(liveDeliveries);
       }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setIsLoading(false);
     }
-    fetchData();
+  };
+
+  useEffect(() => { fetchData(); }, [user]);
+
+  // Realtime updates for receiver's requests and volunteer tasks
+  useEffect(() => {
+    if (!user || !isValidSupabaseId(user.id)) return;
+    const channel = supabase
+      .channel("receiver-dashboard-realtime")
+      .on("postgres_changes", { event: "*", schema: "public", table: "food_requests", filter: `receiver_id=eq.${user.id}` }, () => fetchData())
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "volunteer_tasks" }, () => fetchData())
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
   }, [user]);
+
+  const getTaskStatusConfig = (taskStatus: string | null, reqStatus: string) => {
+    if (reqStatus === 'pending' && !taskStatus) return { label: 'Awaiting Volunteer', color: 'text-amber-500', icon: <Clock className="w-4 h-4" />, pulse: true };
+    if (taskStatus === 'assigned') return { label: 'Volunteer En Route to Pickup', color: 'text-blue-500', icon: <Navigation className="w-4 h-4" /> };
+    if (taskStatus === 'picked_up') return { label: 'Out for Delivery to You', color: 'text-emerald-500', icon: <Truck className="w-4 h-4" />, pulse: true };
+    return { label: 'Processing', color: 'text-muted-foreground', icon: <Clock className="w-4 h-4" /> };
+  };
 
   return (
     <div className="space-y-6">
@@ -292,6 +347,82 @@ function ReceiverDashboard() {
           </CardContent>
         </Card>
       </div>
+
+      {/* ── ACTIVE DELIVERIES TRACKING ── */}
+      {activeDeliveries.length > 0 && (
+        <Card className="border-blue-500/30 shadow-[0_0_20px_rgba(59,130,246,0.08)]">
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="flex items-center gap-2">
+                  <Truck className="w-5 h-5 text-blue-500" />
+                  Active Deliveries
+                </CardTitle>
+                <CardDescription>Live tracking of your food requests</CardDescription>
+              </div>
+              <Badge variant="outline" className="border-blue-500/30 text-blue-500 bg-blue-500/10 animate-pulse">
+                {activeDeliveries.length} Active
+              </Badge>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {activeDeliveries.map((d) => {
+                const statusConfig = getTaskStatusConfig(d.task?.status || null, d.status);
+                return (
+                  <div key={d.id} className="rounded-xl border border-border bg-card p-4 space-y-4">
+                    {/* Header */}
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-blue-500/10 border border-blue-500/20 flex items-center justify-center shrink-0">
+                          <span className={statusConfig.color}>{statusConfig.icon}</span>
+                        </div>
+                        <div className="min-w-0">
+                          <h4 className="font-semibold text-sm truncate">{d.listing?.title || 'Food Request'}</h4>
+                          <p className="text-xs text-muted-foreground">From: {d.donor_name}</p>
+                        </div>
+                      </div>
+                      <Badge variant="outline" className={`shrink-0 text-xs ${statusConfig.color} ${statusConfig.pulse ? 'animate-pulse' : ''}`}>
+                        {statusConfig.label}
+                      </Badge>
+                    </div>
+
+                    {/* Details */}
+                    <div className="flex flex-wrap gap-x-5 gap-y-1 text-xs text-muted-foreground">
+                      <span className="flex items-center gap-1"><Package className="w-3.5 h-3.5" /> {d.listing?.quantity_description || '—'}</span>
+                      <span className="flex items-center gap-1"><MapPin className="w-3.5 h-3.5" /> {d.listing?.location_name || 'Location hidden'}</span>
+                    </div>
+
+                    {/* Progress Timeline */}
+                    <StatusTimeline steps={[
+                      { label: "Requested", isCompleted: true },
+                      { label: "Volunteer Assigned", isCompleted: ['assigned', 'picked_up', 'delivered'].includes(d.task?.status || ''), isCurrent: d.status === 'pending' },
+                      { label: "Picked Up", isCompleted: ['picked_up', 'delivered'].includes(d.task?.status || ''), isCurrent: d.task?.status === 'assigned' },
+                      { label: "Delivered", isCompleted: d.task?.status === 'delivered', isCurrent: d.task?.status === 'picked_up' },
+                    ]} />
+
+                    {/* Delivery QR — shown when volunteer has picked up food */}
+                    {d.task?.id && d.task?.status === 'picked_up' && (
+                      <QRCodeCard
+                        taskId={d.task.id}
+                        type="delivery"
+                        token={d.task.delivery_qr_token}
+                        expiresAt={d.task.delivery_qr_expires_at}
+                        compact
+                      />
+                    )}
+
+                    {/* Link to full tracking */}
+                    <Button variant="ghost" size="sm" className="w-full text-primary text-xs" onClick={() => navigate('/requests')}>
+                      View Full Details <ArrowRight className="w-3.5 h-3.5 ml-1" />
+                    </Button>
+                  </div>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       <div className="grid gap-6 md:grid-cols-2">
         <Card className="flex flex-col">

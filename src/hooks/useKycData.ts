@@ -57,7 +57,7 @@ export function useKycData(enabled: boolean): UseKycDataReturn {
   const [trendData, setTrendData] = useState<TrendPoint[]>([]);
 
   // ─── FETCH KYC ANALYTICS ──────────────────────────────────────────────────
-  const fetchStats = async () => {
+  const fetchStats = useCallback(async () => {
     try {
       const { count: total } = await supabase
         .from("profiles")
@@ -106,10 +106,10 @@ export function useKycData(enabled: boolean): UseKycDataReturn {
       if (import.meta.env.DEV) console.error("fetchStats error:", e);
       toast.error("Failed to load KYC statistics.");
     }
-  };
+  }, []);
 
   // ─── FETCH KYC TREND DATA ────────────────────────────────────────────────
-  const fetchTrend = async () => {
+  const fetchTrend = useCallback(async () => {
     try {
       const { data } = await supabase
         .from("profiles")
@@ -134,10 +134,10 @@ export function useKycData(enabled: boolean): UseKycDataReturn {
       if (import.meta.env.DEV) console.error("fetchTrend error:", e);
       toast.error("Failed to load KYC trend data.");
     }
-  };
+  }, []);
 
   // ─── FETCH KYC QUEUE (PRIORITY: LATEST FIRST) ─────────────────────────
-  const fetchUsers = async () => {
+  const fetchUsers = useCallback(async () => {
     setIsLoading(true);
     try {
       const { data, error } = await supabase
@@ -153,7 +153,7 @@ export function useKycData(enabled: boolean): UseKycDataReturn {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
 
   // ─── INITIAL FETCH + TAB ACTIVATION ───────────────────────────────────────
   useEffect(() => {
@@ -161,7 +161,7 @@ export function useKycData(enabled: boolean): UseKycDataReturn {
     fetchUsers();
     fetchStats();
     fetchTrend();
-  }, [enabled]);
+  }, [enabled, fetchUsers, fetchStats, fetchTrend]);
 
   // ─── REALTIME: Auto-refresh KYC queue on profile changes ──────────────────
   useEffect(() => {
@@ -180,7 +180,7 @@ export function useKycData(enabled: boolean): UseKycDataReturn {
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
-  }, [enabled]);
+  }, [enabled, fetchUsers, fetchStats]);
 
   // ─── FETCH SIGNED URLS FOR MODAL ──────────────────────────────────────────
   useEffect(() => {
@@ -222,7 +222,7 @@ export function useKycData(enabled: boolean): UseKycDataReturn {
   const refreshAll = useCallback(() => {
     fetchUsers();
     fetchStats();
-  }, []);
+  }, [fetchUsers, fetchStats]);
 
   const selectUser = useCallback((user: KycProfile) => {
     setSelectedUser(user);
@@ -251,7 +251,7 @@ export function useKycData(enabled: boolean): UseKycDataReturn {
       if (import.meta.env.DEV) console.error("approveUser error:", e);
       toast.error("Failed to approve user. Please try again.");
     } finally { setIsProcessing(false); }
-  }, [selectedUser]);
+  }, [selectedUser, fetchUsers, fetchStats]);
 
   const rejectUser = useCallback(async (reason: string) => {
     if (!selectedUser || !reason) return;
@@ -272,7 +272,7 @@ export function useKycData(enabled: boolean): UseKycDataReturn {
       if (import.meta.env.DEV) console.error("rejectUser error:", e);
       toast.error("Failed to reject user. Please try again.");
     } finally { setIsProcessing(false); }
-  }, [selectedUser]);
+  }, [selectedUser, fetchUsers, fetchStats]);
 
   // ─── DERIVED DATA ─────────────────────────────────────────────────────────
   const trendMax = useMemo(() => Math.max(...trendData.map(t => t.count), 1), [trendData]);

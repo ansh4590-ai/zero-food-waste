@@ -113,6 +113,16 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
           }
           // else: Supabase session already set — Firebase state is ignored
         });
+      } else {
+        // Firebase signed out — if the current user is a Firebase-only user, clear state
+        supabase.auth.getSession().then(({ data: { session } }) => {
+          if (!session?.user) {
+            const current = get().user;
+            if (current?.isFirebaseUser || !current) {
+              set({ user: null, isAuthenticated: false });
+            }
+          }
+        });
       }
       firebaseResolved = true;
       checkInit();
