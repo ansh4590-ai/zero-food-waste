@@ -8,30 +8,23 @@ export interface Suggestion {
   lng: number;
 }
 
-// ── Types for the new Places REST API ─────────────────────────────────────────
-interface PlacesAutocompletePrediction {
-  placePrediction: {
-    placeId: string;
-    text: { text: string };
-    structuredFormat: {
-      mainText: { text: string };
-      secondaryText?: { text: string };
-    };
+// ── Lightweight types for the classic Places API response ─────────────────────
+interface ClassicPrediction {
+  place_id: string;
+  structured_formatting: {
+    main_text: string;
+    secondary_text?: string;
   };
-}
-
-interface PlacesAutocompleteResponse {
-  suggestions?: PlacesAutocompletePrediction[];
 }
 
 // ── Hook ──────────────────────────────────────────────────────────────────────
 export function useAddressAutocomplete(query: string) {
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [isLoading, setIsLoading]     = useState(false);
+  const [error, setError]             = useState<string | null>(null);
 
-  const cacheRef = useRef<Map<string, Suggestion[]>>(new Map());
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const cacheRef     = useRef<Map<string, Suggestion[]>>(new Map());
+  const debounceRef  = useRef<ReturnType<typeof setTimeout> | null>(null);
   const controllerRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
@@ -43,24 +36,18 @@ export function useAddressAutocomplete(query: string) {
       return;
     }
 
-    // Cache hit
+    // Cache hit — instant
     const cacheKey = trimmed.toLowerCase();
     if (cacheRef.current.has(cacheKey)) {
       setSuggestions(cacheRef.current.get(cacheKey)!);
       return;
     }
 
-    // Debounce
+    // Debounce — wait 350ms after user stops typing
     if (debounceRef.current) clearTimeout(debounceRef.current);
 
     debounceRef.current = setTimeout(async () => {
-      const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
-      if (!apiKey) {
-        setError('Maps API key not configured');
-        return;
-      }
-
-      // Cancel any in-flight request
+      // Cancel previous in-flight request
       if (controllerRef.current) controllerRef.current.abort();
       controllerRef.current = new AbortController();
 
@@ -68,30 +55,16 @@ export function useAddressAutocomplete(query: string) {
       setError(null);
 
       try {
-        // Step 1: Get autocomplete predictions via new Places REST API
+        // ── Step 1: Get predictions from our server-side proxy ──────────────
         const autoRes = await fetch(
-          'https://places.googleapis.com/v1/places:autocomplete',
-          {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'X-Goog-Api-Key': apiKey,
-            },
-            body: JSON.stringify({
-              input: trimmed,
-              includedRegionCodes: ['in'],
-              languageCode: 'en',
-            }),
-            signal: controllerRef.current.signal,
-          }
+          `/api/places/autocomplete?input=${encodeURIComponent(trimmed)}`,
+          { signal: controllerRef.current.signal }
         );
 
-        if (!autoRes.ok) {
-          throw new Error(`Places API error: ${autoRes.status}`);
-        }
+        if (!autoRes.ok) throw new Error(`Proxy error: ${autoRes.status}`);
 
-        const autoData: PlacesAutocompleteResponse = await autoRes.json();
-        const predictions = autoData.suggestions ?? [];
+        const autoData = await autoRes.json() as { predictions?: ClassicPrediction[]; status?: string };
+        const predictions = autoData.predictions ?? [];
 
         if (predictions.length === 0) {
           setSuggestions([]);
@@ -99,27 +72,21 @@ export function useAddressAutocomplete(query: string) {
           return;
         }
 
-        // Step 2: Geocode top 5 placeIds to get lat/lng
+        // ── Step 2: Geocode each place_id to get lat/lng ────────────────────
         const resolved = await Promise.all(
-          predictions.slice(0, 5).map(async (item) => {
-            const { placeId, structuredFormat } = item.placePrediction;
+          predictions.slice(0, 5).map(async (p) => {
             try {
               const geoRes = await fetch(
-                `https://places.googleapis.com/v1/places/${placeId}?fields=location`,
-                {
-                  headers: { 'X-Goog-Api-Key': apiKey },
-                  signal: controllerRef.current?.signal,
-                }
+                `/api/places/geocode?place_id=${encodeURIComponent(p.place_id)}`,
+                { signal: controllerRef.current?.signal }
               );
-              const geoData = await geoRes.json();
-              const lat = geoData.location?.latitude ?? 0;
-              const lng = geoData.location?.longitude ?? 0;
+              const geoData = await geoRes.json() as { location?: { lat: number; lng: number } };
               return {
-                id: placeId,
-                primaryText: structuredFormat.mainText.text,
-                secondaryText: structuredFormat.secondaryText?.text ?? '',
-                lat,
-                lng,
+                id: p.place_id,
+                primaryText: p.structured_formatting.main_text,
+                secondaryText: p.structured_formatting.secondary_text ?? '',
+                lat: geoData.location?.lat ?? 0,
+                lng: geoData.location?.lng ?? 0,
               } as Suggestion;
             } catch {
               return null;
@@ -127,7 +94,9 @@ export function useAddressAutocomplete(query: string) {
           })
         );
 
-        const valid = resolved.filter((s): s is Suggestion => s !== null && (s.lat !== 0 || s.lng !== 0));
+        const valid = resolved.filter(
+          (s): s is Suggestion => s !== null && (s.lat !== 0 || s.lng !== 0)
+        );
         cacheRef.current.set(cacheKey, valid);
         setSuggestions(valid);
       } catch (err) {

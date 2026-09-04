@@ -150,6 +150,55 @@ const PORT = parseInt(process.env.PORT || '3000', 10);
     });
   });
 
+  // ─── PLACES API PROXY ─────────────────────────────────────────────────────
+  // We proxy Google Places requests server-side so:
+  //  1. The API key never leaves the server
+  //  2. No CORS / CSP browser restrictions
+  //  3. Works with the classic Places API (no "Places API New" required)
+  app.get('/api/places/autocomplete', async (req, res) => {
+    const { input } = req.query as { input?: string };
+    const apiKey = process.env.VITE_GOOGLE_MAPS_API_KEY;
+    if (!apiKey) return res.status(503).json({ error: 'Maps API key not configured on server' });
+    if (!input || String(input).trim().length < 2) return res.json({ predictions: [] });
+
+    try {
+      const url = new URL('https://maps.googleapis.com/maps/api/place/autocomplete/json');
+      url.searchParams.set('input', String(input));
+      url.searchParams.set('key', apiKey);
+      url.searchParams.set('components', 'country:in');
+      url.searchParams.set('types', 'geocode|establishment');
+      url.searchParams.set('language', 'en');
+
+      const r = await fetch(url.toString());
+      const data = await r.json() as { predictions?: unknown[]; status?: string };
+      res.json({ predictions: data.predictions ?? [], status: data.status });
+    } catch (err) {
+      console.error('[places/autocomplete]', err);
+      res.status(500).json({ error: 'Places autocomplete failed' });
+    }
+  });
+
+  app.get('/api/places/geocode', async (req, res) => {
+    const { place_id } = req.query as { place_id?: string };
+    const apiKey = process.env.VITE_GOOGLE_MAPS_API_KEY;
+    if (!apiKey) return res.status(503).json({ error: 'Maps API key not configured on server' });
+    if (!place_id) return res.status(400).json({ error: 'place_id required' });
+
+    try {
+      const url = new URL('https://maps.googleapis.com/maps/api/geocode/json');
+      url.searchParams.set('place_id', String(place_id));
+      url.searchParams.set('key', apiKey);
+
+      const r = await fetch(url.toString());
+      const data = await r.json() as { results?: { geometry?: { location?: { lat: number; lng: number } } }[]; status?: string };
+      const location = data.results?.[0]?.geometry?.location ?? null;
+      res.json({ location, status: data.status });
+    } catch (err) {
+      console.error('[places/geocode]', err);
+      res.status(500).json({ error: 'Geocode failed' });
+    }
+  });
+
   // Initialize Gemini safely
   const ai = process.env.GEMINI_API_KEY ? new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY }) : null;
 
