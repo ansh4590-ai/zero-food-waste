@@ -133,13 +133,13 @@ export function DateTimePicker({
         type="button"
         onClick={() => setOpen(o => !o)}
         className="
-          w-full flex items-center gap-3 px-4 py-2.5 rounded-xl
+          w-full flex items-center gap-2 px-3 py-2 rounded-lg
           bg-[#0f1117] border border-white/10
           text-sm text-left
           hover:border-emerald-500/50 hover:bg-[#131620]
           focus:outline-none focus:border-emerald-500
           transition-all duration-200
-          shadow-[0_2px_12px_rgba(0,0,0,0.4)]
+          shadow-[0_2px_8px_rgba(0,0,0,0.4)]
         "
       >
         <CalendarDays className="h-4 w-4 text-emerald-400 shrink-0" />
@@ -161,17 +161,17 @@ export function DateTimePicker({
       {open && (
         <div
           className="
-            absolute z-50 top-full mt-2 left-0
-            w-full min-w-[320px]
-            rounded-2xl overflow-hidden
+            absolute z-50 top-full mt-1.5 left-0
+            w-full min-w-[280px]
+            rounded-xl overflow-hidden
             border border-white/10
-            shadow-[0_24px_64px_rgba(0,0,0,0.7),0_0_0_1px_rgba(255,255,255,0.04)]
+            shadow-[0_16px_48px_rgba(0,0,0,0.7),0_0_0_1px_rgba(255,255,255,0.04)]
             bg-gradient-to-b from-[#12151e] to-[#0c0f17]
           "
           style={{ backdropFilter: 'blur(20px)' }}
         >
           {/* ── Calendar header ── */}
-          <div className="flex items-center justify-between px-5 pt-5 pb-3">
+          <div className="flex items-center justify-between px-3 pt-3 pb-2">
             <button
               type="button"
               onClick={prevMonth}
@@ -192,7 +192,7 @@ export function DateTimePicker({
           </div>
 
           {/* ── Day headers ── */}
-          <div className="grid grid-cols-7 px-4 pb-1">
+          <div className="grid grid-cols-7 px-2 pb-1">
             {DAYS.map(d => (
               <div key={d} className="text-center text-[10px] font-semibold text-zinc-600 py-1 uppercase tracking-wider">
                 {d}
@@ -201,7 +201,7 @@ export function DateTimePicker({
           </div>
 
           {/* ── Day grid ── */}
-          <div className="grid grid-cols-7 gap-0.5 px-4 pb-4">
+          <div className="grid grid-cols-7 gap-0.5 px-2 pb-2">
             {cells.map((cell, i) => {
               const disabled = isDisabled(cell.date) || cell.month !== 'cur';
               const selected = isSelected(cell.date);
@@ -214,7 +214,7 @@ export function DateTimePicker({
                   disabled={disabled}
                   onClick={() => pickDay(cell)}
                   className={`
-                    relative h-9 w-full rounded-xl text-xs font-medium transition-all duration-150
+                    relative h-7 w-full rounded-lg text-xs font-medium transition-all duration-150
                     flex items-center justify-center
                     ${disabled
                       ? 'text-zinc-700 cursor-not-allowed'
@@ -239,17 +239,17 @@ export function DateTimePicker({
           <div className="h-px bg-white/5 mx-4" />
 
           {/* ── Time picker ── */}
-          <div className="px-5 py-4">
-            <div className="flex items-center gap-2 mb-3">
+          <div className="px-3 py-2">
+            <div className="flex items-center gap-1.5 mb-2">
               <Clock className="h-3.5 w-3.5 text-emerald-400" />
               <span className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">Time</span>
             </div>
             <div className="flex items-center gap-3">
               {/* Hour drum */}
               <div className="flex-1">
-                <div className="text-[10px] text-zinc-600 mb-1.5 text-center uppercase tracking-wider">Hour</div>
+                <div className="text-[9px] text-zinc-600 mb-1 text-center uppercase tracking-wider">Hour</div>
                 <div className="
-                  h-24 overflow-y-auto rounded-xl bg-black/40 border border-white/8
+                  h-20 overflow-y-auto rounded-lg bg-black/40 border border-white/8
                   scroll-smooth
                   [&::-webkit-scrollbar]:hidden
                 ">
@@ -276,9 +276,9 @@ export function DateTimePicker({
 
               {/* Minute drum */}
               <div className="flex-1">
-                <div className="text-[10px] text-zinc-600 mb-1.5 text-center uppercase tracking-wider">Min</div>
+                <div className="text-[9px] text-zinc-600 mb-1 text-center uppercase tracking-wider">Min</div>
                 <div className="
-                  h-24 overflow-y-auto rounded-xl bg-black/40 border border-white/8
+                  h-20 overflow-y-auto rounded-lg bg-black/40 border border-white/8
                   [&::-webkit-scrollbar]:hidden
                 ">
                   {minutes5.map(m => (
@@ -303,10 +303,10 @@ export function DateTimePicker({
               {/* Live preview */}
               <div className="flex-1 flex flex-col items-center justify-center gap-1">
                 <div className="
-                  w-full rounded-xl bg-emerald-500/10 border border-emerald-500/20
-                  flex flex-col items-center justify-center py-3
+                  w-full rounded-lg bg-emerald-500/10 border border-emerald-500/20
+                  flex flex-col items-center justify-center py-2
                 ">
-                  <span className="text-2xl font-bold text-emerald-400 tabular-nums tracking-tight">
+                  <span className="text-xl font-bold text-emerald-400 tabular-nums tracking-tight">
                     {pad(hour)}:{pad(minute)}
                   </span>
                   {selDate && (
@@ -320,12 +320,12 @@ export function DateTimePicker({
           </div>
 
           {/* ── Action buttons ── */}
-          <div className="flex gap-2 px-5 pb-5">
+          <div className="flex gap-2 px-3 pb-3">
             <button
               type="button"
               onClick={() => setOpen(false)}
               className="
-                flex-1 py-2.5 rounded-xl text-sm font-medium
+                flex-1 py-1.5 rounded-lg text-sm font-medium
                 bg-white/5 border border-white/10 text-zinc-400
                 hover:bg-white/10 hover:text-white transition-all
               "
@@ -337,7 +337,7 @@ export function DateTimePicker({
               onClick={confirm}
               disabled={!selDate}
               className="
-                flex-1 py-2.5 rounded-xl text-sm font-semibold text-white
+                flex-1 py-1.5 rounded-lg text-sm font-semibold text-white
                 bg-gradient-to-r from-emerald-600 to-emerald-500
                 shadow-[0_4px_16px_rgba(16,185,129,0.4)]
                 disabled:opacity-40 disabled:cursor-not-allowed
