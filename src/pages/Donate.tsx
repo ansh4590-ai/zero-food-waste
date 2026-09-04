@@ -38,6 +38,7 @@ import { MapContainer, TileLayer, Marker, useMap } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 import { AddressAutocomplete } from "../components/common/AddressAutocomplete";
+import { DateTimePicker } from "../components/common/DateTimePicker";
 import type { Suggestion } from "../hooks/useAddressAutocomplete";
 import {
   suggestListingDetails,
@@ -99,6 +100,9 @@ export default function Donate() {
   const [addressInput, setAddressInput] = useState("");
   const [mapCenter, setMapCenter] = useState<[number, number]>([0, 0]);
   const [hasLocation, setHasLocation] = useState(false);
+  const [expiry, setExpiry] = useState("");
+  const [pickupStart, setPickupStart] = useState("");
+  const [pickupEnd, setPickupEnd] = useState("");
 
   // ─── AI Feature State ─────────────────────────────────────────────────────
   const [aiSuggestion, setAiSuggestion] = useState<AISuggestion | null>(null);
@@ -832,16 +836,15 @@ export default function Donate() {
                       <label htmlFor="expiry" className="block text-sm font-medium text-foreground mb-1.5">
                         Expiry / Best Before <span className="text-red-500">*</span>
                       </label>
-                      <div className="relative">
-                        <Clock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                        <Input 
-                          id="expiry" 
-                          name="expiry" 
-                          type="datetime-local" 
-                          className="pl-10 bg-muted/30 focus-visible:ring-emerald-500/50" 
-                          required 
-                        />
-                      </div>
+                      <DateTimePicker
+                        id="expiry"
+                        name="expiry"
+                        value={expiry}
+                        onChange={(iso) => setExpiry(iso)}
+                        placeholder="Pick expiry date & time"
+                        minDate={new Date()}
+                        required
+                      />
                     </div>
 
                     {/* Structured Pickup Window */}
@@ -855,16 +858,15 @@ export default function Donate() {
                       <div className="flex flex-col sm:flex-row items-center gap-3">
                         <div className="w-full">
                           <label htmlFor="pickupStart" className="block text-xs font-medium text-muted-foreground mb-1">Pickup Start</label>
-                          <div className="relative">
-                            <Clock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                            <Input 
-                              id="pickupStart" 
-                              name="pickupStart" 
-                              type="datetime-local" 
-                              className="pl-10 bg-background border-border focus-visible:ring-emerald-500/50 shadow-sm" 
-                              required 
-                            />
-                          </div>
+                          <DateTimePicker
+                            id="pickupStart"
+                            name="pickupStart"
+                            value={pickupStart}
+                            onChange={(iso) => setPickupStart(iso)}
+                            placeholder="Start time"
+                            minDate={new Date()}
+                            required
+                          />
                         </div>
                         
                         <ArrowRight className="h-5 w-5 text-emerald-500/50 hidden sm:block shrink-0 mt-5" />
@@ -872,16 +874,15 @@ export default function Donate() {
 
                         <div className="w-full">
                           <label htmlFor="pickupEnd" className="block text-xs font-medium text-muted-foreground mb-1">Pickup End</label>
-                          <div className="relative">
-                            <Clock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                            <Input 
-                              id="pickupEnd" 
-                              name="pickupEnd" 
-                              type="datetime-local" 
-                              className="pl-10 bg-background border-border focus-visible:ring-emerald-500/50 shadow-sm" 
-                              required 
-                            />
-                          </div>
+                          <DateTimePicker
+                            id="pickupEnd"
+                            name="pickupEnd"
+                            value={pickupEnd}
+                            onChange={(iso) => setPickupEnd(iso)}
+                            placeholder="End time"
+                            minDate={new Date()}
+                            required
+                          />
                         </div>
                       </div>
                     </div>

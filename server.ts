@@ -97,7 +97,7 @@ const PORT = parseInt(process.env.PORT || '3000', 10);
             "https://*.firebaseio.com",
             "wss://*.firebaseio.com",
             // Map / Geocoding APIs
-            "https://photon.komoot.io",          // Address autocomplete
+            "https://places.googleapis.com",          // Google Places REST API
             "https://nominatim.openstreetmap.org", // Reverse geocoding
             "https://*.tile.openstreetmap.org",   // Map tiles
           ],
@@ -229,7 +229,7 @@ Return ONLY valid JSON with no markdown or extra text:
 }`;
 
       const response = await ai.models.generateContent({
-        model: "gemini-2.0-flash",
+        model: "gemini-2.5-flash",
         contents: [
           {
             role: "user",
@@ -282,28 +282,21 @@ Return ONLY valid JSON with no markdown or extra text:
 
       res.json(finalResult);
     } catch (error: unknown) {
-      console.error("Classification error details:", error);
-      
-      // Graceful fallback for ANY AI failure (quota, invalid model, invalid key)
-      // This prevents the frontend from crashing during demos or if API limits change
-      console.warn("AI failed to classify. Using graceful fallback.");
-      return res.json({
+      const errMsg = error instanceof Error ? error.message : String(error);
+      console.error("[classify] Gemini API error:", errMsg);
+      console.error("[classify] Full error:", error);
+      return res.status(503).json({
+        error: `AI classification failed: ${errMsg}`,
         is_food: true,
-        title: "Paneer Sabji and Dal",
-        quantity_description: "2 servings",
-        freshness_score: 90,
-        estimated_safe_hours: 6,
-        confidence_score: 85,
-        predicted_category: "Cooked Meals",
-        spoilage_risk: "low",
-        priority_score: 75,
-        quality_status: "excellent",
-        is_veg: true,
-        food_name: "Paneer Sabji and Dal",
-        quantity: "2 servings",
-        safe_hours: 6,
-        "veg/nonveg": "veg",
-        confidence: 85
+        title: "",
+        quantity_description: "",
+        freshness_score: null,
+        estimated_safe_hours: null,
+        confidence_score: 0,
+        predicted_category: "cooked_meal",
+        spoilage_risk: "medium",
+        priority_score: 50,
+        quality_status: "usable",
       });
     }
   });
