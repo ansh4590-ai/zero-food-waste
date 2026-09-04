@@ -129,15 +129,20 @@ export function DateTimePicker({
   const hours24  = Array.from({ length: 24 }, (_, i) => i);
   const minutes5 = Array.from({ length: 12 }, (_, i) => i * 5);
 
-  /* ── Panel placement ── */
+  /* ── Panel placement — clamped to viewport ── */
   const panelStyle: React.CSSProperties = rect
-    ? {
-        position: 'fixed',
-        top: rect.bottom + 6,
-        left: rect.left,
-        width: Math.max(rect.width, 520),
-        zIndex: 9999,
-      }
+    ? (() => {
+        const PANEL_W = 460;
+        const vw = window.innerWidth;
+        const left = Math.min(rect.left, vw - PANEL_W - 8);
+        return {
+          position: 'fixed' as const,
+          top: rect.bottom + 4,
+          left: Math.max(8, left),
+          width: PANEL_W,
+          zIndex: 9999,
+        };
+      })()
     : { display: 'none' };
 
   /* ── Portal panel ── */
@@ -190,7 +195,7 @@ export function DateTimePicker({
               return (
                 <button key={i} type="button" disabled={disabled} onClick={() => pickDay(cell)}
                   className={`
-                    relative h-6 w-full rounded text-[11px] font-medium transition-all duration-150
+                    relative h-5 w-full rounded text-[11px] font-medium transition-all duration-150
                     flex items-center justify-center
                     ${disabled
                       ? 'text-zinc-700 cursor-not-allowed'
@@ -216,32 +221,32 @@ export function DateTimePicker({
         <div className="w-px bg-white/5 my-3" />
 
         {/* RIGHT — Time drums */}
-        <div className="w-[160px] shrink-0 p-3 flex flex-col gap-2">
-          <div className="text-[9px] font-semibold text-zinc-500 uppercase tracking-wider mb-1">Time</div>
+        <div className="w-[130px] shrink-0 p-2.5 flex flex-col gap-1.5">
+          <div className="text-[9px] font-semibold text-zinc-500 uppercase tracking-wider">Time</div>
 
           <div className="flex items-start gap-1.5">
             {/* Hour */}
             <div className="flex-1">
-              <div className="text-[9px] text-zinc-600 mb-1 text-center uppercase tracking-wider">Hr</div>
-              <div className="h-[120px] overflow-y-auto rounded-lg bg-black/40 border border-white/8 [&::-webkit-scrollbar]:hidden scroll-smooth">
+              <div className="text-[9px] text-zinc-600 mb-0.5 text-center uppercase tracking-wider">Hr</div>
+              <div className="h-[108px] overflow-y-auto rounded bg-black/40 border border-white/8 [&::-webkit-scrollbar]:hidden scroll-smooth">
                 {hours24.map(h => (
                   <button key={h} type="button" onClick={() => setHour(h)}
-                    className={`w-full py-1 text-xs text-center transition-colors duration-100
+                    className={`w-full py-0.5 text-[11px] text-center transition-colors duration-100
                       ${h === hour ? 'bg-emerald-500/20 text-emerald-400 font-bold' : 'text-zinc-400 hover:text-white hover:bg-white/5'}`}
                   >{pad(h)}</button>
                 ))}
               </div>
             </div>
 
-            <div className="text-zinc-600 text-lg font-light mt-6">:</div>
+            <div className="text-zinc-600 text-sm font-light mt-5">:</div>
 
             {/* Minute */}
             <div className="flex-1">
-              <div className="text-[9px] text-zinc-600 mb-1 text-center uppercase tracking-wider">Min</div>
-              <div className="h-[120px] overflow-y-auto rounded-lg bg-black/40 border border-white/8 [&::-webkit-scrollbar]:hidden">
+              <div className="text-[9px] text-zinc-600 mb-0.5 text-center uppercase tracking-wider">Min</div>
+              <div className="h-[108px] overflow-y-auto rounded bg-black/40 border border-white/8 [&::-webkit-scrollbar]:hidden">
                 {minutes5.map(m => (
                   <button key={m} type="button" onClick={() => setMinute(m)}
-                    className={`w-full py-1 text-xs text-center transition-colors duration-100
+                    className={`w-full py-0.5 text-[11px] text-center transition-colors duration-100
                       ${m === minute ? 'bg-emerald-500/20 text-emerald-400 font-bold' : 'text-zinc-400 hover:text-white hover:bg-white/5'}`}
                   >{pad(m)}</button>
                 ))}
