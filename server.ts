@@ -54,8 +54,8 @@ const PORT = parseInt(process.env.PORT || '3000', 10);
   app.use(cors({
     origin: (origin, callback) => {
       // Allow requests with no origin (server-to-server, curl, mobile apps)
-      const isVercelOrigin = origin && origin.endsWith('.vercel.app');
-      if (!origin || isVercelOrigin || allowedOrigins.some(o => origin.startsWith(o))) {
+      const isVercelPreview = origin && /^https:\/\/zero-food-waste[a-zA-Z0-9-]*\.vercel\.app$/.test(origin);
+      if (!origin || allowedOrigins.includes(origin) || isVercelPreview) {
         callback(null, true);
       } else {
         callback(new Error('Not allowed by CORS'));
@@ -65,7 +65,48 @@ const PORT = parseInt(process.env.PORT || '3000', 10);
   }));
 
   // Standard security headers
-  app.use(helmet());
+  // In development, CSP is set permissively to allow Vite HMR, Supabase,
+  // Firebase, Google APIs, and any other external services the frontend uses.
+  // In production, Helmet's defaults are overridden to allow Supabase + Firebase.
+  const supabaseHost = (process.env.VITE_SUPABASE_URL || "").replace(/\/$/, "");
+  app.use(
+    helmet({
+      contentSecurityPolicy: {
+        directives: {
+          defaultSrc: ["'self'"],
+          scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'", "https://maps.googleapis.com"],
+          styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com", "https://maps.googleapis.com"],
+          fontSrc: ["'self'", "https://fonts.gstatic.com"],
+          imgSrc: ["'self'", "data:", "blob:", "https:", "https://maps.gstatic.com"],
+          connectSrc: [
+            "'self'",
+            // Vite HMR (dev only)
+            "http://localhost:*",
+            "ws://localhost:*",
+            // Supabase
+            supabaseHost,
+            `${supabaseHost}/`,
+            "https://*.supabase.co",
+            "wss://*.supabase.co",
+            // Google APIs (Vision, Gemini)
+            "https://*.googleapis.com",
+            "https://generativelanguage.googleapis.com",
+            // Firebase
+            "https://*.firebaseapp.com",
+            "https://*.firebase.com",
+            "https://*.firebaseio.com",
+            "wss://*.firebaseio.com",
+            // Map / Geocoding APIs
+            "https://photon.komoot.io",          // Address autocomplete
+            "https://nominatim.openstreetmap.org", // Reverse geocoding
+            "https://*.tile.openstreetmap.org",   // Map tiles
+          ],
+          frameSrc: ["'none'"],
+          objectSrc: ["'none'"],
+        },
+      },
+    })
+  );
 
   // Gzip/Brotli compression for all responses
   app.use(compression());
@@ -122,19 +163,21 @@ const PORT = parseInt(process.env.PORT || '3000', 10);
       if (!imageBase64) return res.status(400).json({ error: "imageBase64 is required" });
 
       // ─── MIME + SIZE VALIDATION ────────────────────────────────────────
-      const mimeMatch = imageBase64.match(/^data:(image\/(jpeg|png|webp|gif));base64,/);
-      if (imageBase64.startsWith('data:') && !mimeMatch) {
+      if (!imageBase64.startsWith('data:')) {
+        return res.status(400).json({ error: "Image must be provided as a data URI." });
+      }
+      const mimeMatch = imageBase64.match(/^data:(image\/(jpeg|png|webp));base64,/);
+      if (!mimeMatch) {
         return res.status(400).json({ error: "Invalid image format. Only JPEG, PNG, and WebP are accepted." });
       }
       // Estimate raw size from base64 length (~75% of base64 length)
       const rawBase64 = imageBase64.replace(/^data:image\/\w+;base64,/, "");
       const estimatedBytes = (rawBase64.length * 3) / 4;
       // 3MB raw ≈ 4MB once base64-encoded, staying under Vercel's ~4.5MB
-      // request-body cap. (Was 5MB raw ≈ 6.7MB encoded, which Vercel would
-      // reject with a 413 before this code ever ran.)
+      // request-body cap.
       const MAX_SIZE_BYTES = 3 * 1024 * 1024;
       if (estimatedBytes > MAX_SIZE_BYTES) {
-        return res.status(400).json({ error: "Image too large. Please upload an image under 5MB." });
+        return res.status(400).json({ error: "Image too large. Please upload an image under 3MB." });
       }
 
       // If no API key is provided, fall back to a mock response for the demo
@@ -160,35 +203,36 @@ const PORT = parseInt(process.env.PORT || '3000', 10);
       }
 
       // Reuse mimeMatch from validation above to get the correct MIME type
-      const detectedMime = (mimeMatch?.[1] || "image/jpeg") as "image/jpeg" | "image/png" | "image/webp" | "image/gif";
+      const detectedMime = (mimeMatch?.[1] || "image/jpeg") as "image/jpeg" | "image/png" | "image/webp";
       const base64Data = imageBase64.replace(/^data:image\/[a-zA-Z0-9+.-]+;base64,/, "");
 
-      const elitePrompt = `You are an expert Indian food recognition AI system.
-Analyze the uploaded image carefully.
+      const elitePrompt = `You are a world-class food recognition AI. Analyze the uploaded image carefully and identify the food accurately regardless of cuisine (Indian, Italian, Chinese, Mexican, etc.).
 
 If the image does NOT contain food, return ONLY this JSON:
 {"is_food": false, "reason": "No food detected in the image"}
 
-If food IS detected, identify Indian food items accurately:
-roti, sabji, dal, rice, biryani, paneer, idli, dosa, samosa, burger, sandwich, pizza, noodles, mithai/sweets, fruits, vegetables.
+If food IS detected, identify it accurately. Examples of what to detect:
+- Indian: roti, dal, biryani, paneer curry, idli, dosa, samosa, khichdi, chole, rajma
+- International: spaghetti, pasta, pizza, burger, sandwich, sushi, noodles, fried rice, soup
+- General: fruits, vegetables, salad, bread, desserts, packaged food
 
-Return ONLY this JSON with no markdown or extra text:
+Return ONLY valid JSON with no markdown or extra text:
 {
   "is_food": true,
-  "food_name": "Paneer Sabji with Roti",
-  "quantity": "2-3 servings",
-  "freshness_score": 88,
-  "safe_hours": 8,
-  "veg/nonveg": "veg",
-  "confidence": 94,
-  "predicted_category": "Cooked Meals",
-  "spoilage_risk": "medium",
-  "priority_score": 90,
-  "quality_status": "good"
+  "food_name": "<accurate name of the dish, e.g. Spaghetti Marinara>",
+  "quantity": "<estimated servings>",
+  "freshness_score": <0-100>,
+  "safe_hours": <estimated hours food is safe to eat>,
+  "veg/nonveg": "<veg or nonveg>",
+  "confidence": <0-100>,
+  "predicted_category": "<one of: Cooked Meals, Fresh Produce, Bakery, Packaged Food, Beverages, Other>",
+  "spoilage_risk": "<low, medium, high, or critical>",
+  "priority_score": <0-100>,
+  "quality_status": "<excellent, good, usable, or risky>"
 }`;
 
       const response = await ai.models.generateContent({
-        model: "gemini-flash-latest",
+        model: "gemini-2.0-flash",
         contents: [
           {
             role: "user",
@@ -573,12 +617,11 @@ Return ONLY this JSON with no markdown or extra text:
       if (!aadhaar_path || !selfie_path) {
         return res.status(400).json({ error: "aadhaar_path and selfie_path required" });
       }
-      // This confirms the caller is *logged in*, but doesn't yet confirm
-      // aadhaar_path/selfie_path actually belong to req.user!.id — add that
-      // check once I know your storage path convention for the
-      // identity_docs bucket (verify-qr/abort below already do the
-      // equivalent right, using req.user!.id instead of trusting a
-      // client-supplied id — same idea would apply here).
+      
+      const userId = req.user!.id;
+      if (!aadhaar_path.includes(userId) || !selfie_path.includes(userId)) {
+        return res.status(403).json({ error: "Unauthorized access to document paths" });
+      }
 
       // Download from supabase with graceful failure for demo mode
       const downloadDocument = async (path: string) => {
@@ -603,7 +646,7 @@ Return ONLY this JSON with no markdown or extra text:
     }
   });
 
-  // 16. Secure Admin Register endpoint
+  // 17. Secure Admin Register endpoint
   app.post("/api/auth/register-admin", adminRegisterLimiter, async (req, res) => {
     const { fullName, email, password, adminSecret } = req.body;
 
@@ -787,13 +830,12 @@ Return ONLY this JSON with no markdown or extra text:
   //    <CRON_SECRET>` attached automatically once CRON_SECRET is set in your
   //    Vercel env vars — see the "crons" entry in vercel.json.
   //  - POST stays available for manual/admin triggering, passing the same
-  //    secret as `?key=` (reusing ADMIN_SECRET_KEY if CRON_SECRET isn't set,
-  //    so there's no second secret to manage).
+  //    secret as `?key=`.
   const cleanupStaleHandler = async (req: express.Request, res: express.Response) => {
     const provided =
       req.headers.authorization?.replace(/^Bearer\s+/i, "") ||
       (req.query?.key as string | undefined);
-    const expected = process.env.CRON_SECRET || process.env.ADMIN_SECRET_KEY;
+    const expected = process.env.CRON_SECRET;
     if (!expected || provided !== expected) {
       return res.status(403).json({ error: "Forbidden" });
     }

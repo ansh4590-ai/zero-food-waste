@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
@@ -6,12 +6,13 @@ import { useLoadingStore } from "../../store";
 import { supabase } from "../../lib/supabase";
 import { toast } from "sonner";
 import { AuthLayout } from "../../components/auth/AuthLayout";
+import { AddressAutocomplete } from "../../components/common/AddressAutocomplete";
+import type { Suggestion } from "../../hooks/useAddressAutocomplete";
 
 export default function DonorSignup() {
   const navigate = useNavigate();
   const { isLoading, setLoading } = useLoadingStore();
   
-  const autoCompleteRef = useRef<HTMLInputElement>(null);
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -19,47 +20,16 @@ export default function DonorSignup() {
     phone: "",
     donorType: "restaurant",
     address: "",
+    lat: 0,
+    lng: 0,
   });
 
-  useEffect(() => {
-    let scriptLoaded = false;
-    
-    const initAutocomplete = () => {
-      // @ts-ignore
-      if (!window.google || !window.google.maps || !window.google.maps.places || !autoCompleteRef.current) return;
-
-      // @ts-ignore
-      const autocomplete = new window.google.maps.places.Autocomplete(autoCompleteRef.current, {
-        fields: ["formatted_address", "geometry", "name"],
-      });
-
-      autocomplete.addListener("place_changed", () => {
-        const place = autocomplete.getPlace();
-        if (place.formatted_address) {
-          setFormData(prev => ({ ...prev, address: place.formatted_address }));
-        } else if (place.name) {
-          setFormData(prev => ({ ...prev, address: place.name }));
-        }
-      });
-    };
-
-    if (!document.querySelector(`script[src*="maps.googleapis.com/maps/api/js"]`)) {
-      const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || "";
-      if (apiKey) {
-        const script = document.createElement("script");
-        script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places`;
-        script.async = true;
-        script.defer = true;
-        script.onload = initAutocomplete;
-        document.head.appendChild(script);
-        scriptLoaded = true;
-      } else {
-        console.warn("VITE_GOOGLE_MAPS_API_KEY is missing. Autocomplete will not work.");
-      }
-    } else {
-      setTimeout(initAutocomplete, 500);
-    }
-  }, []);
+  const handleAddressSelect = (suggestion: Suggestion) => {
+    const fullAddress = suggestion.secondaryText
+      ? `${suggestion.primaryText}, ${suggestion.secondaryText}`
+      : suggestion.primaryText;
+    setFormData(prev => ({ ...prev, address: fullAddress, lat: suggestion.lat, lng: suggestion.lng }));
+  };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -167,14 +137,14 @@ export default function DonorSignup() {
 
         <div className="space-y-2">
           <label className="text-sm font-medium leading-none text-zinc-300">Address</label>
-          <Input 
-            name="address" 
-            ref={autoCompleteRef}
-            placeholder="Start typing address..." 
-            required 
-            value={formData.address} 
-            onChange={handleChange} 
-            className="bg-zinc-900/50 border-white/10 text-white placeholder:text-zinc-500 focus-visible:ring-emerald-500" 
+          <AddressAutocomplete
+            name="address"
+            value={formData.address}
+            onChange={(val) => setFormData(prev => ({ ...prev, address: val }))}
+            onSelect={handleAddressSelect}
+            placeholder="Start typing address or pincode..."
+            className="bg-zinc-900/50 border-white/10 text-white placeholder:text-zinc-500 focus-visible:ring-emerald-500"
+            required
           />
         </div>
 

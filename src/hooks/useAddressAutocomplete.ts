@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 
 export interface Suggestion {
   id: string;
@@ -8,110 +8,157 @@ export interface Suggestion {
   lng: number;
 }
 
-interface PhotonFeature {
-  properties: {
-    osm_id?: number;
-    name?: string;
-    street?: string;
-    city?: string;
-    state?: string;
-    country?: string;
-    postcode?: string;
-  };
-  geometry: {
-    coordinates: [number, number];
-  };
+// Extend window to include Google Maps types
+declare global {
+  interface Window {
+    google: typeof google;
+    initGoogleMapsAutocomplete?: () => void;
+  }
 }
 
+// ── Load the Google Maps JS SDK once (idempotent) ─────────────────────────────
+let googleMapsLoaded = false;
+let googleMapsLoading = false;
+const googleMapsCallbacks: Array<() => void> = [];
+
+function loadGoogleMaps(apiKey: string): Promise<void> {
+  return new Promise((resolve) => {
+    if (googleMapsLoaded) { resolve(); return; }
+    googleMapsCallbacks.push(resolve);
+    if (googleMapsLoading) return;
+
+    googleMapsLoading = true;
+    window.initGoogleMapsAutocomplete = () => {
+      googleMapsLoaded = true;
+      googleMapsCallbacks.forEach(cb => cb());
+      googleMapsCallbacks.length = 0;
+    };
+
+    const script = document.createElement('script');
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places&callback=initGoogleMapsAutocomplete`;
+    script.async = true;
+    script.defer = true;
+    document.head.appendChild(script);
+  });
+}
+
+// ── Hook ──────────────────────────────────────────────────────────────────────
 export function useAddressAutocomplete(query: string) {
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // In-memory cache for API responses to prevent redundant network calls
+  const serviceRef = useRef<google.maps.places.AutocompleteService | null>(null);
+  const geocoderRef = useRef<google.maps.Geocoder | null>(null);
   const cacheRef = useRef<Map<string, Suggestion[]>>(new Map());
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Initialise services once the SDK is ready
+  const initServices = useCallback(() => {
+    if (!serviceRef.current && window.google?.maps?.places) {
+      serviceRef.current = new window.google.maps.places.AutocompleteService();
+    }
+    if (!geocoderRef.current && window.google?.maps) {
+      geocoderRef.current = new window.google.maps.Geocoder();
+    }
+  }, []);
+
+  // Ensure SDK is loaded on mount
+  useEffect(() => {
+    const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
+    if (!apiKey) {
+      console.warn('VITE_GOOGLE_MAPS_API_KEY is not set — address autocomplete disabled.');
+      return;
+    }
+    loadGoogleMaps(apiKey).then(initServices);
+  }, [initServices]);
 
   useEffect(() => {
-    const trimmedQuery = query.trim();
-    
-    // 1. Minimum Query Length Rule
-    if (trimmedQuery.length < 3) {
+    const trimmed = query.trim();
+
+    if (trimmed.length < 3) {
       setSuggestions([]);
       setError(null);
       return;
     }
 
-    // 2. Check Cache
-    const cacheKey = trimmedQuery.toLowerCase();
+    // Cache hit
+    const cacheKey = trimmed.toLowerCase();
     if (cacheRef.current.has(cacheKey)) {
-      setSuggestions(cacheRef.current.get(cacheKey) || []);
-      setError(null);
+      setSuggestions(cacheRef.current.get(cacheKey)!);
       return;
     }
 
-    // 3. Setup Debounce & AbortController
-    setIsLoading(true);
-    setError(null);
-    const abortController = new AbortController();
+    // Debounce
+    if (debounceRef.current) clearTimeout(debounceRef.current);
 
-    const fetchTimer = setTimeout(async () => {
-      try {
-        const res = await fetch(
-          `https://photon.komoot.io/api/?q=${encodeURIComponent(trimmedQuery)}&limit=5`,
-          { signal: abortController.signal }
-        );
+    debounceRef.current = setTimeout(() => {
+      initServices();
+      const service = serviceRef.current;
+      const geocoder = geocoderRef.current;
 
-        if (!res.ok) {
-          throw new Error('Failed to fetch address suggestions');
-        }
-
-        const data = await res.json();
-        
-        // 4. Format GeoJSON response
-        const formattedSuggestions: Suggestion[] = (data.features || []).map((f: PhotonFeature) => {
-          const props = f.properties;
-          
-          // Construct primary text (name of the place, or street)
-          const primaryText = props.name || props.street || props.city || "Unknown Location";
-          
-          // Construct secondary text (city, state, country, postcode)
-          const secondaryParts = [];
-          if (props.city && props.city !== primaryText) secondaryParts.push(props.city);
-          if (props.state) secondaryParts.push(props.state);
-          if (props.country) secondaryParts.push(props.country);
-          if (props.postcode) secondaryParts.push(props.postcode);
-          
-          const secondaryText = secondaryParts.join(', ');
-
-          return {
-            id: `${props.osm_id}-${Math.random()}`,
-            primaryText,
-            secondaryText,
-            lat: f.geometry.coordinates[1],
-            lng: f.geometry.coordinates[0],
-          };
-        });
-
-        // Update Cache
-        cacheRef.current.set(cacheKey, formattedSuggestions);
-        
-        setSuggestions(formattedSuggestions);
-      } catch (err: unknown) {
-        if ((err as Error).name !== 'AbortError') {
-          setError((err as Error).message || 'An error occurred');
-          setSuggestions([]);
-        }
-      } finally {
-        setIsLoading(false);
+      if (!service || !geocoder) {
+        // SDK not loaded yet — silently skip
+        return;
       }
-    }, 400); // 400ms debounce
 
-    // Cleanup function runs on unmount or before the next effect runs
+      setIsLoading(true);
+      setError(null);
+
+      service.getPlacePredictions(
+        {
+          input: trimmed,
+          componentRestrictions: { country: 'in' }, // Restrict to India
+          types: ['geocode', 'establishment'],
+        },
+        async (predictions, status) => {
+          if (
+            status !== window.google.maps.places.PlacesServiceStatus.OK ||
+            !predictions?.length
+          ) {
+            setSuggestions([]);
+            setIsLoading(false);
+            if (status !== window.google.maps.places.PlacesServiceStatus.ZERO_RESULTS) {
+              setError('Could not fetch suggestions');
+            }
+            return;
+          }
+
+          // Geocode each prediction to get lat/lng
+          try {
+            const resolved = await Promise.all(
+              predictions.slice(0, 5).map(async (p) => {
+                return new Promise<Suggestion>((res) => {
+                  geocoder.geocode({ placeId: p.place_id }, (results, gStatus) => {
+                    const loc = results?.[0]?.geometry?.location;
+                    res({
+                      id: p.place_id,
+                      primaryText: p.structured_formatting.main_text,
+                      secondaryText: p.structured_formatting.secondary_text || '',
+                      lat: loc ? loc.lat() : 0,
+                      lng: loc ? loc.lng() : 0,
+                    });
+                  });
+                });
+              })
+            );
+
+            const valid = resolved.filter(s => s.lat !== 0 || s.lng !== 0);
+            cacheRef.current.set(cacheKey, valid);
+            setSuggestions(valid);
+          } catch {
+            setError('Failed to resolve locations');
+          } finally {
+            setIsLoading(false);
+          }
+        }
+      );
+    }, 350);
+
     return () => {
-      clearTimeout(fetchTimer);
-      abortController.abort();
+      if (debounceRef.current) clearTimeout(debounceRef.current);
     };
-  }, [query]);
+  }, [query, initServices]);
 
   return { suggestions, isLoading, error, setSuggestions };
 }
