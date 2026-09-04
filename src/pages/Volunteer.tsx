@@ -1038,6 +1038,7 @@ export default function Volunteer() {
           .custom-popup .leaflet-popup-content-wrapper { background: transparent !important; padding: 0 !important; box-shadow: none !important; border-radius: 12px; overflow: hidden; }
           .custom-popup .leaflet-popup-tip-container { display: none !important; }
           @keyframes ping { 75%, 100% { transform: scale(2); opacity: 0; } }
+          .dark-tiles { filter: invert(100%) hue-rotate(180deg) brightness(95%) contrast(90%); }
         `}</style>
 
       {/* KYC Banner */}
@@ -1520,7 +1521,10 @@ export default function Volunteer() {
             zoomControl={false}
             attributionControl={false}
           >
-            <TileLayer url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png" />
+            <TileLayer 
+              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" 
+              className="dark-tiles"
+            />
             <DynamicMapController
               tasks={combinedTasks}
               activeTaskId={activeTaskId}

@@ -36,7 +36,7 @@ const FleetMap: React.FC<FleetMapProps> = React.memo(function FleetMap({ fleetTa
       zoomControl={true}
       attributionControl={false}
     >
-      <TileLayer url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png" />
+      <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
       {fleetTasks.map((task) => {
         const volLoc = getVolunteerLocation(task);
         const req = getFirstRequest(task);
