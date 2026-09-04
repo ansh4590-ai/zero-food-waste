@@ -166,7 +166,6 @@ const PORT = parseInt(process.env.PORT || '3000', 10);
       url.searchParams.set('input', String(input));
       url.searchParams.set('key', apiKey);
       url.searchParams.set('components', 'country:in');
-      url.searchParams.set('types', 'geocode|establishment');
       url.searchParams.set('language', 'en');
 
       const r = await fetch(url.toString());
