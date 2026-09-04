@@ -169,7 +169,11 @@ const PORT = parseInt(process.env.PORT || '3000', 10);
       url.searchParams.set('language', 'en');
 
       const r = await fetch(url.toString());
-      const data = await r.json() as { predictions?: unknown[]; status?: string };
+      const data = await r.json() as { predictions?: unknown[]; status?: string; error_message?: string };
+      
+      // Debug: log what Google actually returned
+      console.log(`[places/autocomplete] query="${input}" status=${data.status} predictions=${(data.predictions ?? []).length}${data.error_message ? ` error="${data.error_message}"` : ''}`);
+      
       res.json({ predictions: data.predictions ?? [], status: data.status });
     } catch (err) {
       console.error('[places/autocomplete]', err);
