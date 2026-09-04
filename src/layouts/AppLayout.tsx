@@ -23,6 +23,7 @@ import { useTheme } from "../components/ThemeProvider";
 import { NotificationBell } from "../components/NotificationBell";
 import { Button } from "../components/ui/button";
 import { AIChatbot } from "../components/AIChatbot";
+import { toast } from "sonner";
 
 export default function AppLayout() {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
@@ -239,7 +240,7 @@ export default function AppLayout() {
               type="text" 
               placeholder="Search everywhere..." 
               readOnly 
-              onClick={() => alert("Global search is coming soon!")}
+              onClick={() => toast.info("Global search is coming soon!", { description: "We're indexing the platform data." })}
             />
           </div>
         </div>
