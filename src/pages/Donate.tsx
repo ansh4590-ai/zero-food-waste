@@ -963,16 +963,16 @@ export default function Donate() {
                   {/* Expiry */}
                   <div className="bg-muted/30 rounded-xl p-4 border border-border">
                     <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">Expiry / Best Before</p>
-                    <p className="text-sm font-medium text-foreground">{new Date(reviewData.expiry).toLocaleString()}</p>
+                    <p className="text-sm font-medium text-foreground">{new Date(reviewData.expiry).toLocaleString('en-IN')}</p>
                   </div>
 
                   {/* Pickup Window */}
                   <div className="bg-emerald-500/5 border border-emerald-500/20 rounded-xl p-4 md:col-span-2">
                     <p className="text-xs font-semibold uppercase tracking-wider text-emerald-600 mb-2">Pickup Window</p>
                     <div className="flex flex-wrap items-center gap-3 text-sm font-medium text-foreground">
-                      <span className="flex items-center gap-1.5"><Clock className="h-4 w-4 text-muted-foreground" />{new Date(reviewData.pickupStart).toLocaleString()}</span>
+                      <span className="flex items-center gap-1.5"><Clock className="h-4 w-4 text-muted-foreground" />{new Date(reviewData.pickupStart).toLocaleString('en-IN')}</span>
                       <ArrowRight className="h-4 w-4 text-muted-foreground" />
-                      <span className="flex items-center gap-1.5"><Clock className="h-4 w-4 text-muted-foreground" />{new Date(reviewData.pickupEnd).toLocaleString()}</span>
+                      <span className="flex items-center gap-1.5"><Clock className="h-4 w-4 text-muted-foreground" />{new Date(reviewData.pickupEnd).toLocaleString('en-IN')}</span>
                     </div>
                   </div>
 
