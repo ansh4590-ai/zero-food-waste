@@ -100,6 +100,7 @@ const PORT = parseInt(process.env.PORT || '3000', 10);
             "https://places.googleapis.com",          // Google Places REST API
             "https://nominatim.openstreetmap.org", // Reverse geocoding
             "https://*.tile.openstreetmap.org",   // Map tiles
+            "https://photon.komoot.io",           // Free autocomplete (OSM)
           ],
           frameSrc: ["'none'"],
           objectSrc: ["'none'"],
