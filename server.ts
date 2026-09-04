@@ -112,11 +112,8 @@ const PORT = parseInt(process.env.PORT || '3000', 10);
   app.use(compression());
 
   // Increase payload limit for base64 images.
-  // NOTE: on Vercel, the platform's own request-body cap (~4.5MB) applies
-  // BEFORE this is ever checked — anything bigger gets a 413 from Vercel's
-  // edge regardless of what's set here. Lowered from 10mb so Express's own
-  // limit (with a clearer error message) is the one that actually bites.
-  app.use(express.json({ limit: '4mb' }));
+  // 5MB images become ~6.6MB when base64 encoded.
+  app.use(express.json({ limit: '10mb' }));
 
   // ─── RATE LIMITERS ─────────────────────────────────────────────────────────
   const aiLimiter = rateLimit({
