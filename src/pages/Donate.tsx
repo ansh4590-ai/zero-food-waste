@@ -439,8 +439,12 @@ export default function Donate() {
     setSelectedFile(null);
     setAddressInput("");
     setHasLocation(false);
+    setExpiry("");
+    setPickupStart("");
+    setPickupEnd("");
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
+
 
   return (
     <div className="max-w-[1500px] mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-8">
