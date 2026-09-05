@@ -319,64 +319,100 @@ export default function Browse() {
                   </div>
                 </div>
                 <div className="p-4 flex-1 flex flex-col">
-                  <h3 className="text-lg font-semibold text-foreground line-clamp-1">{item.foodType}</h3>
-                  <div className="flex items-center gap-2 mb-3 mt-1">
-                    <span className="font-medium text-muted-foreground text-sm">{item.donor}</span>
-                    <TrustBadge type="organization" showText={false} />
-                  </div>
-                  <div className="space-y-2 mb-4 flex-1">
-                    <div className="flex items-center text-sm text-muted-foreground">
-                      <Utensils className="h-4 w-4 mr-2 text-muted-foreground" />
-                      {item.quantity}
+                  {/* Header: Title and Donor */}
+                  <div className="mb-4">
+                    <h3 className="text-lg font-bold text-foreground line-clamp-1 mb-1">{item.foodType}</h3>
+                    <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                      <span className="font-medium">{item.donor}</span>
+                      <TrustBadge type="organization" showText={false} />
                     </div>
-                    {item.freshnessScore != null && (
-                      <div className="flex items-center text-sm text-muted-foreground">
-                        <ShieldCheck className="h-4 w-4 mr-2 text-emerald-500" />
-                        <span className="text-emerald-600 dark:text-emerald-400 font-medium">Freshness: {item.freshnessScore}/100</span>
-                      </div>
-                    )}
-                    {item.qualityStatus && (
-                      <div className="flex items-center text-sm">
-                        <Leaf className="h-4 w-4 mr-2 text-blue-500" />
-                        <span className={`font-medium capitalize ${item.qualityStatus === 'excellent' ? 'text-emerald-600 dark:text-emerald-400' :
-                            item.qualityStatus === 'good' ? 'text-blue-600 dark:text-blue-400' :
-                              item.qualityStatus === 'usable' ? 'text-amber-600 dark:text-amber-400' :
-                                'text-red-600 dark:text-red-400'
-                          }`}>Quality: {item.qualityStatus}</span>
-                      </div>
-                    )}
+                  </div>
+
+                  {/* Body: Details Grid */}
+                  <div className="space-y-2.5 mb-5 flex-1">
+                    {/* Quantity */}
                     <div className="flex items-start text-sm text-muted-foreground">
-                      <MapPin className="h-4 w-4 mr-2 mt-0.5 text-gray-400 shrink-0" />
-                      <span className="line-clamp-2">{item.locationText}</span>
+                      <Utensils className="h-4 w-4 mr-2.5 mt-0.5 text-gray-400 shrink-0" />
+                      <span className="font-medium text-foreground/80">{item.quantity}</span>
                     </div>
 
-                    <div className="mt-3 bg-muted/40 p-2.5 rounded-md border border-border/50">
-                      <div className="flex items-start text-sm">
+                    {/* Freshness & Quality */}
+                    {(item.freshnessScore != null || item.qualityStatus) && (
+                      <div className="flex flex-wrap gap-y-2 gap-x-4">
+                        {item.freshnessScore != null && (
+                          <div className="flex items-center text-sm">
+                            <ShieldCheck className="h-4 w-4 mr-1.5 text-emerald-500" />
+                            <span className="text-emerald-600 dark:text-emerald-400 font-medium">
+                              Freshness: {item.freshnessScore}/100
+                            </span>
+                          </div>
+                        )}
+                        {item.qualityStatus && (
+                          <div className="flex items-center text-sm">
+                            <Leaf className="h-4 w-4 mr-1.5 text-blue-500" />
+                            <span className={`font-medium capitalize ${
+                              item.qualityStatus === 'excellent' ? 'text-emerald-600 dark:text-emerald-400' :
+                              item.qualityStatus === 'good' ? 'text-blue-600 dark:text-blue-400' :
+                              item.qualityStatus === 'usable' ? 'text-amber-600 dark:text-amber-400' :
+                              'text-red-600 dark:text-red-400'
+                            }`}>
+                              Quality: {item.qualityStatus}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Location */}
+                    <div className="flex items-start text-sm text-muted-foreground pt-1">
+                      <MapPin className="h-4 w-4 mr-2.5 mt-0.5 text-gray-400 shrink-0" />
+                      <span className="line-clamp-2 leading-snug">{item.locationText}</span>
+                    </div>
+
+                    {/* Pickup Window Box */}
+                    <div className="mt-4 bg-muted/30 p-3 rounded-lg border border-border/40 space-y-2">
+                      <div className="flex items-start">
                         <Clock className="h-4 w-4 mr-2 mt-0.5 text-muted-foreground shrink-0" />
                         <div className="flex flex-col">
-                          <span className="font-semibold text-foreground text-xs uppercase tracking-wider mb-0.5">Pickup Window</span>
-                          <span className="text-muted-foreground">{formatPickupWindow(item.pickupWindowStart, item.pickupWindowEnd)}</span>
+                          <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-0.5">
+                            Pickup Window
+                          </span>
+                          <span className="text-sm font-medium text-foreground">
+                            {formatPickupWindow(item.pickupWindowStart, item.pickupWindowEnd)}
+                          </span>
                         </div>
                       </div>
                       
                       {countdown && (
-                        <div className={`flex items-center text-xs font-semibold mt-2 pl-6 ${windowStatus === 'expired' ? 'text-red-500' :
-                            windowStatus === 'upcoming' ? 'text-amber-500' : 'text-emerald-600 dark:text-emerald-400'
-                          }`}>
-                          {windowStatus === 'upcoming' ? '⏳ Upcoming • ' : windowStatus === 'available' ? '✅ Available • ' : '❌ Expired • '}{countdown}
+                        <div className={`flex items-center text-xs font-semibold pl-6 ${
+                          windowStatus === 'expired' ? 'text-red-500' :
+                          windowStatus === 'upcoming' ? 'text-amber-500' : 
+                          'text-emerald-600 dark:text-emerald-400'
+                        }`}>
+                          {windowStatus === 'upcoming' ? '⏳ Upcoming • ' : 
+                           windowStatus === 'available' ? '✅ Available • ' : 
+                           '❌ Expired • '}{countdown}
                         </div>
                       )}
-                      <div className="flex items-center text-xs text-muted-foreground mt-1.5 pl-6">
-                        ⚠️ Expires: {item.expiresIn}
-                      </div>
+                      
+                      {item.expiresIn && (
+                        <div className="flex items-center text-xs text-muted-foreground pl-6">
+                          ⚠️ Expires: {item.expiresIn}
+                        </div>
+                      )}
                     </div>
                   </div>
+
+                  {/* Action Button */}
                   <Button
-                    className="w-full mt-auto"
+                    className="w-full mt-auto font-semibold shadow-sm"
+                    variant={isRequestable && !requestingIds.has(item.id) ? "default" : "secondary"}
                     onClick={() => setConfirmItem(item)}
                     disabled={requestingIds.has(item.id) || !isRequestable}
                   >
-                    {!isRequestable ? (windowStatus === 'upcoming' ? "Not Yet Open" : "Window Closed") : requestingIds.has(item.id) ? "Requesting…" : "Request Pickup"}
+                    {!isRequestable 
+                      ? (windowStatus === 'upcoming' ? "Not Yet Open" : "Window Closed") 
+                      : requestingIds.has(item.id) ? "Requesting…" : "Request Pickup"}
                   </Button>
                 </div>
               </div>

@@ -312,48 +312,54 @@ export default function Volunteer() {
   }, [user]);
 
   // ─── DATA TRANSFORMERS ──────────────────────────────────────────────────────
+  // openData now comes from volunteer_tasks with food_requests nested inside.
+  // Row shape: { id, request_id, status, created_at, food_requests: { id, drop_lat, drop_lng, receiver, food_listings } }
   const transformOpenRow = (row: Record<string, unknown>): VolunteerTask | null => {
-    const listing = Array.isArray(row.food_listings) ? row.food_listings[0] : row.food_listings;
+    const request = Array.isArray(row.food_requests) ? row.food_requests[0] : row.food_requests as Record<string, unknown>;
+    if (!request) return null;
+
+    const listing = Array.isArray(request.food_listings) ? request.food_listings[0] : request.food_listings as Record<string, unknown>;
     if (!listing) return null;
 
     if (!listing.pickup_lat || !listing.pickup_lng) {
-      console.error("❌ Missing pickup location", row);
+      if (import.meta.env.DEV) console.error("❌ Missing pickup location", row);
       return null;
     }
 
-    const pickupLat = listing.pickup_lat;
-    const pickupLng = listing.pickup_lng;
-    const dropoffLat = (row.drop_lat as number) ?? null;
-    const dropoffLng = (row.drop_lng as number) ?? null;
-    const receiverLocation = (row.receiver as any)?.location_text || "Location unavailable";
+    const pickupLat = listing.pickup_lat as number;
+    const pickupLng = listing.pickup_lng as number;
+    const dropoffLat = (request.drop_lat as number) ?? null;
+    const dropoffLng = (request.drop_lng as number) ?? null;
+    const receiverLocation = (request.receiver as any)?.location_text || "Location unavailable";
     const hasCoords = !!(pickupLat && pickupLng && dropoffLat && dropoffLng);
 
     return {
-      id: row.id as string,
-      requestId: row.id as string,
-      name: listing.title ?? "Food Donation",
-      quantity: listing.quantity_description ?? "–",
+      id: row.id as string,           // volunteer_task id (used for claiming)
+      requestId: request.id as string, // food_request id
+      name: listing.title as string ?? "Food Donation",
+      quantity: listing.quantity_description as string ?? "–",
       type: "pickup",
       status: row.status as string,
-      expiryTime: listing.expiry_time ?? null,
+      expiryTime: listing.expiry_time as string ?? null,
       createdAt: (row.created_at as string) ?? new Date().toISOString(),
-      pickupAddress: listing.location_name ?? "Pickup Location",
+      pickupAddress: listing.location_name as string ?? "Pickup Location",
       pickupLat,
       pickupLng,
-      pickupWindow: listing.pickup_window ?? "Flexible",
-      pickupWindowStart: listing.pickup_window_start,
-      pickupWindowEnd: listing.pickup_window_end,
+      pickupWindow: listing.pickup_window as string ?? "Flexible",
+      pickupWindowStart: listing.pickup_window_start as string ?? null,
+      pickupWindowEnd: listing.pickup_window_end as string ?? null,
       dropoffAddress: receiverLocation,
       dropoffLat,
       dropoffLng,
       volunteerLat: livePosRef.current.lat,
       volunteerLng: livePosRef.current.lng,
       hasCoords,
-      dbPriorityScore: listing.priority_score,
-      estimatedSafeHours: listing.estimated_safe_hours,
-      spoilageRisk: listing.spoilage_risk,
+      dbPriorityScore: listing.priority_score as number ?? null,
+      estimatedSafeHours: listing.estimated_safe_hours as number ?? null,
+      spoilageRisk: listing.spoilage_risk as string ?? null,
     };
   };
+
 
   // ─── FETCH PROFILE (separate from tasks — profile changes rarely) ──────────
   useEffect(() => {
@@ -396,18 +402,26 @@ export default function Volunteer() {
         (myTasksRaw ?? []).map((row: Record<string, unknown>) => row.request_id as string | undefined).filter(Boolean)
       );
 
-      const OPEN_REQUEST_STATUSES = ["pending"] as const;
+      // ── Open/Unassigned Tasks ──────────────────────────────────────────────
+      // Query volunteer_tasks directly for tasks that are open (no volunteer yet)
+      // OR pending_acceptance for a DIFFERENT volunteer (so current user can see
+      // broadcast tasks they haven't yet claimed).
+      // food_requests.volunteer_id does NOT exist — we use volunteer_tasks instead.
       const { data: openData, error: openError } = await supabase
-        .from(TABLES.FOOD_REQUESTS)
+        .from(TABLES.VOLUNTEER_TASKS)
         .select(`
-            id, status, volunteer_id, drop_lat, drop_lng, created_at,
-            receiver:profiles!food_requests_receiver_id_fkey(location_text),
-            food_listings!inner ( id, pickup_lat, pickup_lng, title, pickup_window, pickup_window_start, pickup_window_end, quantity_description, location_name, expiry_time, priority_score, estimated_safe_hours, spoilage_risk )
+            id, request_id, status, created_at,
+            food_requests!inner (
+              id, listing_id, drop_lat, drop_lng,
+              receiver:profiles!food_requests_receiver_id_fkey(location_text),
+              food_listings!inner ( id, pickup_lat, pickup_lng, title, pickup_window, pickup_window_start, pickup_window_end, quantity_description, location_name, expiry_time, priority_score, estimated_safe_hours, spoilage_risk )
+            )
           `)
-        .in("status", OPEN_REQUEST_STATUSES as unknown as string[])
-        .is("volunteer_id", null);
+        .in("status", ["open", "pending_acceptance"])
+        .is("volunteer_id", null); // Only show truly unclaimed tasks in the broadcast pool
 
       if (openError && import.meta.env.DEV) console.error("Supabase error [openData]:", openError);
+
 
       let mappedOpen = openData
         ? (openData.map(transformOpenRow).filter(Boolean) as VolunteerTask[])
