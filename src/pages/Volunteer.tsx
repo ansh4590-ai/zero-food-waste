@@ -6,7 +6,7 @@ import {
   MapPin, Navigation, CheckCircle2, RefreshCw, ShieldCheck,
   Route, Loader2, Clock, WifiOff, Package, Truck, Flag, AlertTriangle
 } from "lucide-react";
-import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from "react-leaflet";
+import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap, FeatureGroup } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 import { toast } from "sonner";
@@ -20,7 +20,6 @@ import { computePriorityScore, sortMultiTaskSequence, MultiTaskContext } from ".
 import { GEO_CONFIG, API_BASE, RPC, TABLES, VOLUNTEER_STATUS, ROUTABLE_STATUSES, MY_TASK_STATUSES } from "../lib/constants";
 import { getPickupWindowStatus, formatPickupCountdown } from "../lib/utils";
 import { TaskAssignmentModal } from "../components/TaskAssignmentModal";
-import { OTPModal } from "../components/OTPModal";
 import { QRScannerModal } from "../components/QRVerification";
 import { ProgressTimeline, VOLUNTEER_TIMELINE_STAGES } from "../components/ProgressTimeline";
 import { NeonBadge } from "../components/ui/NeonBadge";
@@ -221,8 +220,6 @@ export default function Volunteer() {
 
   const [missingLocationModal, setMissingLocationModal] = useState(false);
 
-  // OTP state
-  const [otpModal, setOtpModal] = useState<{ open: boolean; taskId: string; type: 'pickup' | 'delivery' }>({ open: false, taskId: '', type: 'pickup' });
   // QR scanner state
   const [qrScan, setQrScan] = useState<{ open: boolean; type: 'pickup' | 'delivery'; taskId: string }>({ open: false, type: 'pickup', taskId: '' });
   // Live countdown timer (consolidated)
@@ -443,7 +440,7 @@ export default function Volunteer() {
       mappedOpen = mappedOpen.filter(
         (task, index, self) => index === self.findIndex(t => t.requestId === task.requestId)
       );
-      mappedOpen = mappedOpen.sort((a, b) => (b.priorityScore ?? 0) - (a.priorityScore ?? 0));
+      mappedOpen = mappedOpen.sort((a, b) => (a.priorityScore ?? 0) - (b.priorityScore ?? 0));
       setOpenTasks(mappedOpen);
 
       let finalTasks: VolunteerTask[] = [];
@@ -670,26 +667,6 @@ export default function Volunteer() {
 
   // ─── ACTIONS ────────────────────────────────────────────────────────────────
 
-  /** Generate pickup OTP when task is claimed/accepted, so donor can see it */
-  const generateOTPForTask = async (taskId: string, otpType: 'pickup' | 'delivery') => {
-    try {
-      const res = await fetch(`${API_BASE}/tasks/${taskId}/generate-otp`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ otp_type: otpType }),
-      });
-      const data = await res.json();
-      if (data.success && data.otp) {
-        // The OTP is shown to donor/receiver via notification or their UI
-        // For now we just log it — the donor-side will display it
-        if (import.meta.env.DEV) console.log(`[OTP] ${otpType} OTP for task ${taskId} generated.`);
-      }
-    } catch (err) {
-      console.error("generateOTPForTask error:", err);
-      toast.error("Failed to generate OTP.");
-    }
-  };
-
   const handleAssignment = async (task: VolunteerTask, action: "accept" | "decline") => {
     if (loadingTaskId) return;
     setLoadingTaskId(task.id);
@@ -772,7 +749,7 @@ export default function Volunteer() {
         return;
       }
 
-      // Generate pickup OTP + QR token
+      // Pre-generate pickup QR token
       // We need the volunteer_task ID — refetch to get it
       const { data: newTask } = await supabase
         .from(TABLES.VOLUNTEER_TASKS)
@@ -819,10 +796,6 @@ export default function Volunteer() {
     }
   };
 
-  // ─── OTP-DRIVEN STATUS ADVANCE ──────────────────────────────────────────────
-  // Instead of directly advancing status, we open the OTP modal.
-  // The OTP RPC atomically advances the status upon successful verification.
-
   const checkGracePeriod = (task: VolunteerTask) => {
     const windowStatus = getPickupWindowStatus(task.pickupWindowStart, task.pickupWindowEnd);
     if (windowStatus === 'expired') {
@@ -830,17 +803,6 @@ export default function Volunteer() {
       return false;
     }
     return true;
-  };
-
-  const handleOpenPickupOTP = (task: VolunteerTask) => {
-    if (isOffline) { toast.error("You are offline. Cannot verify OTP."); return; }
-    if (!checkGracePeriod(task)) return;
-    setOtpModal({ open: true, taskId: task.id, type: 'pickup' });
-  };
-
-  const handleOpenDeliveryOTP = (task: VolunteerTask) => {
-    if (isOffline) { toast.error("You are offline. Cannot verify OTP."); return; }
-    setOtpModal({ open: true, taskId: task.id, type: 'delivery' });
   };
 
   // ─── QR-DRIVEN VERIFICATION ────────────────────────────────────────────────
@@ -899,64 +861,6 @@ export default function Volunteer() {
       setTaskToComplete(null);
     }
     await fetchTasks();
-  };
-
-  const handleOTPVerified = async (newStatus: string) => {
-    if (newStatus === 'picked_up') {
-      toast.success("Pickup Confirmed via OTP! 🔐", {
-        description: "Rerouting to delivery address.",
-        style: { background: "#171a1a", color: "#f5f3ef", border: "1px solid #3b82f6" },
-      });
-      // Generate delivery QR now
-      const session = (await supabase.auth.getSession()).data.session;
-      if (!session) {
-        toast.error("Session expired. Please log in again.");
-        return;
-      }
-      try {
-        const res = await fetch(`${API_BASE}/tasks/${otpModal.taskId}/generate-qr`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${session.access_token}`
-          },
-          body: JSON.stringify({ type: 'delivery' }),
-        });
-        if (!res.ok) {
-          const msg = await res.text();
-          throw new Error(msg || "QR generation failed");
-        }
-      } catch (err: unknown) {
-        console.error("Failed to generate delivery QR:", err);
-      }
-    } else if (newStatus === 'delivered') {
-      toast.success("Delivery Verified via OTP! ✅", {
-        description: "Thank you for making a difference today.",
-        style: { background: "#171a1a", color: "#f5f3ef", border: "1px solid #10b981" },
-      });
-      setActiveTaskId(null);
-      setTaskToComplete(null);
-    }
-    await fetchTasks();
-  };
-
-  const handleProofPhoto = async (base64: string) => {
-    if (!user) return;
-    try {
-      await fetch(`${API_BASE}/tasks/${otpModal.taskId}/upload-proof`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          imageBase64: base64,
-          proof_type: otpModal.type,
-          volunteer_id: user.id,
-        }),
-      });
-      toast.success("Proof photo uploaded!");
-    } catch (err) {
-      console.error("handleProofPhoto error:", err);
-      toast.error("Action failed.");
-    }
   };
 
   const handleDropTask = async (taskId: string) => {
@@ -1558,7 +1462,7 @@ export default function Volunteer() {
               const stage = TASK_STAGES[task.status] ?? TASK_STAGES.assigned;
 
               return (
-                <Fragment key={task.id}>
+                <FeatureGroup key={task.id}>
                   {/* Pickup marker — hidden after picked up */}
                   {!isPickedUp && task.status !== "delivered" && (
                     <Marker
@@ -1628,7 +1532,7 @@ export default function Volunteer() {
                       dashArray="4, 10"
                     />
                   )}
-                </Fragment>
+                </FeatureGroup>
               );
             })}
           </MapContainer>
@@ -1668,18 +1572,6 @@ export default function Volunteer() {
           </div>
         </DialogContent>
       </Dialog>
-
-      {/* OTP Verification Modal — kept for fallback, hidden from primary flow (Avoids SMS charges) */}
-      {/* <OTPModal
-        open={otpModal.open}
-        onOpenChange={open => setOtpModal(prev => ({ ...prev, open }))}
-        taskId={otpModal.taskId}
-        volunteerId={user?.id ?? ''}
-        otpType={otpModal.type}
-        onVerified={handleOTPVerified}
-        showPhotoPrompt={true}
-        onPhotoCapture={handleProofPhoto}
-      /> */}
 
       {/* QR Scanner Modal */}
       <QRScannerModal

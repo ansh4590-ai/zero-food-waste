@@ -278,12 +278,10 @@ interface QRScannerModalProps {
   volunteerId: string;
   /** Called on successful QR verification with the new status */
   onVerified: (newStatus: string) => void;
-  /** Fallback: open the OTP modal instead */
-  onFallbackOTP?: () => void;
 }
 
 export function QRScannerModal({
-  open, onOpenChange, scanType, volunteerId, onVerified, onFallbackOTP,
+  open, onOpenChange, scanType, volunteerId, onVerified,
 }: QRScannerModalProps) {
   const [mode, setMode] = useState<"camera" | "manual">("camera");
   const [manualCode, setManualCode] = useState("");
@@ -540,16 +538,6 @@ export function QRScannerModal({
                 >
                   <Keyboard className="w-3.5 h-3.5 mr-1.5" /> Enter Code Manually
                 </Button>
-                {onFallbackOTP && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => { onOpenChange(false); onFallbackOTP(); }}
-                    className="border-white/10 text-white/60 hover:bg-white/5 text-xs"
-                  >
-                    Use OTP
-                  </Button>
-                )}
               </div>
             </>
           ) : (
@@ -596,16 +584,6 @@ export function QRScannerModal({
                 >
                   <Camera className="w-3.5 h-3.5 mr-1.5" /> Back to Camera
                 </Button>
-                {onFallbackOTP && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => { onOpenChange(false); onFallbackOTP(); }}
-                    className="border-white/10 text-white/60 hover:bg-white/5 text-xs"
-                  >
-                    Use OTP
-                  </Button>
-                )}
               </div>
             </>
           )}

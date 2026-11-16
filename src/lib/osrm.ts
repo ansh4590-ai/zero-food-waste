@@ -155,10 +155,31 @@ export async function fetchOSRMRoute(
     }
   }
 
-  // All attempts failed — use Haversine fallback
-  const from = points[0];
-  const to = points[points.length - 1];
-  return haversineFallbackRoute(from, to);
+  // All attempts failed — use Haversine fallback with all stops
+  if (points.length === 2) {
+    return haversineFallbackRoute(points[0], points[1]);
+  }
+  // Multi-stop: chain haversine segments
+  let totalDistance = 0;
+  let totalDuration = 0;
+  const geometry: OSRMCoordinate[] = [];
+  const legs: Array<{ distance: number; duration: number; steps: OSRMStep[] }> = [];
+  for (let i = 0; i < points.length - 1; i++) {
+    const segment = haversineFallbackRoute(points[i], points[i + 1]);
+    totalDistance += segment.distanceMeters;
+    totalDuration += segment.durationSeconds;
+    // Avoid duplicating the junction point
+    if (i === 0) geometry.push(...segment.geometry);
+    else geometry.push(...segment.geometry.slice(1));
+    legs.push(segment.legs[0]);
+  }
+  return {
+    geometry,
+    distanceMeters: totalDistance,
+    durationSeconds: totalDuration,
+    legs,
+    isFallback: true,
+  };
 }
 
 export function formatETA(seconds: number): string {

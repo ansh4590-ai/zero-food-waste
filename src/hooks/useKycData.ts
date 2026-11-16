@@ -236,13 +236,12 @@ export function useKycData(enabled: boolean): UseKycDataReturn {
     if (!selectedUser) return;
     setIsProcessing(true);
     try {
-      const { error } = await supabase.from('profiles').update({
-        verification_status: 'approved',
-        is_verified: true,
-        document_verified: true,
-        verification_rejection_reason: null,
-      }).eq('id', selectedUser.id);
+      const { data, error } = await supabase.rpc('admin_update_kyc_status', {
+        p_user_id: selectedUser.id,
+        p_status: 'approved',
+      });
       if (error) throw error;
+      if (data?.affected === 0) throw new Error('No rows updated — check permissions');
       toast.success(`${selectedUser.full_name} verified successfully.`);
       setSelectedUser(null);
       fetchUsers();
@@ -257,13 +256,13 @@ export function useKycData(enabled: boolean): UseKycDataReturn {
     if (!selectedUser || !reason) return;
     setIsProcessing(true);
     try {
-      const { error } = await supabase.from('profiles').update({
-        verification_status: 'rejected',
-        is_verified: false,
-        document_verified: false,
-        verification_rejection_reason: reason,
-      }).eq('id', selectedUser.id);
+      const { data, error } = await supabase.rpc('admin_update_kyc_status', {
+        p_user_id: selectedUser.id,
+        p_status: 'rejected',
+        p_rejection_reason: reason,
+      });
       if (error) throw error;
+      if (data?.affected === 0) throw new Error('No rows updated — check permissions');
       toast.success(`Identity rejected.`);
       setSelectedUser(null);
       fetchUsers();

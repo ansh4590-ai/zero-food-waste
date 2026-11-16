@@ -49,6 +49,9 @@ export default function DonorSignup() {
             role: 'donor',
             phone: formData.phone,
             donor_type: formData.donorType,
+            address: formData.address,
+            latitude: formData.lat || null,
+            longitude: formData.lng || null,
           }
         }
       });

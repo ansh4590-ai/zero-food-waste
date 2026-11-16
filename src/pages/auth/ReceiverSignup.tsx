@@ -37,7 +37,7 @@ export default function ReceiverSignup() {
         options: {
           data: {
             full_name: formData.orgName,
-            role: 'ngo',
+            role: 'receiver',
             phone: formData.phone,
             donor_type: formData.orgType,
             city: formData.serviceArea

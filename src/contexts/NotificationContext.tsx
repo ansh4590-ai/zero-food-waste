@@ -121,7 +121,17 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
             filter: `user_id=eq.${user.id}`,
           },
           (payload) => {
-            setNotifications((prev) => [payload.new as Notification, ...prev]);
+            const newNotif = payload.new as Notification;
+            setNotifications((prev) => [newNotif, ...prev]);
+            
+            // Pop a toast so the user knows immediately
+            import("sonner").then(({ toast }) => {
+              toast(newNotif.title, {
+                description: newNotif.message,
+                icon: newNotif.type === 'task_assigned' ? '📦' : '🔔',
+                duration: 6000,
+              });
+            });
           }
         )
         .on(

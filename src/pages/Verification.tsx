@@ -138,35 +138,14 @@ export default function Verification() {
 
       if (error) throw error;
 
-      // ── Stage 4: Auto-Approval Engine ─────────────────────────────────────
-      if (result.auto_status === "approved") {
-        setProcessingStage("High confidence detected — auto-approving...");
-        const { error: approveErr } = await supabase
-          .from("profiles")
-          .update({
-            verification_status: "approved",
-            is_verified: true,
-            document_verified: true,
-          })
-          .eq("id", user.id);
-
-        if (!approveErr) {
-          setStatus("approved");
-          toast.success("🎉 Identity verified automatically! You're ready to go.", {
-            duration: 5000,
-          });
-          window.scrollTo(0, 0);
-          return;
-        }
-      }
-
+      // KYC approval is now handled server-side only. Always show pending status.
       setStatus("pending");
       if (result.auto_status === "rejected") {
         toast.warning("Documents flagged for manual review by our team.", {
           duration: 5000,
         });
       } else {
-        toast.success("Documents submitted — AI engine scored your profile.", {
+        toast.success("Documents submitted successfully! Our team will review your profile.", {
           duration: 4000,
         });
       }

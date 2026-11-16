@@ -101,6 +101,8 @@ const PORT = parseInt(process.env.PORT || '3000', 10);
             "https://nominatim.openstreetmap.org", // Reverse geocoding
             "https://*.tile.openstreetmap.org",   // Map tiles
             "https://photon.komoot.io",           // Free autocomplete (OSM)
+            // OSRM routing
+            "https://router.project-osrm.org",
           ],
           frameSrc: ["'none'"],
           objectSrc: ["'none'"],
@@ -216,7 +218,7 @@ const PORT = parseInt(process.env.PORT || '3000', 10);
       if (!imageBase64.startsWith('data:')) {
         return res.status(400).json({ error: "Image must be provided as a data URI." });
       }
-      const mimeMatch = imageBase64.match(/^data:(image\/(jpeg|png|webp));base64,/);
+      const mimeMatch = imageBase64.match(/^data:(image\/(jpeg|png|webp|gif));base64,/);
       if (!mimeMatch) {
         return res.status(400).json({ error: "Invalid image format. Only JPEG, PNG, and WebP are accepted." });
       }
@@ -319,18 +321,18 @@ Return ONLY valid JSON with no markdown or extra text:
 
       // Map to legacy frontend keys while preserving new keys
       const finalResult = {
+        ...rawResult,                    // spread raw result FIRST
         is_food: true,
         title: rawResult.food_name || "Food Item",
         quantity_description: rawResult.quantity || "1 serving",
         estimated_safe_hours: rawResult.safe_hours || 12,
         confidence_score: rawResult.confidence || 80,
         freshness_score: rawResult.freshness_score || 85,
-        predicted_category: mappedCategory,
+        predicted_category: mappedCategory,   // overwrites raw
         spoilage_risk: rawResult.spoilage_risk || "low",
         priority_score: rawResult.priority_score || 50,
         quality_status: rawResult.quality_status || "good",
         is_veg: rawResult["veg/nonveg"] === "veg",
-        ...rawResult
       };
 
       res.json(finalResult);
@@ -766,58 +768,7 @@ Return ONLY valid JSON with no markdown or extra text:
     });
   }
 
-  // ─── 18. OTP GENERATION (DISABLED — QR-only flow active) ─────────────────
-  // Kept for future fallback if camera unavailable on older devices.
-  /*
-  app.post("/api/tasks/:taskId/generate-otp", async (req, res) => {
-    try {
-      const { taskId } = req.params;
-      const { otp_type } = req.body;
-
-      if (!otp_type || !['pickup', 'delivery'].includes(otp_type)) {
-        return res.status(400).json({ error: "otp_type must be 'pickup' or 'delivery'" });
-      }
-
-      const { data, error } = await supabaseAdmin.rpc('generate_task_otp', {
-        p_task_id: taskId,
-        p_otp_type: otp_type,
-      });
-
-      if (error) throw error;
-      res.json(data);
-    } catch (err: unknown) {
-      console.error("OTP generation error:", err);
-      res.status(500).json({ error: "Internal server error" });
-    }
-  });
-
-  // ─── 19. OTP VERIFICATION ────────────────────────────────────────────────────
-  app.post("/api/tasks/:taskId/verify-otp", async (req, res) => {
-    try {
-      const { taskId } = req.params;
-      const { volunteer_id, otp_type, otp_value } = req.body;
-
-      if (!volunteer_id || !otp_type || !otp_value) {
-        return res.status(400).json({ error: "volunteer_id, otp_type, and otp_value are required" });
-      }
-
-      const { data, error } = await supabaseAdmin.rpc('verify_task_otp', {
-        p_task_id: taskId,
-        p_volunteer_id: volunteer_id,
-        p_otp_type: otp_type,
-        p_otp_value: otp_value,
-      });
-
-      if (error) throw error;
-      res.json(data);
-    } catch (err: unknown) {
-      console.error("OTP verification error:", err);
-      res.status(500).json({ error: "Internal server error" });
-    }
-  });
-  */
-
-  // ─── 20. PHOTO PROOF UPLOAD ──────────────────────────────────────────────────
+  // ─── 18. PHOTO PROOF UPLOAD ──────────────────────────────────────────────────
   app.post("/api/tasks/:taskId/upload-proof", requireAuth, async (req: AuthenticatedRequest, res) => {
     try {
       const { taskId } = req.params;

@@ -116,10 +116,9 @@ export interface IntelStats {
   expiredPrevented: number;
 }
 
-/** QR / OTP verification analytics from volunteer_tasks. */
+/** QR verification analytics from volunteer_tasks. */
 export interface QrStats {
   qrVerified: number;
-  otpFallback: number;
 }
 
 /** A single point in the daily rescue trend bar chart. */

@@ -38,7 +38,7 @@ export function useFleetData(enabled: boolean): UseFleetDataReturn {
   const [intelStats, setIntelStats] = useState<IntelStats>({ urgentSaved: 0, avgFreshness: 0, expiredPrevented: 0 });
   const [dailyRescueTrend, setDailyRescueTrend] = useState<DailyRescuePoint[]>([]);
   const [categoryBreakdown, setCategoryBreakdown] = useState<CategoryBreakdownPoint[]>([]);
-  const [qrStats, setQrStats] = useState<QrStats>({ qrVerified: 0, otpFallback: 0 });
+  const [qrStats, setQrStats] = useState<QrStats>({ qrVerified: 0 });
 
   // ─── FETCH FLEET ──────────────────────────────────────────────────────────
   const fetchFleet = async () => {
@@ -141,18 +141,14 @@ export function useFleetData(enabled: boolean): UseFleetDataReturn {
       // ─── QR verification analytics ────────────────────────────────────────
       const { data: qrData } = await supabase
         .from('volunteer_tasks')
-        .select('pickup_qr_used, delivery_qr_used, pickup_otp_hash, delivery_otp_hash, pickup_verified_at, delivery_verified_at');
+        .select('pickup_qr_used, delivery_qr_used');
       if (qrData) {
         let qrVerified = 0;
-        let otpFallback = 0;
         qrData.forEach((t: Record<string, unknown>) => {
           if (t.pickup_qr_used) qrVerified++;
           if (t.delivery_qr_used) qrVerified++;
-          // OTP fallback: verified but QR not used
-          if (t.pickup_verified_at && !t.pickup_qr_used && t.pickup_otp_hash) otpFallback++;
-          if (t.delivery_verified_at && !t.delivery_qr_used && t.delivery_otp_hash) otpFallback++;
         });
-        setQrStats({ qrVerified, otpFallback });
+        setQrStats({ qrVerified });
       }
     } catch (e) {
       if (import.meta.env.DEV) console.error("fetchIntelStats error:", e);
