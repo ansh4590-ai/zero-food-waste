@@ -220,6 +220,9 @@ DROP POLICY IF EXISTS "Users can view requests they are part of." ON public.food
 DROP POLICY IF EXISTS "requests_select" ON public.food_requests;
 DROP POLICY IF EXISTS "requests_select_volunteer" ON public.food_requests;
 DROP POLICY IF EXISTS "requests_select_all_authorized" ON public.food_requests;
+DROP POLICY IF EXISTS "Participants can update requests." ON public.food_requests;
+DROP POLICY IF EXISTS "requests_update_receiver" ON public.food_requests;
+DROP POLICY IF EXISTS "requests_update" ON public.food_requests;
 
 CREATE POLICY "requests_select_all_authorized" ON public.food_requests
 FOR SELECT
@@ -764,6 +767,85 @@ $$;
 
 REVOKE ALL ON FUNCTION public.auto_expire_stale_tasks() FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.auto_expire_stale_tasks() TO service_role;
+
+-- 9e. cancel_food_request (Receiver / Admin Request Cancellation RPC)
+CREATE OR REPLACE FUNCTION public.cancel_food_request(
+  p_request_id UUID
+)
+RETURNS JSON
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = pg_catalog, public
+AS $$
+DECLARE
+  v_request RECORD;
+  v_listing RECORD;
+  v_other_requests_count INT;
+BEGIN
+  IF auth.uid() IS NULL THEN
+    RETURN json_build_object('success', false, 'error', 'Unauthorized.');
+  END IF;
+
+  SELECT * INTO v_request
+  FROM public.food_requests
+  WHERE id = p_request_id
+  FOR UPDATE;
+
+  IF NOT FOUND THEN
+    RETURN json_build_object('success', false, 'error', 'Request not found.');
+  END IF;
+
+  -- Only the receiver or an admin can cancel the food request
+  IF v_request.receiver_id != auth.uid() AND NOT public.has_permission(auth.uid(), 'users.read') THEN
+    RETURN json_build_object('success', false, 'error', 'Forbidden: you can only cancel your own food requests.');
+  END IF;
+
+  -- Only pending requests can be cancelled directly by the receiver
+  IF v_request.status <> 'pending'::public.request_status THEN
+    RETURN json_build_object('success', false, 'error', 'Cannot cancel request: request is already ' || v_request.status::text || '.');
+  END IF;
+
+  -- Mark the request as cancelled
+  UPDATE public.food_requests
+  SET status = 'cancelled'::public.request_status,
+      updated_at = NOW()
+  WHERE id = p_request_id;
+
+  -- Cancel any associated open or pending volunteer task
+  UPDATE public.volunteer_tasks
+  SET status = 'cancelled'::public.volunteer_status,
+      updated_at = NOW()
+  WHERE request_id = p_request_id
+    AND status IN ('open'::public.volunteer_status, 'pending_acceptance'::public.volunteer_status);
+
+  -- Release the listing reservation if no other active requests remain
+  SELECT * INTO v_listing
+  FROM public.food_listings
+  WHERE id = v_request.listing_id;
+
+  IF v_listing IS NOT NULL THEN
+    SELECT COUNT(*) INTO v_other_requests_count
+    FROM public.food_requests
+    WHERE listing_id = v_request.listing_id
+      AND status NOT IN ('cancelled'::public.request_status, 'delivered'::public.request_status)
+      AND id <> p_request_id;
+
+    IF v_other_requests_count = 0 AND v_listing.status = 'reserved'::public.listing_status THEN
+      UPDATE public.food_listings
+      SET status = 'active'::public.listing_status,
+          updated_at = NOW()
+      WHERE id = v_request.listing_id;
+    END IF;
+  END IF;
+
+  RETURN json_build_object('success', true);
+EXCEPTION WHEN OTHERS THEN
+  RETURN json_build_object('success', false, 'error', SQLERRM);
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.cancel_food_request(UUID) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.cancel_food_request(UUID) TO authenticated, service_role;
 
 -- ─── 10. KYC Trigger With Exact Live Schema Defaults ──────────────────────────
 CREATE OR REPLACE FUNCTION public.protect_kyc_fields()

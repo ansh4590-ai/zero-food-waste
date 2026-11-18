@@ -145,15 +145,19 @@ export default function Request() {
   const cancelRequest = async (requestId: string) => {
     if (!user || !isValidSupabaseId(user.id)) return;
     try {
-      const { error } = await supabase
-        .from("food_requests")
-        .update({ status: "cancelled", updated_at: new Date().toISOString() })
-        .eq("id", requestId)
-        .eq("receiver_id", user?.id);
+      const { data, error } = await supabase.rpc("cancel_food_request", {
+        p_request_id: requestId,
+      });
 
       if (error) throw error;
+      if (!data?.success) {
+        throw new Error(data?.error || "Failed to cancel request.");
+      }
+
       toast.success("Request cancelled.");
-      setRequests(prev => prev.map(r => r.id === requestId ? { ...r, status: "cancelled" } : r));
+      setRequests(prev => prev.map(r =>
+        r.id === requestId ? { ...r, status: "cancelled" } : r
+      ));
     } catch (e: unknown) {
       toast.error((e as Error).message || "Failed to cancel request.");
     }
