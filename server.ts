@@ -749,6 +749,22 @@ Return ONLY valid JSON with no markdown or extra text:
 
       const result = await runRealKyc(aadhaarBuffer, selfieBuffer);
 
+      // Securely persist verified/reviewed score to DB using service-role credentials
+      const { error: dbError } = await supabaseAdmin
+        .from("profiles")
+        .update({
+          kyc_score: result.kyc_score,
+          face_match_score: result.face_match_score,
+          kyc_auto_status: result.auto_status,
+          extracted_data: result.extracted_data,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", userId);
+
+      if (dbError) {
+        console.error("[kyc-verify] Failed to persist KYC result:", dbError);
+      }
+
       res.json({ success: true, ...result });
     } catch (err: unknown) {
       console.error("KYC Processing error:", err);

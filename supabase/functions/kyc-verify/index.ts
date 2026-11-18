@@ -27,8 +27,8 @@ interface KycRequest {
 }
 
 interface KycResult {
-  kyc_score: number;
-  face_match_score: number;
+  kyc_score: number | null;
+  face_match_score: number | null;
   auto_status: "approved" | "rejected" | "manual_review";
   extracted_data: {
     aadhaar: string | null;
@@ -61,8 +61,8 @@ async function downloadFileAsBase64(
 async function extractTextFromImage(imageBase64: string): Promise<string> {
   const apiKey = Deno.env.get("GOOGLE_VISION_API_KEY");
   if (!apiKey) {
-    console.warn("GOOGLE_VISION_API_KEY not set — using fallback OCR simulation");
-    return simulateOcr();
+    console.warn("GOOGLE_VISION_API_KEY not configured — OCR skipped.");
+    return "";
   }
 
   try {
@@ -84,20 +84,15 @@ async function extractTextFromImage(imageBase64: string): Promise<string> {
 
     if (!response.ok) {
       console.error("Vision API error:", await response.text());
-      return simulateOcr();
+      return "";
     }
 
     const result = await response.json();
     return result.responses?.[0]?.fullTextAnnotation?.text || "";
   } catch (err) {
     console.error("Vision API call failed:", err);
-    return simulateOcr();
+    return "";
   }
-}
-
-function simulateOcr(): string {
-  // Fallback: simulate OCR output for development/demo
-  return "GOVERNMENT OF INDIA\nName: DEMO USER\n1234 5678 9012\nDOB: 01/01/1990";
 }
 
 // ─── OCR: Parse Aadhaar Details from extracted text ──────────────────────────
@@ -120,22 +115,20 @@ function parseAadhaarText(text: string): { aadhaar: string | null; name: string 
 async function compareFaces(
   sourceBase64: string,
   targetBase64: string
-): Promise<number> {
+): Promise<number | null> {
   const accessKeyId = Deno.env.get("AWS_ACCESS_KEY_ID");
   const secretAccessKey = Deno.env.get("AWS_SECRET_ACCESS_KEY");
   const region = Deno.env.get("AWS_REGION") || "ap-south-1";
 
   if (!accessKeyId || !secretAccessKey) {
-    console.warn("AWS credentials not set — using fallback face match simulation");
-    return simulateFaceMatch();
+    console.warn("AWS credentials not configured — face matching skipped, flagging for manual review.");
+    return null;
   }
 
   try {
-    // Convert base64 to Uint8Array for Rekognition
     const sourceBytes = Uint8Array.from(atob(sourceBase64), (c) => c.charCodeAt(0));
     const targetBytes = Uint8Array.from(atob(targetBase64), (c) => c.charCodeAt(0));
 
-    // AWS Rekognition REST API (direct HTTP — no SDK needed in Deno)
     const endpoint = `https://rekognition.${region}.amazonaws.com`;
     const payload = JSON.stringify({
       SourceImage: { Bytes: Array.from(sourceBytes) },
@@ -143,42 +136,33 @@ async function compareFaces(
       SimilarityThreshold: 50,
     });
 
-    // Create AWS Signature v4
     const now = new Date();
     const dateStamp = now.toISOString().replace(/[-:]/g, "").split(".")[0] + "Z";
-    const dateOnly = dateStamp.substring(0, 8);
 
-    // Simplified: Use pre-signed approach via AWS SDK-like signing
-    // For production, use a proper AWS v4 signing library
-    // For now, we use the REST API with basic signing
     const headers: Record<string, string> = {
       "Content-Type": "application/x-amz-json-1.1",
       "X-Amz-Target": "RekognitionService.CompareFaces",
       "X-Amz-Date": dateStamp,
     };
 
-    // Use AWS SDK via esm.sh if available, otherwise fall back to simulation
-    // In production Edge Functions, use: import { ... } from "npm:@aws-sdk/client-rekognition"
-    console.warn("Using simulated face match — for production, configure AWS SDK signing");
-    return simulateFaceMatch();
+    console.warn("AWS credentials present. For full Deno AWS signing, ensure AWS SDK or SigV4 is loaded.");
+    return null;
   } catch (err) {
     console.error("Face comparison failed:", err);
-    return simulateFaceMatch();
+    return null;
   }
-}
-
-function simulateFaceMatch(): number {
-  // Weighted random: bias toward realistic scores (50-95 range)
-  const base = 50 + Math.random() * 45;
-  return parseFloat(base.toFixed(1));
 }
 
 // ─── SCORING ENGINE ──────────────────────────────────────────────────────────
 function computeKycScore(
   extractedData: { aadhaar: string | null; name: string | null },
-  faceMatchScore: number,
+  faceMatchScore: number | null,
   hasPan: boolean
-): { kyc_score: number; auto_status: "approved" | "rejected" | "manual_review" } {
+): { kyc_score: number | null; auto_status: "approved" | "rejected" | "manual_review" } {
+  if (faceMatchScore === null) {
+    return { kyc_score: null, auto_status: "manual_review" };
+  }
+
   let score = 0;
 
   // Document analysis scoring

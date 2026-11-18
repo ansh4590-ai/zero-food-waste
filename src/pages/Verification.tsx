@@ -8,7 +8,8 @@ import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { supabase, isValidSupabaseId } from "../lib/supabase";
 import { useAuthStore } from "../store";
-import { runKycCheck, type KycResult } from "../lib/kycEngine";
+import { API_BASE } from "../lib/constants";
+import type { KycResult } from "../lib/kycEngine";
 
 export default function Verification() {
   const { user } = useAuthStore();
@@ -108,16 +109,7 @@ export default function Verification() {
       const panPath = panFile ? await uploadDocument(panFile, 'pan') : null;
       const selfiePath = await uploadDocument(selfieFile, 'selfie');
 
-      // ── Stage 2: Run AI KYC Engine ────────────────────────────────────────
-      setProcessingStage("Running AI verification engine...");
-      const result = await runKycCheck({
-        aadhaar: aadhaarPath,
-        selfie: selfiePath,
-        pan: panPath,
-      });
-      setKycResult(result);
-
-      // ── Stage 3: Save to Database ─────────────────────────────────────────
+      // ── Stage 2: Save metadata to profile ─────────────────────────────────
       setProcessingStage("Saving verification profile...");
       const { error } = await supabase
         .from("profiles")
@@ -128,27 +120,49 @@ export default function Verification() {
             selfie: selfiePath,
           },
           verification_status: "pending",
-          kyc_score: result.kyc_score,
-          face_match_score: result.face_match_score,
-          kyc_auto_status: result.auto_status,
-          extracted_data: result.extracted_data,
           kyc_submitted_at: new Date().toISOString(),
         })
         .eq("id", user.id);
 
       if (error) throw error;
 
-      // KYC approval is now handled server-side only. Always show pending status.
-      setStatus("pending");
-      if (result.auto_status === "rejected") {
-        toast.warning("Documents flagged for manual review by our team.", {
-          duration: 5000,
-        });
-      } else {
-        toast.success("Documents submitted successfully! Our team will review your profile.", {
-          duration: 4000,
-        });
+      // ── Stage 3: Server-side AI Verification ──────────────────────────────
+      setProcessingStage("Running secure verification engine...");
+      const session = (await supabase.auth.getSession()).data.session;
+      if (session) {
+        try {
+          const res = await fetch(`${API_BASE}/kyc-verify`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${session.access_token}`,
+            },
+            body: JSON.stringify({
+              aadhaar_path: aadhaarPath,
+              selfie_path: selfiePath,
+            }),
+          });
+          if (res.ok) {
+            const data = await res.json();
+            if (data.success) {
+              setKycResult({
+                kyc_score: data.kyc_score ?? 0,
+                face_match_score: data.face_match_score ?? 0,
+                auto_status: data.auto_status ?? "manual_review",
+                extracted_data: data.extracted_data,
+              });
+            }
+          }
+        } catch (verifyErr) {
+          console.warn("KYC server processing queued:", verifyErr);
+        }
       }
+
+      // KYC approval is handled server-side/admin only. Always show pending status.
+      setStatus("pending");
+      toast.success("Documents submitted securely! Our team will review your profile.", {
+        duration: 4000,
+      });
       window.scrollTo(0, 0);
     } catch (error: unknown) {
       toast.error((error as Error).message || "An error occurred during submission.");
@@ -195,10 +209,10 @@ export default function Verification() {
                 {kycResult && (
                   <div className="flex gap-4 mt-3">
                     <span className="text-xs bg-emerald-100 dark:bg-emerald-900/50 text-emerald-800 dark:text-emerald-300 px-2.5 py-1 rounded-full font-medium">
-                      KYC Score: {kycResult.kyc_score}/100
+                      KYC Score: {kycResult.kyc_score ?? '—'}/100
                     </span>
                     <span className="text-xs bg-emerald-100 dark:bg-emerald-900/50 text-emerald-800 dark:text-emerald-300 px-2.5 py-1 rounded-full font-medium">
-                      Face Match: {kycResult.face_match_score.toFixed(1)}%
+                      Face Match: {kycResult.face_match_score != null ? `${kycResult.face_match_score.toFixed(1)}%` : 'Manual Review'}
                     </span>
                   </div>
                 )}
@@ -227,10 +241,10 @@ export default function Verification() {
                 {kycResult && (
                   <div className="flex flex-wrap gap-3 mt-3">
                     <span className="text-xs bg-amber-100 dark:bg-amber-900/50 text-amber-800 dark:text-amber-300 px-2.5 py-1 rounded-full font-medium">
-                      KYC Score: {kycResult.kyc_score}/100
+                      KYC Score: {kycResult.kyc_score ?? '—'}/100
                     </span>
                     <span className="text-xs bg-amber-100 dark:bg-amber-900/50 text-amber-800 dark:text-amber-300 px-2.5 py-1 rounded-full font-medium">
-                      Face Match: {kycResult.face_match_score.toFixed(1)}%
+                      Face Match: {kycResult.face_match_score != null ? `${kycResult.face_match_score.toFixed(1)}%` : 'Manual Review'}
                     </span>
                     <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${
                       kycResult.auto_status === 'manual_review' 
@@ -262,10 +276,10 @@ export default function Verification() {
               {kycResult && (
                 <div className="flex gap-3 mb-4">
                   <span className="text-xs bg-red-100 dark:bg-red-900/50 text-red-800 dark:text-red-300 px-2.5 py-1 rounded-full font-medium">
-                    Score: {kycResult.kyc_score}/100
+                    Score: {kycResult.kyc_score ?? '—'}/100
                   </span>
                   <span className="text-xs bg-red-100 dark:bg-red-900/50 text-red-800 dark:text-red-300 px-2.5 py-1 rounded-full font-medium">
-                    Face Match: {kycResult.face_match_score.toFixed(1)}%
+                    Face Match: {kycResult.face_match_score != null ? `${kycResult.face_match_score.toFixed(1)}%` : 'Manual Review'}
                   </span>
                 </div>
               )}
