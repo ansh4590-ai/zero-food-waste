@@ -675,13 +675,14 @@ Return ONLY valid JSON with no markdown or extra text:
     const faceScore = faceResult.similarity;
 
     // 4. Face match returned null (no face detected or below 50% threshold)
+    //    Never assign a numeric score or rejection based on a null face result.
     if (faceScore === null) {
       return {
-        kyc_score: (parsed.aadhaar || parsed.name) ? 40 : 0,
-        face_match_score: 0,
+        kyc_score: null,
+        face_match_score: null,
         extracted_data: parsed,
         auto_status: "manual_review",
-        note: "Face match below threshold or face not clearly detected.",
+        note: "Face match below threshold or face not clearly detected; flagged for manual review.",
       };
     }
 
@@ -799,7 +800,9 @@ Return ONLY valid JSON with no markdown or extra text:
 
       const result = await runRealKyc(aadhaarBuffer, selfieBuffer);
 
-      // Securely persist verified/reviewed score to DB using service-role credentials
+      // Securely persist verified/reviewed score to DB using service-role credentials.
+      // If DB write fails, return a controlled error — never return success: true without
+      // confirmed persistence to prevent scores being lost silently.
       const { error: dbError } = await supabaseAdmin
         .from("profiles")
         .update({
@@ -813,6 +816,9 @@ Return ONLY valid JSON with no markdown or extra text:
 
       if (dbError) {
         console.error("[kyc-verify] Failed to persist KYC result:", dbError);
+        return res.status(500).json({
+          error: "Verification completed but results could not be saved. Please try again or contact support.",
+        });
       }
 
       res.json({ success: true, ...result });
@@ -959,10 +965,10 @@ Return ONLY valid JSON with no markdown or extra text:
 
       if (uploadErr) throw uploadErr;
 
-      // Generate a short-lived signed URL (24 hours) for viewing
+      // Generate a short-lived signed URL (5 minutes) for immediate viewing
       const { data: signedData, error: signedErr } = await supabaseAdmin.storage
         .from('task_proofs')
-        .createSignedUrl(fileName, 86400);
+        .createSignedUrl(fileName, 300);
 
       if (signedErr) {
         console.warn("Could not generate signed URL for proof:", signedErr);
