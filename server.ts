@@ -581,7 +581,10 @@ Return ONLY valid JSON with no markdown or extra text:
       })
     : new vision.ImageAnnotatorClient();
 
-  const compareFaces = async (sourceImage: Buffer, targetImage: Buffer) => {
+  const compareFaces = async (
+    sourceImage: Buffer,
+    targetImage: Buffer
+  ): Promise<{ similarity: number | null; error?: string }> => {
     try {
       const command = new CompareFacesCommand({
         SourceImage: { Bytes: sourceImage },
@@ -589,20 +592,23 @@ Return ONLY valid JSON with no markdown or extra text:
         SimilarityThreshold: 50,
       });
       const response = await rekognitionClient.send(command);
-      return response.FaceMatches?.[0]?.Similarity || 0;
-    } catch (e) {
+      const similarity = response.FaceMatches?.[0]?.Similarity ?? null;
+      return { similarity };
+    } catch (e: unknown) {
       console.error("AWS Rekognition error:", e);
-      return 0; // return 0 when API fails
+      return { similarity: null, error: (e as Error)?.message || "Rekognition request failed" };
     }
   };
 
-  const extractText = async (imageBuffer: Buffer) => {
+  const extractText = async (
+    imageBuffer: Buffer
+  ): Promise<{ text: string; error?: string }> => {
     try {
       const [result] = await visionClient.textDetection(imageBuffer);
-      return result.fullTextAnnotation?.text || "";
-    } catch (e) {
+      return { text: result.fullTextAnnotation?.text || "" };
+    } catch (e: unknown) {
       console.error("Google Vision error:", e);
-      return ""; // empty text if API fails
+      return { text: "", error: (e as Error)?.message || "Vision API request failed" };
     }
   };
 
@@ -624,29 +630,20 @@ Return ONLY valid JSON with no markdown or extra text:
   };
 
   const runRealKyc = async (aadhaarBuffer: Buffer, selfieBuffer: Buffer) => {
-    // Graceful fallback for missing buckets or dummy uploads in demo mode
     if (aadhaarBuffer.length === 0 || selfieBuffer.length === 0) {
-      console.error("Empty buffers provided for KYC.");
       return {
-        kyc_score: 0,
-        face_match_score: 0,
+        kyc_score: null,
+        face_match_score: null,
         extracted_data: { aadhaar: null, name: null },
         auto_status: "manual_review",
+        note: "Empty document data provided.",
       };
     }
 
-    // Run OCR either way; only run the paid face-compare call if AWS is
-    // actually configured (see AWS_CONFIGURED above).
-    const [faceScore, text] = await Promise.all([
-      AWS_CONFIGURED ? compareFaces(aadhaarBuffer, selfieBuffer) : Promise.resolve(null),
-      extractText(aadhaarBuffer),
-    ]);
-    const parsed = parseAadhaar(text);
-
-    // AWS not configured: there's no real signal on the face match, so this
-    // goes to manual_review rather than being scored (and possibly
-    // auto-rejected) as though a check actually ran and failed.
-    if (faceScore === null) {
+    // 1. AWS Credentials Missing -> Manual Review (no fake 0 score)
+    if (!AWS_CONFIGURED) {
+      const ocrResult = await extractText(aadhaarBuffer);
+      const parsed = parseAadhaar(ocrResult.text);
       return {
         kyc_score: null,
         face_match_score: null,
@@ -656,16 +653,49 @@ Return ONLY valid JSON with no markdown or extra text:
       };
     }
 
+    // 2. Both providers configured: execute concurrently
+    const [faceResult, ocrResult] = await Promise.all([
+      compareFaces(aadhaarBuffer, selfieBuffer),
+      extractText(aadhaarBuffer),
+    ]);
+
+    const parsed = parseAadhaar(ocrResult.text);
+
+    // 3. Provider Failures -> Manual Review (never falsely reject due to API timeout/errors)
+    if (faceResult.error || ocrResult.error) {
+      return {
+        kyc_score: null,
+        face_match_score: null,
+        extracted_data: parsed,
+        auto_status: "manual_review",
+        note: `Verification provider issue (${faceResult.error || ocrResult.error}); flagged for manual review.`,
+      };
+    }
+
+    const faceScore = faceResult.similarity;
+
+    // 4. Face match returned null (no face detected or below 50% threshold)
+    if (faceScore === null) {
+      return {
+        kyc_score: (parsed.aadhaar || parsed.name) ? 40 : 0,
+        face_match_score: 0,
+        extracted_data: parsed,
+        auto_status: "manual_review",
+        note: "Face match below threshold or face not clearly detected.",
+      };
+    }
+
+    // 5. Both providers succeeded cleanly: compute verification score
     let kycScore = 0;
     if (parsed.aadhaar) kycScore += 40;
     if (parsed.name) kycScore += 20;
     if (faceScore > 70) kycScore += 40;
     else if (faceScore > 50) kycScore += 20;
-  
+
     let status = "manual_review";
     if (kycScore >= 80 && faceScore > 75) status = "approved";
-    if (faceScore < 40) status = "rejected";
-  
+    else if (faceScore < 40) status = "rejected";
+
     return {
       kyc_score: Math.min(kycScore, 100),
       face_match_score: faceScore,
@@ -729,23 +759,43 @@ Return ONLY valid JSON with no markdown or extra text:
       }
       
       const userId = req.user!.id;
-      if (!aadhaar_path.includes(userId) || !selfie_path.includes(userId)) {
+      // Exact directory-prefix ownership enforcement
+      const expectedPrefix = `verification/${userId}/`;
+      const isSafeDocPath = (p: unknown): p is string =>
+        typeof p === "string" &&
+        p.startsWith(expectedPrefix) &&
+        !p.includes("..") &&
+        !p.includes("//") &&
+        !p.includes("\\");
+
+      if (!isSafeDocPath(aadhaar_path) || !isSafeDocPath(selfie_path)) {
         return res.status(403).json({ error: "Unauthorized access to document paths" });
       }
 
-      // Download from supabase with graceful failure for demo mode
-      const downloadDocument = async (path: string) => {
-        const { data, error } = await supabaseAdmin.storage.from("identity_docs").download(path);
-        if (error || !data) {
-          console.warn(`Failed to download ${path} (${error?.message}). Falling back to empty buffer.`);
-          return Buffer.from("");
+      // Download from supabase identity_docs storage bucket
+      const downloadDocument = async (path: string): Promise<Buffer | null> => {
+        try {
+          const { data, error } = await supabaseAdmin.storage.from("identity_docs").download(path);
+          if (error || !data) {
+            console.warn(`Failed to download ${path}:`, error?.message);
+            return null;
+          }
+          const arrayBuffer = await data.arrayBuffer();
+          return Buffer.from(arrayBuffer);
+        } catch (err) {
+          console.error(`Download exception for ${path}:`, err);
+          return null;
         }
-        const arrayBuffer = await data.arrayBuffer();
-        return Buffer.from(arrayBuffer);
       };
 
       const aadhaarBuffer = await downloadDocument(aadhaar_path);
       const selfieBuffer = await downloadDocument(selfie_path);
+
+      if (!aadhaarBuffer || aadhaarBuffer.length === 0 || !selfieBuffer || selfieBuffer.length === 0) {
+        return res.status(400).json({
+          error: "Could not retrieve uploaded identity documents. Please try uploading again."
+        });
+      }
 
       const result = await runRealKyc(aadhaarBuffer, selfieBuffer);
 
@@ -854,45 +904,83 @@ Return ONLY valid JSON with no markdown or extra text:
     try {
       const { taskId } = req.params;
       const { imageBase64, proof_type } = req.body;
-      // proof_type: 'pickup' or 'delivery'
-      // Authenticated identity instead of a client-supplied volunteer_id —
-      // matches the pattern already used in verify-qr/abort below.
       const volunteer_id = req.user!.id;
 
+      if (!UUID_REGEX.test(taskId)) {
+        return res.status(400).json({ error: "Invalid taskId format." });
+      }
+
       if (!imageBase64 || !proof_type) {
-        return res.status(400).json({ error: "imageBase64 and proof_type are required" });
+        return res.status(400).json({ error: "imageBase64 and proof_type are required." });
       }
 
       if (!['pickup', 'delivery'].includes(proof_type)) {
-        return res.status(400).json({ error: "proof_type must be 'pickup' or 'delivery'" });
+        return res.status(400).json({ error: "proof_type must be 'pickup' or 'delivery'." });
+      }
+
+      // Verify task exists and is assigned to the authenticated caller
+      const { data: task, error: taskErr } = await supabaseAdmin
+        .from('volunteer_tasks')
+        .select('id, volunteer_id, status')
+        .eq('id', taskId)
+        .eq('volunteer_id', volunteer_id)
+        .maybeSingle();
+
+      if (taskErr || !task) {
+        return res.status(404).json({ error: "Task not found or not assigned to you." });
       }
 
       // Extract raw base64
       const raw = imageBase64.replace(/^data:image\/\w+;base64,/, "");
       const buffer = Buffer.from(raw, 'base64');
 
-      // Upload to Supabase Storage
-      const fileName = `${taskId}/${proof_type}_${Date.now()}.jpg`;
+      // Enforce 5MB limit
+      if (buffer.length > 5 * 1024 * 1024) {
+        return res.status(400).json({ error: "Proof image exceeds 5MB size limit." });
+      }
+
+      // Validate image magic bytes (JPEG, PNG, WebP)
+      const isJpeg = buffer.length > 3 && buffer[0] === 0xFF && buffer[1] === 0xD8 && buffer[2] === 0xFF;
+      const isPng = buffer.length > 8 && buffer[0] === 0x89 && buffer[1] === 0x50 && buffer[2] === 0x4E && buffer[3] === 0x47;
+      const isWebp = buffer.length > 12 && buffer.slice(8, 12).toString('ascii') === 'WEBP';
+
+      if (!isJpeg && !isPng && !isWebp) {
+        return res.status(400).json({ error: "Invalid image format. Allowed formats: JPEG, PNG, WebP." });
+      }
+
+      const mimeType = isPng ? 'image/png' : isWebp ? 'image/webp' : 'image/jpeg';
+      const ext = isPng ? 'png' : isWebp ? 'webp' : 'jpg';
+      const fileName = `${taskId}/${proof_type}_${Date.now()}.${ext}`;
+
+      // Upload to private task_proofs bucket
       const { error: uploadErr } = await supabaseAdmin.storage
         .from('task_proofs')
-        .upload(fileName, buffer, { contentType: 'image/jpeg', upsert: true });
+        .upload(fileName, buffer, { contentType: mimeType, upsert: true });
 
       if (uploadErr) throw uploadErr;
 
-      const { data: urlData } = supabaseAdmin.storage.from('task_proofs').getPublicUrl(fileName);
-      const publicUrl = urlData.publicUrl;
+      // Generate a short-lived signed URL (24 hours) for viewing
+      const { data: signedData, error: signedErr } = await supabaseAdmin.storage
+        .from('task_proofs')
+        .createSignedUrl(fileName, 86400);
 
-      // Save URL to volunteer_tasks
+      if (signedErr) {
+        console.warn("Could not generate signed URL for proof:", signedErr);
+      }
+
+      const proofSignedUrl = signedData?.signedUrl || "";
+
+      // Save file path to volunteer_tasks
       const column = proof_type === 'pickup' ? 'pickup_image_url' : 'delivery_image_url';
       const { error: updateErr } = await supabaseAdmin
         .from('volunteer_tasks')
-        .update({ [column]: publicUrl })
+        .update({ [column]: fileName })
         .eq('id', taskId)
         .eq('volunteer_id', volunteer_id);
 
       if (updateErr) throw updateErr;
 
-      res.json({ success: true, url: publicUrl });
+      res.json({ success: true, url: proofSignedUrl, path: fileName });
     } catch (err: unknown) {
       console.error("Proof upload error:", err);
       res.status(500).json({ error: "Internal server error" });
