@@ -8,6 +8,24 @@ import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/card";
 import { Link } from "react-router-dom";
+// ── Nominatim reverse geocoding (OpenStreetMap, free, no API key) ───────────
+async function reverseGeocode(lat: number, lng: number): Promise<string | null> {
+  try {
+    const res = await fetch(
+      `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`,
+      {
+        headers: {
+          "Accept-Language": "en",
+        },
+      }
+    );
+    if (!res.ok) return null;
+    const data = await res.json();
+    return (data.display_name as string) ?? null;
+  } catch {
+    return null;
+  }
+}
 
 interface ProfileData {
   full_name: string;
@@ -17,27 +35,6 @@ interface ProfileData {
   location_lng: number | null;
   location_text: string | null;
   verification_status: string | null;
-}
-
-// ── Nominatim reverse geocoding (free, no API key) ──────────────────────────
-async function reverseGeocode(lat: number, lng: number): Promise<string | null> {
-  try {
-    const res = await fetch(
-      `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`,
-      {
-        headers: {
-          // Nominatim requires a User-Agent (your app name/contact)
-          "Accept-Language": "en",
-        },
-      }
-    );
-    if (!res.ok) return null;
-    const data = await res.json();
-    // Prefer display_name, fall back to formatted address components
-    return (data.display_name as string) ?? null;
-  } catch {
-    return null;
-  }
 }
 
 export default function Profile() {

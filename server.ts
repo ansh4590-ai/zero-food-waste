@@ -77,7 +77,16 @@ const PORT = parseInt(process.env.PORT || '3000', 10);
           scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'", "https://maps.googleapis.com"],
           styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com", "https://maps.googleapis.com"],
           fontSrc: ["'self'", "https://fonts.gstatic.com"],
-          imgSrc: ["'self'", "data:", "blob:", "https:", "https://maps.gstatic.com"],
+          imgSrc: [
+            "'self'",
+            "data:",
+            "blob:",
+            "https:",
+            "https://maps.gstatic.com",
+            // Official OpenStreetMap tile servers
+            "https://tile.openstreetmap.org",
+            "https://*.tile.openstreetmap.org",
+          ],
           connectSrc: [
             "'self'",
             // Vite HMR (dev only)
@@ -96,13 +105,14 @@ const PORT = parseInt(process.env.PORT || '3000', 10);
             "https://*.firebase.com",
             "https://*.firebaseio.com",
             "wss://*.firebaseio.com",
-            // Map / Geocoding APIs
-            "https://places.googleapis.com",          // Google Places REST API
-            "https://nominatim.openstreetmap.org", // Reverse geocoding
-            "https://*.tile.openstreetmap.org",   // Map tiles
-            "https://photon.komoot.io",           // Free autocomplete (OSM)
-            // OSRM routing
+            // Google Places REST API
+            "https://places.googleapis.com",
+            // Open Source Routing Machine (OSRM)
             "https://router.project-osrm.org",
+            // Photon OpenStreetMap Geocoding
+            "https://photon.komoot.io",
+            // OSM Nominatim (reverse geocoding)
+            "https://nominatim.openstreetmap.org",
           ],
           frameSrc: ["'none'"],
           objectSrc: ["'none'"],
@@ -202,6 +212,61 @@ const PORT = parseInt(process.env.PORT || '3000', 10);
     } catch (err) {
       console.error('[places/geocode]', err);
       res.status(500).json({ error: 'Geocode failed' });
+    }
+  });
+
+  // ─── OFFICIAL OPENSTREETMAP TILE PROXY ──────────────────────────────────────
+  // Serves official OpenStreetMap tiles with compliant User-Agent and caching.
+  // Bypasses the OSM volunteer-server block on localhost browsers while respecting
+  // the OSM Tile Usage Policy (aggressively cached, identifies application).
+  const tileCache = new Map<string, { buffer: Buffer; contentType: string; expiresAt: number }>();
+  const TILE_CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
+
+  app.get('/api/tiles/osm/:z/:x/:y.png', async (req, res) => {
+    const { z, x, y } = req.params;
+    const cacheKey = `${z}/${x}/${y}`;
+
+    const cached = tileCache.get(cacheKey);
+    if (cached && Date.now() < cached.expiresAt) {
+      res.setHeader('Content-Type', cached.contentType);
+      res.setHeader('Cache-Control', 'public, max-age=86400, immutable');
+      return res.send(cached.buffer);
+    }
+
+    try {
+      const osmUrl = `https://tile.openstreetmap.org/${z}/${x}/${y}.png`;
+      const response = await fetch(osmUrl, {
+        headers: {
+          'User-Agent': 'ZeroFoodWastePlatform/1.0 (contact: admin@zerofoodwaste.org)',
+          'Referer': 'https://zerofoodwaste.vercel.app/',
+        },
+      });
+
+      if (!response.ok) {
+        return res.status(response.status).send('Tile fetch failed');
+      }
+
+      const contentType = response.headers.get('content-type') || 'image/png';
+      const arrayBuffer = await response.arrayBuffer();
+      const buffer = Buffer.from(arrayBuffer);
+
+      if (tileCache.size > 3000) {
+        const firstKey = tileCache.keys().next().value;
+        if (firstKey) tileCache.delete(firstKey);
+      }
+
+      tileCache.set(cacheKey, {
+        buffer,
+        contentType,
+        expiresAt: Date.now() + TILE_CACHE_TTL_MS,
+      });
+
+      res.setHeader('Content-Type', contentType);
+      res.setHeader('Cache-Control', 'public, max-age=86400, immutable');
+      res.send(buffer);
+    } catch (err) {
+      console.error('[osm/tile]', err);
+      res.status(500).send('Failed to fetch OSM tile');
     }
   });
 

@@ -33,13 +33,14 @@ import {
 import { toast } from "sonner";
 import { useLoadingStore, useAuthStore } from "../store";
 import { supabase, isValidSupabaseId } from "../lib/supabase";
-import { FOOD_CATEGORIES } from "../lib/constants";
+import { FOOD_CATEGORIES, OSM_TILE_URL, OSM_TILE_ATTRIBUTION } from "../lib/constants";
 import { MapContainer, TileLayer, Marker, useMap } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 import { AddressAutocomplete } from "../components/common/AddressAutocomplete";
 import { DateTimePicker } from "../components/common/DateTimePicker";
 import type { Suggestion } from "../hooks/useAddressAutocomplete";
+
 import {
   suggestListingDetails,
   classifyFoodFromText,
@@ -63,7 +64,11 @@ L.Icon.Default.mergeOptions({
 // Helper component to recenter map when coordinates change
 function RecenterMap({ lat, lng }: { lat: number; lng: number }) {
   const map = useMap();
-  map.setView([lat, lng], 13);
+  useEffect(() => {
+    if (lat && lng && isFinite(lat) && isFinite(lng) && !(lat === 0 && lng === 0)) {
+      map.setView([lat, lng], 14, { animate: true });
+    }
+  }, [lat, lng, map]);
   return null;
 }
 
@@ -98,7 +103,7 @@ export default function Donate() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [addressInput, setAddressInput] = useState("");
-  const [mapCenter, setMapCenter] = useState<[number, number]>([0, 0]);
+  const [mapCenter, setMapCenter] = useState<[number, number]>([20.5937, 78.9629]);
   const [hasLocation, setHasLocation] = useState(false);
   const [expiry, setExpiry] = useState("");
   const [pickupStart, setPickupStart] = useState("");
@@ -910,11 +915,12 @@ export default function Donate() {
                       <div className="h-[260px] bg-muted/30 rounded-xl border border-border overflow-hidden relative z-0 shadow-inner">
                         <MapContainer center={mapCenter} zoom={4} style={{ height: "100%", width: "100%" }}>
                           <TileLayer
-                            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+                            url={OSM_TILE_URL}
+                            attribution={OSM_TILE_ATTRIBUTION}
+                            maxZoom={19}
                           />
-                          <Marker position={mapCenter} />
-                          <RecenterMap lat={mapCenter[0]} lng={mapCenter[1]} />
+                          {hasLocation && <Marker position={mapCenter} />}
+                          {hasLocation && <RecenterMap lat={mapCenter[0]} lng={mapCenter[1]} />}
                         </MapContainer>
                       </div>
                     </div>

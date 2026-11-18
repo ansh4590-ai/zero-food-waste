@@ -53,7 +53,7 @@ export function haversineFallbackRoute(
   // At 35 km/h average in city traffic
   const durationSeconds = (distanceMeters / 1000 / 35) * 3600;
 
-  // Generate a few intermediate points for visual line
+  // Generate intermediate points for visual line
   const steps = 4;
   const geometry: OSRMCoordinate[] = [];
   for (let i = 0; i <= steps; i++) {
@@ -159,6 +159,7 @@ export async function fetchOSRMRoute(
   if (points.length === 2) {
     return haversineFallbackRoute(points[0], points[1]);
   }
+
   // Multi-stop: chain haversine segments
   let totalDistance = 0;
   let totalDuration = 0;
@@ -173,6 +174,7 @@ export async function fetchOSRMRoute(
     else geometry.push(...segment.geometry.slice(1));
     legs.push(segment.legs[0]);
   }
+
   return {
     geometry,
     distanceMeters: totalDistance,

@@ -46,14 +46,11 @@ export function useAddressAutocomplete(query: string) {
       setError(null);
 
       try {
-        // Use Photon by Komoot (Free OpenStreetMap Geocoder)
-        // No API keys, no billing, no CORS issues.
+        // Photon by Komoot — Free OpenStreetMap Geocoder
+        // No API keys, no billing, OpenStreetMap data.
         const url = new URL('https://photon.komoot.io/api/');
         url.searchParams.set('q', trimmed);
         url.searchParams.set('limit', '5');
-        // Restrict to India to improve relevance (optional, but helpful for this app)
-        // Note: Photon doesn't strictly enforce country filters well for all queries,
-        // but passing lat/lon bias or just searching generally works fine.
 
         const res = await fetch(url.toString(), {
           signal: controllerRef.current.signal,
@@ -64,36 +61,33 @@ export function useAddressAutocomplete(query: string) {
         const data = await res.json();
         const features = data.features || [];
 
-        const results = features.map((f: any, idx: number) => {
-          const props = f.properties;
-          const coords = f.geometry.coordinates; // [lng, lat]
-          
-          // Build a readable address
-          const primaryText = props.name || props.street || props.city || 'Unknown place';
-          
-          const secondaryParts = [];
-          if (props.name && props.street) secondaryParts.push(props.street);
-          if (props.city && props.city !== primaryText) secondaryParts.push(props.city);
-          if (props.state) secondaryParts.push(props.state);
-          if (props.postcode) secondaryParts.push(props.postcode);
+        const mapped: Suggestion[] = features.map((f: any, idx: number) => {
+          const props = f.properties || {};
+          const coords = f.geometry?.coordinates || [0, 0];
+
+          // Build primary and secondary labels
+          const name = props.name || props.street || props.city || 'Location';
+          const secondaryParts = [
+            props.district,
+            props.city,
+            props.state,
+            props.country,
+          ].filter(Boolean);
 
           return {
-            id: `photon-${idx}-${Date.now()}`,
-            primaryText,
+            id: `${props.osm_id || idx}-${coords[0]}-${coords[1]}`,
+            primaryText: name,
             secondaryText: secondaryParts.join(', '),
             lat: coords[1],
             lng: coords[0],
-          } as Suggestion;
+          };
         });
 
-        // Filter out places with no coordinates just in case
-        const valid = results.filter((s: Suggestion) => s.lat !== 0 && s.lng !== 0);
-
-        cacheRef.current.set(cacheKey, valid);
-        setSuggestions(valid);
+        cacheRef.current.set(cacheKey, mapped);
+        setSuggestions(mapped);
       } catch (err) {
         if ((err as Error).name === 'AbortError') return;
-        console.error('[useAddressAutocomplete (Photon)]', err);
+        console.error('[useAddressAutocomplete (Photon/OSM)]', err);
         setError('Could not load suggestions');
       } finally {
         setIsLoading(false);

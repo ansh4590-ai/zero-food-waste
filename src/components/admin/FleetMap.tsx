@@ -1,8 +1,10 @@
 import React, { Fragment } from "react";
-import { MapContainer, TileLayer, Marker, Popup, Polyline } from "react-leaflet";
+import { MapContainer, TileLayer, Marker, Popup, Polyline, ZoomControl } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import { createAgentIcon, createTargetIcon } from "./leafletSetup";
 import type { FleetTask, FleetFoodRequest, FleetFoodListing } from "../../types/admin";
+import { OSM_TILE_URL, OSM_TILE_ATTRIBUTION } from "../../lib/constants";
+
 
 interface FleetMapProps {
   fleetTasks: FleetTask[];
@@ -33,10 +35,15 @@ const FleetMap: React.FC<FleetMapProps> = React.memo(function FleetMap({ fleetTa
       center={[20.5937, 78.9629]}
       zoom={5}
       style={{ height: "100%", width: "100%", zIndex: 0 }}
-      zoomControl={true}
-      attributionControl={false}
+      zoomControl={false}
+      attributionControl={true}
     >
-      <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+      <ZoomControl position="topright" />
+      <TileLayer
+        url={OSM_TILE_URL}
+        attribution={OSM_TILE_ATTRIBUTION}
+        maxZoom={19}
+      />
       {fleetTasks.map((task) => {
         const volLoc = getVolunteerLocation(task);
         const req = getFirstRequest(task);

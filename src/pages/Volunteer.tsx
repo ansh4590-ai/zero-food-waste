@@ -6,7 +6,7 @@ import {
   MapPin, Navigation, CheckCircle2, RefreshCw, ShieldCheck,
   Route, Loader2, Clock, WifiOff, Package, Truck, Flag, AlertTriangle
 } from "lucide-react";
-import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap, FeatureGroup } from "react-leaflet";
+import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap, FeatureGroup, ZoomControl } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 import { toast } from "sonner";
@@ -17,12 +17,13 @@ import { Link } from "react-router-dom";
 import { calculateHaversineDistance, formatDistance } from "../lib/distance";
 import { fetchOSRMRoute, OSRMRouteResult, formatETA } from "../lib/osrm";
 import { computePriorityScore, sortMultiTaskSequence, MultiTaskContext } from "../lib/dispatch";
-import { GEO_CONFIG, API_BASE, RPC, TABLES, VOLUNTEER_STATUS, ROUTABLE_STATUSES, MY_TASK_STATUSES } from "../lib/constants";
+import { GEO_CONFIG, API_BASE, RPC, TABLES, VOLUNTEER_STATUS, ROUTABLE_STATUSES, MY_TASK_STATUSES, OSM_TILE_URL, OSM_TILE_ATTRIBUTION } from "../lib/constants";
 import { getPickupWindowStatus, formatPickupCountdown } from "../lib/utils";
 import { TaskAssignmentModal } from "../components/TaskAssignmentModal";
 import { QRScannerModal } from "../components/QRVerification";
 import { ProgressTimeline, VOLUNTEER_TIMELINE_STAGES } from "../components/ProgressTimeline";
 import { NeonBadge } from "../components/ui/NeonBadge";
+
 import { AnimatedContainer } from "../components/ui/AnimatedContainer";
 import { AIRouteAdvisor } from "../components/AIRouteAdvisor";
 
@@ -70,22 +71,50 @@ function DynamicMapController({
 }) {
   const map = useMap();
   useEffect(() => {
-    if (!tasks.length) { map.setView([livePos.lat, livePos.lng], 12); return; }
+    const hasLivePos = livePos.lat !== 0 && livePos.lng !== 0;
+
+    if (!tasks.length) {
+      if (hasLivePos) {
+        map.setView([livePos.lat, livePos.lng], 13);
+      } else {
+        map.setView([20.5937, 78.9629], 5);
+      }
+      return;
+    }
+
     if (activeTaskId) {
       const active = tasks.find(t => t.id === activeTaskId);
       if (active) {
-        let coords: [number, number][] =
-          osrmGeometry?.length
-            ? osrmGeometry.map(p => [p.lat, p.lng])
-            : [[livePos.lat, livePos.lng], [active.pickupLat, active.pickupLng], ...(active.dropoffLat != null && active.dropoffLng != null ? [[active.dropoffLat, active.dropoffLng] as [number, number]] : [])];
+        const coords: [number, number][] = osrmGeometry?.length
+          ? osrmGeometry.map(p => [p.lat, p.lng])
+          : [
+              ...(hasLivePos ? [[livePos.lat, livePos.lng] as [number, number]] : []),
+              [active.pickupLat, active.pickupLng],
+              ...(active.dropoffLat != null && active.dropoffLng != null
+                ? [[active.dropoffLat, active.dropoffLng] as [number, number]]
+                : []),
+            ];
         const bounds = L.latLngBounds(coords);
-        if (bounds.isValid()) map.fitBounds(bounds, { padding: [80, 80], maxZoom: 16, animate: true, duration: 1 });
+        if (bounds.isValid()) {
+          map.fitBounds(bounds, { padding: [80, 80], maxZoom: 16, animate: true, duration: 1 });
+        }
         return;
       }
     }
-    const pts = tasks.flatMap(t => [[t.pickupLat, t.pickupLng], [t.dropoffLat, t.dropoffLng]] as [number, number][]);
-    const bounds = L.latLngBounds([[livePos.lat, livePos.lng], ...pts]);
-    if (bounds.isValid()) map.fitBounds(bounds, { padding: [60, 60], maxZoom: 12, animate: true });
+
+    const pts: [number, number][] = tasks.flatMap(t => {
+      const arr: [number, number][] = [[t.pickupLat, t.pickupLng]];
+      if (t.dropoffLat != null && t.dropoffLng != null) arr.push([t.dropoffLat, t.dropoffLng]);
+      return arr;
+    });
+
+    const allCoords = hasLivePos ? [[livePos.lat, livePos.lng] as [number, number], ...pts] : pts;
+    if (allCoords.length > 0) {
+      const bounds = L.latLngBounds(allCoords);
+      if (bounds.isValid()) {
+        map.fitBounds(bounds, { padding: [60, 60], maxZoom: 14, animate: true });
+      }
+    }
   }, [tasks, activeTaskId, map, livePos.lat, livePos.lng, osrmGeometry]);
   return null;
 }
@@ -395,6 +424,8 @@ export default function Volunteer() {
         .eq("volunteer_id", user.id)
         .in("status", MY_TASK_STATUSES as unknown as string[]);
 
+      if (myError) console.error("Supabase error [myTasksRaw]:", myError);
+
       const myRequestIds = new Set(
         (myTasksRaw ?? []).map((row: Record<string, unknown>) => row.request_id as string | undefined).filter(Boolean)
       );
@@ -486,8 +517,8 @@ export default function Volunteer() {
       }
 
       setMyTasks(finalTasks);
-      if (finalTasks.length === 1) {
-        setActiveTaskId(prev => prev || finalTasks[0].id);
+      if (finalTasks.length > 0) {
+        setActiveTaskId(prev => (prev && finalTasks.some(t => t.id === prev) ? prev : finalTasks[0].id));
       }
     } catch (err) {
       console.error("fetchTasks error:", err);
@@ -623,13 +654,14 @@ export default function Volunteer() {
     const allSteps: Array<{ instruction: string; distance: string; isActive: boolean }> = [];
     const legs = [...(routeOne?.legs || []), ...(routeTwo?.legs || [])];
     legs.forEach(leg => {
-      if (!leg.steps) return;
-      leg.steps.forEach((s: any, i: number) => {
+      const steps = leg.steps;
+      if (!steps) return;
+      steps.forEach((s: any, i: number) => {
         if (!s.maneuver) return;
         const type = s.maneuver.type || '';
         const modifier = s.maneuver.modifier || '';
         const name = s.name || '';
-        if (type === 'arrive' && i === leg.steps.length - 1) {
+        if (type === 'arrive' && i === steps.length - 1) {
           allSteps.push({ instruction: `Arrive at ${name || 'destination'}`, distance: '', isActive: false });
           return;
         }
@@ -956,7 +988,6 @@ export default function Volunteer() {
           .custom-popup .leaflet-popup-content-wrapper { background: transparent !important; padding: 0 !important; box-shadow: none !important; border-radius: 12px; overflow: hidden; }
           .custom-popup .leaflet-popup-tip-container { display: none !important; }
           @keyframes ping { 75%, 100% { transform: scale(2); opacity: 0; } }
-          .dark-tiles { filter: invert(100%) hue-rotate(180deg) brightness(95%) contrast(90%); }
         `}</style>
 
       {/* KYC Banner */}
@@ -1339,9 +1370,9 @@ export default function Volunteer() {
 
         {/* ── RIGHT MAP ── */}
         <div className="relative h-full w-full bg-[#0a0c0c] z-0 pb-[88px] sm:pb-0">
-          {/* ETA overlay */}
-          <div className="absolute top-5 left-1/2 -translate-x-1/2 z-[400] pointer-events-auto px-4 w-full max-w-sm">
-            <div className="glass-panel px-5 py-3 shadow-2xl border-white/10">
+          {/* ETA / Live Status HUD overlay */}
+          <div className="absolute top-4 left-1/2 -translate-x-1/2 z-[400] pointer-events-auto px-4 w-full max-w-sm">
+            <div className="bg-[#121517]/95 backdrop-blur-xl px-5 py-3 shadow-2xl border border-white/15 rounded-2xl">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2.5">
                   <div className={`w-8 h-8 rounded-full flex items-center justify-center border ${isNavigating
@@ -1350,14 +1381,15 @@ export default function Volunteer() {
                         ? 'bg-blue-500/15 border-blue-500/30'
                         : 'bg-white/5 border-white/10'
                     }`}>
-                    <Route className={`w-4 h-4 ${isNavigating ? 'text-blue-400 animate-pulse' : activeTask ? 'text-blue-400' : 'text-white/30'
+                    <Route className={`w-4 h-4 ${isNavigating ? 'text-blue-400 animate-pulse' : activeTask ? 'text-blue-400' : 'text-white/40'
                       }`} />
                   </div>
                   <div>
-                    <p className="text-[9px] uppercase text-white/35 font-bold tracking-widest">
-                      {isNavigating ? 'NAVIGATING' : useHardwareGPS ? 'Live GPS' : activeTask ? 'OSRM Telemetry' : 'Idle'}
+                    <p className="text-[10px] uppercase text-emerald-400 font-bold tracking-widest flex items-center gap-1.5">
+                      <span className={`w-1.5 h-1.5 rounded-full ${isNavigating ? 'bg-blue-400 animate-ping' : useHardwareGPS ? 'bg-emerald-400 animate-pulse' : 'bg-white/40'}`} />
+                      {isNavigating ? 'NAVIGATING' : useHardwareGPS ? 'Live GPS Active' : activeTask ? 'OSRM Telemetry' : 'Idle'}
                     </p>
-                    <p className="text-sm font-semibold text-white leading-tight">
+                    <p className="text-sm font-semibold text-white leading-tight mt-0.5">
                       {isRouteFetching
                         ? 'Routing...'
                         : activeTask
@@ -1435,13 +1467,15 @@ export default function Volunteer() {
           <MapContainer
             center={[livePos.lat || 20.5937, livePos.lng || 78.9629]}
             zoom={livePos.lat ? 12 : 5}
-            style={{ height: "100%", width: "100%", zIndex: 0, background: "#0a0c0c" }}
+            style={{ height: "100%", width: "100%", zIndex: 0 }}
             zoomControl={false}
-            attributionControl={false}
+            attributionControl={true}
           >
-            <TileLayer 
-              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" 
-              className="dark-tiles"
+            <ZoomControl position="topright" />
+            <TileLayer
+              url={OSM_TILE_URL}
+              attribution={OSM_TILE_ATTRIBUTION}
+              maxZoom={19}
             />
             <DynamicMapController
               tasks={combinedTasks}

@@ -128,3 +128,16 @@ export const MY_TASK_STATUSES: VolunteerStatus[] = [
   VOLUNTEER_STATUS.ASSIGNED,
   VOLUNTEER_STATUS.PICKED_UP,
 ];
+
+// ─── OFFICIAL OPENSTREETMAP TILE CONFIGURATION ──────────────────────────────
+/**
+ * Official OpenStreetMap Tile Endpoint
+ * On localhost / development, routes through the local server proxy to satisfy
+ * OSM Tile Usage Policy (adds User-Agent + aggressive caching).
+ * On production domains, uses direct https://tile.openstreetmap.org/{z}/{x}/{y}.png
+ */
+export const OSM_TILE_URL = typeof window !== "undefined" && (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1")
+  ? "/api/tiles/osm/{z}/{x}/{y}.png"
+  : "https://tile.openstreetmap.org/{z}/{x}/{y}.png";
+
+export const OSM_TILE_ATTRIBUTION = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';

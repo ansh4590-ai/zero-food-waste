@@ -840,3 +840,94 @@ html, body {
 .global-search input::placeholder {
   color: var(--muted-foreground);
 }
+
+/* ── Leaflet Dark Theme Controls & Popups Polish ── */
+.leaflet-container {
+  font-family: inherit;
+}
+
+.leaflet-control-attribution {
+  background: rgba(255, 255, 255, 0.85) !important;
+  color: #333333 !important;
+  font-size: 11px !important;
+  padding: 3px 8px !important;
+  border-top-left-radius: 6px;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
+}
+
+.leaflet-control-attribution a {
+  color: #0284c7 !important;
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.leaflet-control-attribution a:hover {
+  text-decoration: underline;
+}
+
+.dark .leaflet-control-attribution,
+:root.dark .leaflet-control-attribution {
+  background: rgba(15, 23, 42, 0.88) !important;
+  backdrop-filter: blur(8px);
+  color: rgba(255, 255, 255, 0.7) !important;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.dark .leaflet-control-attribution a,
+:root.dark .leaflet-control-attribution a {
+  color: #38bdf8 !important;
+}
+
+.leaflet-bar {
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5) !important;
+  border-radius: 8px !important;
+  overflow: hidden;
+}
+
+.leaflet-bar a {
+  background-color: #171a1a !important;
+  color: #e6edf3 !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.leaflet-bar a:hover {
+  background-color: #232727 !important;
+  color: #38bdf8 !important;
+}
+
+.leaflet-popup-content-wrapper {
+  background: #171a1a !important;
+  color: #e6edf3 !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  border-radius: 12px !important;
+  box-shadow: 0 12px 28px -4px rgba(0, 0, 0, 0.6) !important;
+  padding: 0 !important;
+}
+
+.leaflet-popup-tip {
+  background: #171a1a !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+}
+
+.leaflet-popup-close-button {
+  color: rgba(255, 255, 255, 0.5) !important;
+  padding: 6px !important;
+}
+
+.leaflet-popup-close-button:hover {
+  color: #ffffff !important;
+}
+
+/* Position adjustments for clean breathing room away from sidebars and chat bubbles */
+.leaflet-top.leaflet-right .leaflet-control {
+  margin-top: 18px !important;
+  margin-right: 18px !important;
+}
+
+.leaflet-bottom.leaflet-right .leaflet-control-attribution {
+  margin-right: 76px !important;
+  margin-bottom: 8px !important;
+}
