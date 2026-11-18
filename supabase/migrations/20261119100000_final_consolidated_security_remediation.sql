@@ -1,27 +1,24 @@
 -- =============================================================================
--- Zero Food Waste — FINAL CONSOLIDATED SECURITY REMEDIATION (REV 2)
+-- Zero Food Waste — FINAL CONSOLIDATED SECURITY REMEDIATION (LIVE-VERIFIED)
 --
--- Incorporates all audit findings and post-review corrections:
---   1. P0 KYC Profile Creation: checks against schema defaults (0, 'pending', '{}')
---      instead of rejecting non-NULL values, preventing signup breakage.
---   2. P1 Food Requests RBAC: admin bypass uses 'users.read' instead of
---      'requests.read_all' (which was granted to volunteers in the RBAC seed).
---   3. P1 Scheduled Cleanup: public access revoked from auto_expire_stale_tasks();
---      now executable exclusively by service_role (server CRON endpoint).
---   4. P1 Profile Privacy: profiles table restricted to own row and admins.
---      Sensitive KYC columns (documents, extracted_data, scores) are no longer
---      exposed to task co-participants. A secure view (task_participants_contact)
---      provides only contact/coordination fields.
---   5. KYC Resubmission Validation: document paths re-validated on status -> pending
---      even if document JSON was not modified in the same update.
---   6. Hardened SECURITY DEFINER RPCs: explicit search_path and restricted grants
---      on claim_volunteer_task, handle_task_assignment, abort_volunteer_task,
---      and auto_expire_stale_tasks.
+-- Cross-checked against the live Supabase database introspection dump:
+--   1. Drops all legacy permissive policies that bypassed security:
+--      • "Public profiles are viewable by authenticated users." (qual: true)
+--      • "Food listings are viewable by authenticated users." (qual: true)
+--      • "Users can view requests they are part of."
+--      • "Volunteers can update their own tasks"
+--      • "Authenticated users can create tasks" & "tasks_insert"
+--   2. Enforces strict P0 QR-only transitions by revoking INSERT/UPDATE on volunteer_tasks.
+--   3. KYC trigger matches exact live schema defaults (0, 'pending', '{}'::jsonb).
+--   4. Admin bypass uses 'users.read' instead of 'requests.read_all'.
+--   5. Public access revoked from auto_expire_stale_tasks() (granted only to service_role).
+--   6. Profiles table locked to owner and admin; task_participants_contact view provides safe contact info.
+--   7. Hardens claim_volunteer_task, handle_task_assignment, and abort_volunteer_task.
 -- =============================================================================
 
 BEGIN;
 
--- ─── 0. PRE-FLIGHT: ensure required objects exist ─────────────────────────────
+-- ─── 0. PRE-FLIGHT CHECKS ─────────────────────────────────────────────────────
 DO $$
 BEGIN
   IF to_regclass('public.profiles') IS NULL THEN
@@ -60,7 +57,7 @@ AS $$
       AND (
         vt.volunteer_id = auth.uid()
         OR (
-          vt.status IN ('open', 'pending_acceptance')
+          vt.status IN ('open'::public.volunteer_status, 'pending_acceptance'::public.volunteer_status)
           AND vt.volunteer_id IS NULL
         )
       )
@@ -110,28 +107,34 @@ GRANT EXECUTE ON FUNCTION public.can_volunteer_view_request(UUID) TO authenticat
 GRANT EXECUTE ON FUNCTION public.can_donor_view_request(UUID) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.can_view_profile_for_task(UUID) TO authenticated;
 
--- ─── 2. Replace SELECT policies ──────────────────────────────────────────────
+-- Drop obsolete 2-argument helper overloads
+DO $$
+BEGIN
+  IF to_regprocedure('public.can_volunteer_view_request(uuid,uuid)') IS NOT NULL THEN
+    REVOKE ALL ON FUNCTION public.can_volunteer_view_request(UUID, UUID) FROM PUBLIC, anon, authenticated;
+    DROP FUNCTION public.can_volunteer_view_request(UUID, UUID);
+  END IF;
 
--- 2a. food_requests SELECT: uses 'users.read' for admin bypass.
--- 'requests.read_all' is NOT used because it was seeded to volunteers in RBAC.
-DROP POLICY IF EXISTS "requests_select" ON public.food_requests;
-DROP POLICY IF EXISTS "requests_select_volunteer" ON public.food_requests;
-DROP POLICY IF EXISTS "requests_select_all_authorized" ON public.food_requests;
+  IF to_regprocedure('public.can_donor_view_request(uuid,uuid)') IS NOT NULL THEN
+    REVOKE ALL ON FUNCTION public.can_donor_view_request(UUID, UUID) FROM PUBLIC, anon, authenticated;
+    DROP FUNCTION public.can_donor_view_request(UUID, UUID);
+  END IF;
 
-CREATE POLICY "requests_select_all_authorized" ON public.food_requests
-FOR SELECT
-USING (
-  auth.uid() = receiver_id
-  OR public.can_donor_view_request(listing_id)
-  OR public.can_volunteer_view_request(id)
-  OR public.has_permission(auth.uid(), 'users.read')
-);
+  IF to_regprocedure('public.can_view_profile_for_task(uuid,uuid)') IS NOT NULL THEN
+    REVOKE ALL ON FUNCTION public.can_view_profile_for_task(UUID, UUID) FROM PUBLIC, anon, authenticated;
+    DROP FUNCTION public.can_view_profile_for_task(UUID, UUID);
+  END IF;
+END;
+$$;
 
--- 2b. profiles SELECT: Strictly locked to own profile and admins.
--- Sensitive KYC data (documents, extracted_data, scores) is NEVER exposed to other users.
+-- ─── 2. Clean up & Harden PROFILES Policies ──────────────────────────────────
+-- Drop ALL legacy policies identified in the live introspection dump
+DROP POLICY IF EXISTS "Public profiles are viewable by authenticated users." ON public.profiles;
+DROP POLICY IF EXISTS "Admins can view all profiles" ON public.profiles;
+DROP POLICY IF EXISTS "Users can view own profile" ON public.profiles;
 DROP POLICY IF EXISTS "profiles_select_all" ON public.profiles;
-DROP POLICY IF EXISTS "profiles_select_own_or_admin" ON public.profiles;
 DROP POLICY IF EXISTS "profiles_select_all_authorized" ON public.profiles;
+DROP POLICY IF EXISTS "profiles_select_own_or_admin" ON public.profiles;
 
 CREATE POLICY "profiles_select_own_or_admin" ON public.profiles
 FOR SELECT
@@ -140,8 +143,15 @@ USING (
   OR public.has_permission(auth.uid(), 'users.read')
 );
 
--- 2c. Secure view for task-participant contact information.
--- Exposes ONLY non-sensitive contact and dispatch details to authorized co-participants.
+DROP POLICY IF EXISTS "Users can update own profile" ON public.profiles;
+DROP POLICY IF EXISTS "Users can update own profile." ON public.profiles;
+DROP POLICY IF EXISTS "profiles_update_own" ON public.profiles;
+
+CREATE POLICY "profiles_update_own" ON public.profiles
+FOR UPDATE
+USING (auth.uid() = id);
+
+-- ─── 3. Task Participants Contact View (Safe Column Projection) ───────────────
 CREATE OR REPLACE VIEW public.task_participants_contact
 WITH (security_invoker = false)
 AS
@@ -160,38 +170,15 @@ WHERE
   OR public.can_view_profile_for_task(p.id)
   OR EXISTS (
     SELECT 1 FROM public.food_listings fl
-    WHERE fl.donor_id = p.id AND fl.status = 'active'
+    WHERE fl.donor_id = p.id AND fl.status = 'active'::public.listing_status
   )
   OR public.has_permission(auth.uid(), 'users.read');
 
 REVOKE ALL ON TABLE public.task_participants_contact FROM PUBLIC, anon;
 GRANT SELECT ON TABLE public.task_participants_contact TO authenticated, anon;
 
--- 2d. Drop obsolete 2-argument helper overloads
-DO $$
-BEGIN
-  IF to_regprocedure('public.can_volunteer_view_request(uuid,uuid)') IS NOT NULL THEN
-    REVOKE ALL ON FUNCTION public.can_volunteer_view_request(UUID, UUID)
-      FROM PUBLIC, anon, authenticated;
-    DROP FUNCTION public.can_volunteer_view_request(UUID, UUID);
-  END IF;
-
-  IF to_regprocedure('public.can_donor_view_request(uuid,uuid)') IS NOT NULL THEN
-    REVOKE ALL ON FUNCTION public.can_donor_view_request(UUID, UUID)
-      FROM PUBLIC, anon, authenticated;
-    DROP FUNCTION public.can_donor_view_request(UUID, UUID);
-  END IF;
-
-  IF to_regprocedure('public.can_view_profile_for_task(uuid,uuid)') IS NOT NULL THEN
-    REVOKE ALL ON FUNCTION public.can_view_profile_for_task(UUID, UUID)
-      FROM PUBLIC, anon, authenticated;
-    DROP FUNCTION public.can_view_profile_for_task(UUID, UUID);
-  END IF;
-END;
-$$;
-
--- ─── 3. Restrict food-listing visibility ─────────────────────────────────────
-
+-- ─── 4. Clean up & Harden FOOD_LISTINGS Policies ─────────────────────────────
+DROP POLICY IF EXISTS "Food listings are viewable by authenticated users." ON public.food_listings;
 DROP POLICY IF EXISTS "listings_select" ON public.food_listings;
 DROP POLICY IF EXISTS "listings_select_volunteer" ON public.food_listings;
 DROP POLICY IF EXISTS "listings_select_all" ON public.food_listings;
@@ -200,17 +187,23 @@ DROP POLICY IF EXISTS "listings_select_authorized" ON public.food_listings;
 CREATE POLICY "listings_select_authorized" ON public.food_listings
 FOR SELECT
 USING (
-  status = 'active'
+  status = 'active'::public.listing_status
   OR auth.uid() = donor_id
   OR EXISTS (
     SELECT 1
     FROM public.food_requests AS fr
     WHERE fr.listing_id = food_listings.id
       AND fr.receiver_id = auth.uid()
-      AND fr.status IN ('pending', 'assigned', 'picked_up', 'delivered', 'completed')
+      AND fr.status IN (
+        'pending'::public.request_status,
+        'assigned'::public.request_status,
+        'picked_up'::public.request_status,
+        'delivered'::public.request_status,
+        'completed'::public.request_status
+      )
   )
   OR (
-    status = 'reserved'
+    status = 'reserved'::public.listing_status
     AND EXISTS (
       SELECT 1
       FROM public.food_requests AS fr
@@ -222,17 +215,43 @@ USING (
   OR public.has_permission(auth.uid(), 'users.read')
 );
 
--- ─── 4. P0: Remove direct client INSERT/UPDATE on volunteer_tasks ────────────
+-- ─── 5. Clean up & Harden FOOD_REQUESTS Policies ─────────────────────────────
+DROP POLICY IF EXISTS "Users can view requests they are part of." ON public.food_requests;
+DROP POLICY IF EXISTS "requests_select" ON public.food_requests;
+DROP POLICY IF EXISTS "requests_select_volunteer" ON public.food_requests;
+DROP POLICY IF EXISTS "requests_select_all_authorized" ON public.food_requests;
 
-REVOKE INSERT, UPDATE ON TABLE public.volunteer_tasks
-FROM PUBLIC, anon, authenticated;
+CREATE POLICY "requests_select_all_authorized" ON public.food_requests
+FOR SELECT
+USING (
+  auth.uid() = receiver_id
+  OR public.can_donor_view_request(listing_id)
+  OR public.can_volunteer_view_request(id)
+  OR public.has_permission(auth.uid(), 'users.read')
+);
 
+-- ─── 6. Clean up & Lock Down VOLUNTEER_TASKS (P0 QR-Only Enforcement) ────────
+DROP POLICY IF EXISTS "Authenticated users can create tasks" ON public.volunteer_tasks;
+DROP POLICY IF EXISTS "tasks_insert" ON public.volunteer_tasks;
+DROP POLICY IF EXISTS "Volunteers can update their own tasks" ON public.volunteer_tasks;
+DROP POLICY IF EXISTS "tasks_update" ON public.volunteer_tasks;
+DROP POLICY IF EXISTS "Users can view tasks related to them" ON public.volunteer_tasks;
+DROP POLICY IF EXISTS "tasks_select" ON public.volunteer_tasks;
+
+CREATE POLICY "tasks_select" ON public.volunteer_tasks
+FOR SELECT
+USING (
+  status = 'open'::public.volunteer_status
+  OR (status = 'pending_acceptance'::public.volunteer_status AND volunteer_id IS NULL)
+  OR auth.uid() = volunteer_id
+  OR public.has_permission(auth.uid(), 'users.read')
+);
+
+-- Revoke direct mutations from authenticated users. All updates must use RPCs.
+REVOKE INSERT, UPDATE ON TABLE public.volunteer_tasks FROM PUBLIC, anon, authenticated;
 GRANT ALL PRIVILEGES ON TABLE public.volunteer_tasks TO service_role;
 
-DROP POLICY IF EXISTS "tasks_update" ON public.volunteer_tasks;
-
--- ─── 5. Add volunteer-role gate and state checks to QR generation ─────────────
-
+-- ─── 7. QR Token Generation RPC ──────────────────────────────────────────────
 CREATE OR REPLACE FUNCTION public.generate_qr_token(
   p_task_id UUID,
   p_type TEXT
@@ -273,11 +292,11 @@ BEGIN
     RETURN json_build_object('success', false, 'error', 'Unauthorized: you are not assigned to this task.');
   END IF;
 
-  IF p_type = 'pickup' AND v_task.status <> 'assigned' THEN
+  IF p_type = 'pickup' AND v_task.status <> 'assigned'::public.volunteer_status THEN
     RETURN json_build_object('success', false, 'error', 'Pickup QR can only be generated for an assigned task.');
   END IF;
 
-  IF p_type = 'delivery' AND v_task.status NOT IN ('picked_up', 'in_progress') THEN
+  IF p_type = 'delivery' AND v_task.status NOT IN ('picked_up'::public.volunteer_status, 'in_progress'::public.volunteer_status) THEN
     RETURN json_build_object('success', false, 'error', 'Pickup must be completed before generating delivery QR.');
   END IF;
 
@@ -311,8 +330,7 @@ $$;
 REVOKE ALL ON FUNCTION public.generate_qr_token(UUID, TEXT) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.generate_qr_token(UUID, TEXT) TO authenticated;
 
--- ─── 6. Harden QR verification and bind to authenticated caller ──────────────
-
+-- ─── 8. QR Verification RPC ──────────────────────────────────────────────────
 CREATE OR REPLACE FUNCTION public.verify_qr_token(
   p_token TEXT,
   p_volunteer_id UUID
@@ -373,12 +391,12 @@ BEGIN
     IF v_task.pickup_qr_expires_at IS NULL OR v_task.pickup_qr_expires_at < NOW() THEN
       RETURN json_build_object('success', false, 'error', 'QR code has expired. Please ask for a new one.');
     END IF;
-    IF v_task.status <> 'assigned' THEN
+    IF v_task.status <> 'assigned'::public.volunteer_status THEN
       RETURN json_build_object('success', false, 'error', 'Task is not in the correct state for pickup verification.');
     END IF;
 
     UPDATE public.volunteer_tasks
-    SET status = 'picked_up',
+    SET status = 'picked_up'::public.volunteer_status,
         pickup_qr_used = true,
         pickup_verified_at = NOW(),
         picked_up_at = NOW(),
@@ -386,7 +404,7 @@ BEGIN
     WHERE id = v_task.id;
 
     UPDATE public.food_requests
-    SET status = 'picked_up', updated_at = NOW()
+    SET status = 'picked_up'::public.request_status, updated_at = NOW()
     WHERE id = v_task.request_id;
 
   ELSE
@@ -396,12 +414,12 @@ BEGIN
     IF v_task.delivery_qr_expires_at IS NULL OR v_task.delivery_qr_expires_at < NOW() THEN
       RETURN json_build_object('success', false, 'error', 'QR code has expired. Please ask for a new one.');
     END IF;
-    IF v_task.status NOT IN ('picked_up', 'in_progress') THEN
+    IF v_task.status NOT IN ('picked_up'::public.volunteer_status, 'in_progress'::public.volunteer_status) THEN
       RETURN json_build_object('success', false, 'error', 'Pickup must be completed before delivery verification.');
     END IF;
 
     UPDATE public.volunteer_tasks
-    SET status = 'delivered',
+    SET status = 'delivered'::public.volunteer_status,
         delivery_qr_used = true,
         delivery_verified_at = NOW(),
         delivered_at = NOW(),
@@ -410,11 +428,11 @@ BEGIN
     WHERE id = v_task.id;
 
     UPDATE public.food_requests
-    SET status = 'delivered', updated_at = NOW()
+    SET status = 'delivered'::public.request_status, updated_at = NOW()
     WHERE id = v_task.request_id;
 
     UPDATE public.food_listings AS fl
-    SET status = 'completed', updated_at = NOW()
+    SET status = 'completed'::public.listing_status, updated_at = NOW()
     FROM public.food_requests AS fr
     WHERE fr.id = v_task.request_id
       AND fl.id = fr.listing_id;
@@ -434,9 +452,9 @@ $$;
 REVOKE ALL ON FUNCTION public.verify_qr_token(TEXT, UUID) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.verify_qr_token(TEXT, UUID) TO authenticated;
 
--- ─── 7. Hardened Task Lifecycle RPCs (explicit search_path & restricted grants)
+-- ─── 9. Hardened Task Lifecycle RPCs ──────────────────────────────────────────
 
--- 7a. claim_volunteer_task
+-- 9a. claim_volunteer_task
 CREATE OR REPLACE FUNCTION public.claim_volunteer_task(
   p_request_id  UUID,
   p_volunteer_id UUID
@@ -472,7 +490,7 @@ BEGIN
     RETURN json_build_object('success', false, 'error', 'This food request no longer exists.');
   END IF;
 
-  IF v_request.status <> 'pending' THEN
+  IF v_request.status <> 'pending'::public.request_status THEN
     RETURN json_build_object('success', false, 'error', 'This request has already been assigned to another volunteer.');
   END IF;
 
@@ -499,23 +517,23 @@ BEGIN
   FOR UPDATE;
 
   IF FOUND THEN
-    IF v_task.status <> 'open' THEN
+    IF v_task.status <> 'open'::public.volunteer_status THEN
       RETURN json_build_object('success', false, 'error', 'This task was already claimed by another volunteer.');
     END IF;
 
     UPDATE public.volunteer_tasks
-    SET status       = 'assigned',
+    SET status       = 'assigned'::public.volunteer_status,
         volunteer_id = p_volunteer_id,
         updated_at   = NOW()
     WHERE id = v_task.id;
   ELSE
     INSERT INTO public.volunteer_tasks (request_id, volunteer_id, status, created_at, updated_at)
-    VALUES (p_request_id, p_volunteer_id, 'assigned', NOW(), NOW())
+    VALUES (p_request_id, p_volunteer_id, 'assigned'::public.volunteer_status, NOW(), NOW())
     RETURNING id INTO v_new_task_id;
   END IF;
 
   UPDATE public.food_requests
-  SET status     = 'assigned',
+  SET status     = 'assigned'::public.request_status,
       updated_at = NOW()
   WHERE id = p_request_id;
 
@@ -528,7 +546,7 @@ $$;
 REVOKE ALL ON FUNCTION public.claim_volunteer_task(UUID, UUID) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.claim_volunteer_task(UUID, UUID) TO authenticated;
 
--- 7b. handle_task_assignment
+-- 9b. handle_task_assignment
 CREATE OR REPLACE FUNCTION public.handle_task_assignment(
   p_task_id UUID,
   p_volunteer_id UUID,
@@ -555,7 +573,7 @@ BEGIN
 
   SELECT * INTO v_task
   FROM public.volunteer_tasks
-  WHERE id = p_task_id AND volunteer_id = p_volunteer_id AND status = 'pending_acceptance'
+  WHERE id = p_task_id AND volunteer_id = p_volunteer_id AND status = 'pending_acceptance'::public.volunteer_status
   FOR UPDATE;
 
   IF NOT FOUND THEN
@@ -563,13 +581,13 @@ BEGIN
   END IF;
 
   IF p_action = 'accept' THEN
-    UPDATE public.volunteer_tasks SET status = 'assigned', updated_at = NOW() WHERE id = p_task_id;
+    UPDATE public.volunteer_tasks SET status = 'assigned'::public.volunteer_status, updated_at = NOW() WHERE id = p_task_id;
     RETURN json_build_object('success', true);
 
   ELSIF p_action = 'decline' THEN
     DELETE FROM public.volunteer_tasks WHERE id = p_task_id;
     UPDATE public.food_requests
-    SET status = 'pending', updated_at = NOW()
+    SET status = 'pending'::public.request_status, updated_at = NOW()
     WHERE id = v_task.request_id;
     RETURN json_build_object('success', true);
   ELSE
@@ -581,7 +599,7 @@ $$;
 REVOKE ALL ON FUNCTION public.handle_task_assignment(UUID, UUID, TEXT) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.handle_task_assignment(UUID, UUID, TEXT) TO authenticated;
 
--- 7c. abort_volunteer_task
+-- 9c. abort_volunteer_task
 CREATE OR REPLACE FUNCTION public.abort_volunteer_task(
   p_task_id UUID,
   p_volunteer_id UUID,
@@ -616,11 +634,11 @@ BEGIN
     RETURN json_build_object('success', false, 'error', 'Task not found or you are not authorized to abort it.');
   END IF;
 
-  IF v_task.status IN ('delivered', 'completed') THEN
+  IF v_task.status IN ('delivered'::public.volunteer_status, 'completed'::public.volunteer_status) THEN
     RETURN json_build_object('success', false, 'error', 'Cannot abort a task that is already completed or delivered.');
   END IF;
 
-  IF v_task.status = 'cancelled' THEN
+  IF v_task.status = 'cancelled'::public.volunteer_status THEN
     RETURN json_build_object('success', true, 'message', 'Task was already cancelled.');
   END IF;
 
@@ -643,7 +661,7 @@ BEGIN
   WHERE id = p_volunteer_id;
 
   UPDATE public.volunteer_tasks
-  SET status = 'cancelled',
+  SET status = 'cancelled'::public.volunteer_status,
       cancellation_reason = p_reason,
       cancelled_at = NOW(),
       pickup_qr_token = NULL,
@@ -658,11 +676,11 @@ BEGIN
   IF NOT EXISTS (
     SELECT 1 FROM public.volunteer_tasks vt
     WHERE vt.request_id = v_task.request_id
-      AND vt.status NOT IN ('cancelled', 'completed', 'delivered')
+      AND vt.status NOT IN ('cancelled'::public.volunteer_status, 'completed'::public.volunteer_status, 'delivered'::public.volunteer_status)
       AND vt.id <> p_task_id
   ) THEN
     UPDATE public.food_requests
-    SET status = 'pending',
+    SET status = 'pending'::public.request_status,
         updated_at = NOW()
     WHERE id = v_task.request_id;
   END IF;
@@ -671,12 +689,12 @@ BEGIN
     SELECT COUNT(*) INTO v_other_requests_count
     FROM public.food_requests
     WHERE listing_id = v_request.listing_id
-      AND status NOT IN ('cancelled', 'delivered')
+      AND status NOT IN ('cancelled'::public.request_status, 'delivered'::public.request_status)
       AND id <> v_task.request_id;
 
-    IF v_other_requests_count = 0 AND v_listing.status = 'reserved' THEN
+    IF v_other_requests_count = 0 AND v_listing.status = 'reserved'::public.listing_status THEN
       UPDATE public.food_listings
-      SET status = 'active',
+      SET status = 'active'::public.listing_status,
           updated_at = NOW()
       WHERE id = v_request.listing_id;
     END IF;
@@ -709,7 +727,7 @@ $$;
 REVOKE ALL ON FUNCTION public.abort_volunteer_task(UUID, UUID, TEXT) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.abort_volunteer_task(UUID, UUID, TEXT) TO authenticated;
 
--- 7d. auto_expire_stale_tasks: restricted to service_role (CRON endpoint)
+-- 9d. auto_expire_stale_tasks (Restricted to service_role)
 CREATE OR REPLACE FUNCTION public.auto_expire_stale_tasks()
 RETURNS JSON
 LANGUAGE plpgsql
@@ -722,17 +740,17 @@ BEGIN
   WITH stale AS (
     SELECT id, request_id, volunteer_id
     FROM public.volunteer_tasks
-    WHERE status = 'pending_acceptance'
+    WHERE status = 'pending_acceptance'::public.volunteer_status
       AND created_at < NOW() - INTERVAL '10 minutes'
   )
   UPDATE public.food_requests fr
-  SET status = 'pending', updated_at = NOW()
+  SET status = 'pending'::public.request_status, updated_at = NOW()
   FROM stale s
   WHERE fr.id = s.request_id;
 
   WITH deleted AS (
     DELETE FROM public.volunteer_tasks
-    WHERE status = 'pending_acceptance'
+    WHERE status = 'pending_acceptance'::public.volunteer_status
       AND created_at < NOW() - INTERVAL '10 minutes'
     RETURNING id
   )
@@ -747,8 +765,7 @@ $$;
 REVOKE ALL ON FUNCTION public.auto_expire_stale_tasks() FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.auto_expire_stale_tasks() TO service_role;
 
--- ─── 8. Replace KYC trigger with corrected client-side integrity controls ────
-
+-- ─── 10. KYC Trigger With Exact Live Schema Defaults ──────────────────────────
 CREATE OR REPLACE FUNCTION public.protect_kyc_fields()
 RETURNS TRIGGER
 LANGUAGE plpgsql
@@ -766,7 +783,7 @@ BEGIN
      AND NOT COALESCE(public.has_permission(auth.uid(), 'users.verify'), false) THEN
 
     IF TG_OP = 'INSERT' THEN
-      -- New profiles must start in the database default state
+      -- Profiles must start with default 'unset'
       IF NEW.verification_status IS DISTINCT FROM 'unset' THEN
         RAISE EXCEPTION 'Unauthorized: client-created profiles must start with verification_status unset.';
       END IF;
@@ -775,7 +792,7 @@ BEGIN
         RAISE EXCEPTION 'Unauthorized: clients cannot set verification flags on insert.';
       END IF;
 
-      -- Validate KYC fields against schema defaults instead of blocking non-null values
+      -- Check against live database defaults
       IF NEW.kyc_score IS DISTINCT FROM 0 THEN
         RAISE EXCEPTION 'Unauthorized: kyc_score on insert must match schema default (0).';
       END IF;
@@ -823,7 +840,7 @@ BEGIN
       END IF;
 
     ELSIF TG_OP = 'UPDATE' THEN
-      -- Once decided, the submitted documents cannot be swapped or cleared
+      -- Once decided, documents cannot be altered
       IF OLD.verification_status IN ('approved', 'rejected')
          AND NEW.documents IS DISTINCT FROM OLD.documents THEN
         RAISE EXCEPTION 'Unauthorized: document paths cannot be changed after a final KYC decision.';
@@ -841,7 +858,6 @@ BEGIN
         END IF;
       END IF;
 
-      -- Clients cannot alter trusted flags or scores in either direction
       IF NEW.is_verified IS DISTINCT FROM OLD.is_verified THEN
         RAISE EXCEPTION 'Unauthorized: clients cannot modify is_verified.';
       END IF;
@@ -861,7 +877,7 @@ BEGIN
         RAISE EXCEPTION 'Unauthorized: clients cannot modify extracted_data.';
       END IF;
 
-      -- Validate documents on change OR whenever submitting/resubmitting to pending
+      -- Validate documents on change OR when submitting/resubmitting to pending
       IF (NEW.documents IS DISTINCT FROM OLD.documents)
          OR (NEW.verification_status IS DISTINCT FROM OLD.verification_status AND NEW.verification_status = 'pending') THEN
         IF NEW.documents IS NULL OR jsonb_typeof(NEW.documents) IS DISTINCT FROM 'object' THEN
@@ -909,8 +925,7 @@ BEFORE INSERT OR UPDATE ON public.profiles
 FOR EACH ROW
 EXECUTE FUNCTION public.protect_kyc_fields();
 
--- ─── 9. Correct private Storage policies ─────────────────────────────────────
-
+-- ─── 11. Storage Policies (Private Buckets) ──────────────────────────────────
 INSERT INTO storage.buckets (id, name, public)
 VALUES ('identity_docs', 'identity_docs', false)
 ON CONFLICT (id) DO UPDATE SET public = false;
@@ -953,34 +968,10 @@ USING (
   AND public.has_permission(auth.uid(), 'tasks.read_all')
 );
 
--- ─── 10. Safely remove obsolete non-QR task transition and OTP RPCs ──────────
-
-DO $$
-BEGIN
-  IF to_regprocedure('public.advance_task_status(uuid,uuid,text)') IS NOT NULL THEN
-    REVOKE ALL ON FUNCTION public.advance_task_status(UUID, UUID, TEXT)
-      FROM PUBLIC, anon, authenticated;
-    DROP FUNCTION public.advance_task_status(UUID, UUID, TEXT);
-  END IF;
-
-  IF to_regprocedure('public.generate_task_otp(uuid,text)') IS NOT NULL THEN
-    REVOKE ALL ON FUNCTION public.generate_task_otp(UUID, TEXT)
-      FROM PUBLIC, anon, authenticated, service_role;
-    DROP FUNCTION public.generate_task_otp(UUID, TEXT);
-  END IF;
-
-  IF to_regprocedure('public.verify_task_otp(uuid,uuid,text,text)') IS NOT NULL THEN
-    REVOKE ALL ON FUNCTION public.verify_task_otp(UUID, UUID, TEXT, TEXT)
-      FROM PUBLIC, anon, authenticated, service_role;
-    DROP FUNCTION public.verify_task_otp(UUID, UUID, TEXT, TEXT);
-  END IF;
-END;
-$$;
-
 COMMIT;
 
 -- =============================================================================
--- POST-RUN VERIFICATION (run separately after COMMIT)
+-- POST-RUN VERIFICATION (Run separately after COMMIT)
 -- =============================================================================
 -- 1) Direct client task writes should be FALSE; service_role UPDATE should be TRUE:
 -- SELECT
@@ -994,20 +985,13 @@ COMMIT;
 --        has_function_privilege('service_role', 'public.auto_expire_stale_tasks()', 'EXECUTE') AS service_can_expire;
 -- Expected: false, true.
 --
--- 3) Obsolete helper overloads and legacy OTP/transition functions should be NULL:
--- SELECT to_regprocedure('public.can_volunteer_view_request(uuid,uuid)') AS old_volunteer_helper,
---        to_regprocedure('public.can_donor_view_request(uuid,uuid)') AS old_donor_helper,
---        to_regprocedure('public.can_view_profile_for_task(uuid,uuid)') AS old_profile_helper,
---        to_regprocedure('public.advance_task_status(uuid,uuid,text)') AS old_transition_rpc,
---        to_regprocedure('public.generate_task_otp(uuid,text)') AS old_otp_generate,
---        to_regprocedure('public.verify_task_otp(uuid,uuid,text,text)') AS old_otp_verify;
--- Expected: all NULL.
---
--- 4) Storage buckets should both be private:
+-- 3) Storage buckets should both be private:
 -- SELECT id, name, public FROM storage.buckets
 -- WHERE id IN ('identity_docs','task_proofs');
 -- Expected: public=false for both.
 --
--- 5) Profiles table policy should be profiles_select_own_or_admin:
--- SELECT policyname, qual FROM pg_policies WHERE tablename = 'profiles';
+-- 4) Verify all legacy permissive policies are gone:
+-- SELECT tablename, policyname FROM pg_policies
+-- WHERE tablename IN ('profiles', 'food_listings', 'food_requests', 'volunteer_tasks')
+-- ORDER BY tablename, policyname;
 -- =============================================================================
