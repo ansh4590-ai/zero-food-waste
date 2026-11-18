@@ -736,7 +736,29 @@ Return ONLY valid JSON with no markdown or extra text:
 
   interface AuthenticatedRequest extends express.Request {
     user?: { id: string; email?: string; role?: string };
+    token?: string;
   }
+
+  // User-scoped Supabase client that carries the caller's JWT bearer token.
+  // Required so that PostgreSQL SECURITY DEFINER RPCs (like generate_qr_token and
+  // verify_qr_token) can reliably read auth.uid() and auth.role() = 'authenticated'.
+  const getUserSupabaseClient = (jwt: string) => {
+    return createClient(
+      process.env.VITE_SUPABASE_URL || "",
+      process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || "",
+      {
+        global: {
+          headers: {
+            Authorization: `Bearer ${jwt}`,
+          },
+        },
+        auth: {
+          autoRefreshToken: false,
+          persistSession: false,
+        },
+      }
+    );
+  };
 
   // ─── AUTH MIDDLEWARE ───────────────────────────────────────────────────────
   // Extracts user identity from Supabase JWT. Sets req.user from the
@@ -747,6 +769,7 @@ Return ONLY valid JSON with no markdown or extra text:
       const authHeader = req.headers.authorization;
       if (!authHeader?.startsWith('Bearer ')) return next();
       const jwt = authHeader.slice(7);
+      req.token = jwt;
       const { data: { user }, error } = await supabaseAdmin.auth.getUser(jwt);
       if (!error && user) {
         // Load role from the authoritative profiles table, not from JWT metadata
@@ -1096,7 +1119,8 @@ Return ONLY valid JSON with no markdown or extra text:
         return res.status(400).json({ error: "Invalid taskId format" });
       }
 
-      const { data, error } = await supabaseAdmin.rpc('generate_qr_token', {
+      const client = req.token ? getUserSupabaseClient(req.token) : supabaseAdmin;
+      const { data, error } = await client.rpc('generate_qr_token', {
         p_task_id: taskId,
         p_type: type,
       });
@@ -1154,7 +1178,8 @@ Return ONLY valid JSON with no markdown or extra text:
         });
       }
 
-      const { data, error } = await supabaseAdmin.rpc('verify_qr_token', {
+      const client = req.token ? getUserSupabaseClient(req.token) : supabaseAdmin;
+      const { data, error } = await client.rpc('verify_qr_token', {
         p_token: cleanToken,
         p_volunteer_id: volunteerId,
       });
@@ -1201,7 +1226,8 @@ Return ONLY valid JSON with no markdown or extra text:
         return res.status(400).json({ error: "A cancellation reason is required" });
       }
 
-      const { data, error } = await supabaseAdmin.rpc("abort_volunteer_task", {
+      const client = req.token ? getUserSupabaseClient(req.token) : supabaseAdmin;
+      const { data, error } = await client.rpc("abort_volunteer_task", {
         p_task_id: taskId,
         p_volunteer_id: volunteerId,
         p_reason: reason.trim()
