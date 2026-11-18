@@ -1022,7 +1022,7 @@ export default function Volunteer() {
               <h2 className="text-xl font-bold tracking-tight text-white">Dispatch Hub</h2>
               <p className="text-[10px] text-white/40 uppercase tracking-widest flex items-center gap-1.5 mt-0.5">
                 <span className={`w-1.5 h-1.5 rounded-full ${useHardwareGPS ? "bg-blue-400" : "bg-emerald-400"} animate-pulse`} />
-                {useHardwareGPS ? "Hardware GPS Active" : "Network Simulator"}
+                {useHardwareGPS ? "Hardware GPS Active" : "⚠ Simulated Location (Dev Only)"}
               </p>
             </div>
             <Button aria-label="Refresh tasks" variant="ghost" size="icon" onClick={() => fetchTasks()} className="text-white/40 hover:text-white hover:bg-white/5">

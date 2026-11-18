@@ -163,57 +163,12 @@ const PORT = parseInt(process.env.PORT || '3000', 10);
     });
   });
 
-  // ─── PLACES API PROXY ─────────────────────────────────────────────────────
-  // We proxy Google Places requests server-side so:
-  //  1. The API key never leaves the server
-  //  2. No CORS / CSP browser restrictions
-  //  3. Works with the classic Places API (no "Places API New" required)
-  app.get('/api/places/autocomplete', async (req, res) => {
-    const { input } = req.query as { input?: string };
-    const apiKey = process.env.VITE_GOOGLE_MAPS_API_KEY;
-    if (!apiKey) return res.status(503).json({ error: 'Maps API key not configured on server' });
-    if (!input || String(input).trim().length < 2) return res.json({ predictions: [] });
-
-    try {
-      const url = new URL('https://maps.googleapis.com/maps/api/place/autocomplete/json');
-      url.searchParams.set('input', String(input));
-      url.searchParams.set('key', apiKey);
-      url.searchParams.set('components', 'country:in');
-      url.searchParams.set('language', 'en');
-
-      const r = await fetch(url.toString());
-      const data = await r.json() as { predictions?: unknown[]; status?: string; error_message?: string };
-      
-      // Debug: log what Google actually returned
-      console.log(`[places/autocomplete] query="${input}" status=${data.status} predictions=${(data.predictions ?? []).length}${data.error_message ? ` error="${data.error_message}"` : ''}`);
-      
-      res.json({ predictions: data.predictions ?? [], status: data.status });
-    } catch (err) {
-      console.error('[places/autocomplete]', err);
-      res.status(500).json({ error: 'Places autocomplete failed' });
-    }
-  });
-
-  app.get('/api/places/geocode', async (req, res) => {
-    const { place_id } = req.query as { place_id?: string };
-    const apiKey = process.env.VITE_GOOGLE_MAPS_API_KEY;
-    if (!apiKey) return res.status(503).json({ error: 'Maps API key not configured on server' });
-    if (!place_id) return res.status(400).json({ error: 'place_id required' });
-
-    try {
-      const url = new URL('https://maps.googleapis.com/maps/api/geocode/json');
-      url.searchParams.set('place_id', String(place_id));
-      url.searchParams.set('key', apiKey);
-
-      const r = await fetch(url.toString());
-      const data = await r.json() as { results?: { geometry?: { location?: { lat: number; lng: number } } }[]; status?: string };
-      const location = data.results?.[0]?.geometry?.location ?? null;
-      res.json({ location, status: data.status });
-    } catch (err) {
-      console.error('[places/geocode]', err);
-      res.status(500).json({ error: 'Geocode failed' });
-    }
-  });
+  // ─── PLACES API PROXY — REMOVED (H-10) ───────────────────────────────────
+  // The Google Places proxy was removed because the frontend now uses Photon
+  // (OpenStreetMap geocoder via useAddressAutocomplete.ts), which calls
+  // https://photon.komoot.io directly. The VITE_GOOGLE_MAPS_API_KEY and these
+  // two routes are no longer needed. If Google Places is reintroduced for
+  // a specific feature, re-add it then with appropriate billing controls.
 
   // ─── OFFICIAL OPENSTREETMAP TILE PROXY ──────────────────────────────────────
   // Serves official OpenStreetMap tiles with compliant User-Agent and caching.
@@ -722,8 +677,9 @@ Return ONLY valid JSON with no markdown or extra text:
   }
 
   // ─── AUTH MIDDLEWARE ───────────────────────────────────────────────────────
-  // Extracts user identity from Supabase JWT. Sets req.user = { id, email, role }.
-  // Non-blocking: if no token, req.user is undefined.
+  // Extracts user identity from Supabase JWT. Sets req.user from the
+  // authoritative database profile (not user_metadata which the client can supply).
+  // H-03: role is loaded from public.profiles, not from user_metadata.
   const extractUser = async (req: AuthenticatedRequest, _res: express.Response, next: express.NextFunction) => {
     try {
       const authHeader = req.headers.authorization;
@@ -731,7 +687,13 @@ Return ONLY valid JSON with no markdown or extra text:
       const jwt = authHeader.slice(7);
       const { data: { user }, error } = await supabaseAdmin.auth.getUser(jwt);
       if (!error && user) {
-        req.user = { id: user.id, email: user.email, role: user.user_metadata?.role };
+        // Load role from the authoritative profiles table, not from JWT metadata
+        const { data: profile } = await supabaseAdmin
+          .from('profiles')
+          .select('role')
+          .eq('id', user.id)
+          .maybeSingle();
+        req.user = { id: user.id, email: user.email, role: profile?.role ?? undefined };
       }
     } catch {
       // Non-blocking — unauthenticated requests just proceed without req.user
@@ -828,54 +790,66 @@ Return ONLY valid JSON with no markdown or extra text:
     }
   });
 
-  // 17. Secure Admin Register endpoint
-  app.post("/api/auth/register-admin", adminRegisterLimiter, async (req, res) => {
-    const { fullName, email, password, adminSecret } = req.body;
+  // 17. Secure Admin Register endpoint (H-04)
+  // Disabled in production unless ADMIN_REGISTRATION_ENABLED=true is explicitly set.
+  // In production without the flag, the route returns 410 Gone to avoid exposing
+  // an admin-creation surface to the public internet.
+  if (process.env.ADMIN_REGISTRATION_ENABLED === "true") {
+    app.post("/api/auth/register-admin", adminRegisterLimiter, async (req, res) => {
+      const { fullName, email, password, adminSecret } = req.body;
 
-    const EXPECTED_SECRET = process.env.ADMIN_SECRET_KEY;
-    
-    if (!EXPECTED_SECRET || adminSecret !== EXPECTED_SECRET) {
-      return res.status(403).json({ error: "Invalid admin secret key" });
-    }
+      const EXPECTED_SECRET = process.env.ADMIN_SECRET_KEY;
 
-    try {
-      // Create user using the service_role key, bypassing RLS and trigger restrictions
-      const { data, error } = await supabaseAdmin.auth.admin.createUser({
-        email,
-        password,
-        email_confirm: true,
-        user_metadata: {
-          full_name: fullName,
-          role: "admin"
-        }
-      });
-
-      if (error) {
-        return res.status(400).json({ error: (error as Error).message });
+      if (!EXPECTED_SECRET || adminSecret !== EXPECTED_SECRET) {
+        return res.status(403).json({ error: "Invalid admin secret key" });
       }
 
-      // Force insert into profiles table as admin, in case the trigger skipped or defaulted it.
-      // We do this to ensure the role escalates correctly through backend service_role.
-      await supabaseAdmin.from("profiles").upsert({
-        id: data.user.id,
-        full_name: fullName,
-        role: "admin"
-      });
-
-      res.json({
-        success: true,
-        user: {
-          id: data.user.id,
-          fullName,
+      try {
+        // Create user using the service_role key, bypassing RLS and trigger restrictions
+        const { data, error } = await supabaseAdmin.auth.admin.createUser({
           email,
-          role: "admin"
+          password,
+          email_confirm: true,
+          user_metadata: {
+            full_name: fullName,
+            role: "admin"
+          }
+        });
+
+        if (error) {
+          return res.status(400).json({ error: (error as Error).message });
         }
+
+        // Force insert into profiles table as admin, in case the trigger skipped or defaulted it.
+        // We do this to ensure the role escalates correctly through backend service_role.
+        await supabaseAdmin.from("profiles").upsert({
+          id: data.user.id,
+          full_name: fullName,
+          role: "admin"
+        });
+
+        res.json({
+          success: true,
+          user: {
+            id: data.user.id,
+            fullName,
+            email,
+            role: "admin"
+          }
+        });
+      } catch (err: unknown) {
+        console.error("Admin registration error:", err);
+        res.status(500).json({ error: "Internal server error" });
+      }
+    });
+  } else {
+    // Route is disabled — return 410 Gone so callers know it is intentionally unavailable.
+    app.post("/api/auth/register-admin", (_req, res) => {
+      res.status(410).json({
+        error: "Admin registration is disabled. Contact your system administrator."
       });
-    } catch (err: unknown) {
-      console.error("Admin registration error:", err);
-      res.status(500).json({ error: "Internal server error" });
-    }
-  });
+    });
+  }
 
   // 17. Auth Login (Mock) — DISABLED in production to prevent privilege escalation
   if (process.env.NODE_ENV !== "production") {

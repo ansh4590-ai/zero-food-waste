@@ -132,12 +132,13 @@ export const MY_TASK_STATUSES: VolunteerStatus[] = [
 // ─── OFFICIAL OPENSTREETMAP TILE CONFIGURATION ──────────────────────────────
 /**
  * Official OpenStreetMap Tile Endpoint
- * On localhost / development, routes through the local server proxy to satisfy
- * OSM Tile Usage Policy (adds User-Agent + aggressive caching).
- * On production domains, uses direct https://tile.openstreetmap.org/{z}/{x}/{y}.png
+ * Always routes through the server-side proxy (/api/tiles/osm) which:
+ *  - Sets a compliant User-Agent identifying the application
+ *  - Sets a valid Referer header
+ *  - Caches tiles for 24 hours to minimise load on OSM volunteer servers
+ * This avoids OSM's 403 "Access blocked" policy violation on direct browser requests
+ * both in development (localhost) and in production (Vercel / any hosted domain).
  */
-export const OSM_TILE_URL = typeof window !== "undefined" && (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1")
-  ? "/api/tiles/osm/{z}/{x}/{y}.png"
-  : "https://tile.openstreetmap.org/{z}/{x}/{y}.png";
+export const OSM_TILE_URL = "/api/tiles/osm/{z}/{x}/{y}.png";
 
 export const OSM_TILE_ATTRIBUTION = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
