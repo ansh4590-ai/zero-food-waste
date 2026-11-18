@@ -633,12 +633,18 @@ export default function Volunteer() {
   }, [activeTaskId, calculateRoutes]);
 
   // ─── GPS SIMULATION & TURN-BY-TURN along OSRM polyline ────────────────────────
+  // GPS simulation is DEVELOPMENT-ONLY (import.meta.env.DEV).
+  // In production, when hardware GPS is unavailable, we display the last known
+  // position from the DB (set on mount) but do NOT publish simulated coordinates
+  // to the database or move the map marker automatically.
   useEffect(() => {
     const trackRoute = routeOne || routeTwo;
     if (!trackRoute?.geometry?.length) return;
 
-    // Simulate GPS movement if hardware toggle disabled
-    const interval = !useHardwareGPS ? setInterval(() => {
+    // Only simulate GPS movement in development when hardware GPS is off
+    const shouldSimulate = import.meta.env.DEV && !useHardwareGPS;
+
+    const interval = shouldSimulate ? setInterval(() => {
       if (routeSimIndex.current < trackRoute.geometry.length - 1) {
         routeSimIndex.current += 1;
         const newPos = trackRoute.geometry[routeSimIndex.current];
@@ -1021,8 +1027,12 @@ export default function Volunteer() {
             <div>
               <h2 className="text-xl font-bold tracking-tight text-white">Dispatch Hub</h2>
               <p className="text-[10px] text-white/40 uppercase tracking-widest flex items-center gap-1.5 mt-0.5">
-                <span className={`w-1.5 h-1.5 rounded-full ${useHardwareGPS ? "bg-blue-400" : "bg-emerald-400"} animate-pulse`} />
-                {useHardwareGPS ? "Hardware GPS Active" : "⚠ Simulated Location (Dev Only)"}
+                <span className={`w-1.5 h-1.5 rounded-full ${useHardwareGPS ? "bg-blue-400" : import.meta.env.DEV ? "bg-emerald-400" : "bg-red-400"} animate-pulse`} />
+                {useHardwareGPS
+                  ? "Hardware GPS Active"
+                  : import.meta.env.DEV
+                    ? "⚠ Simulated Location (Dev Only)"
+                    : "GPS Unavailable"}
               </p>
             </div>
             <Button aria-label="Refresh tasks" variant="ghost" size="icon" onClick={() => fetchTasks()} className="text-white/40 hover:text-white hover:bg-white/5">
@@ -1386,8 +1396,16 @@ export default function Volunteer() {
                   </div>
                   <div>
                     <p className="text-[10px] uppercase text-emerald-400 font-bold tracking-widest flex items-center gap-1.5">
-                      <span className={`w-1.5 h-1.5 rounded-full ${isNavigating ? 'bg-blue-400 animate-ping' : useHardwareGPS ? 'bg-emerald-400 animate-pulse' : 'bg-white/40'}`} />
-                      {isNavigating ? 'NAVIGATING' : useHardwareGPS ? 'Live GPS Active' : activeTask ? 'OSRM Telemetry' : 'Idle'}
+                      <span className={`w-1.5 h-1.5 rounded-full ${isNavigating ? 'bg-blue-400 animate-ping' : useHardwareGPS ? 'bg-emerald-400 animate-pulse' : import.meta.env.DEV ? 'bg-yellow-400 animate-pulse' : 'bg-red-400'}`} />
+                      {isNavigating
+                        ? 'NAVIGATING'
+                        : useHardwareGPS
+                          ? 'Live GPS Active'
+                          : import.meta.env.DEV
+                            ? 'Simulated GPS (Dev)'
+                            : activeTask
+                              ? 'GPS Unavailable'
+                              : 'Idle'}
                     </p>
                     <p className="text-sm font-semibold text-white leading-tight mt-0.5">
                       {isRouteFetching

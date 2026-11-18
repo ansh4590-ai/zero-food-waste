@@ -172,27 +172,77 @@ const PORT = parseInt(process.env.PORT || '3000', 10);
 
   // ─── OFFICIAL OPENSTREETMAP TILE PROXY ──────────────────────────────────────
   // Serves official OpenStreetMap tiles with compliant User-Agent and caching.
-  // Bypasses the OSM volunteer-server block on localhost browsers while respecting
-  // the OSM Tile Usage Policy (aggressively cached, identifies application).
-  const tileCache = new Map<string, { buffer: Buffer; contentType: string; expiresAt: number }>();
-  const TILE_CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
+  // Policy compliance:
+  //   • Identifies application via User-Agent + Referer
+  //   • Respects upstream Cache-Control / Expires / ETag / Last-Modified headers
+  //   • Falls back to 7-day TTL when upstream provides no caching signals
+  //   • Never prefetches or bulk-downloads tiles
+  //   • Passes ETag and Last-Modified to downstream browsers for conditional GETs
+  //
+  // In-process cache (M-01 documented limitation):
+  //   This LRU cache resets on each serverless cold-start (Vercel).  For
+  //   multi-instance deployments, replace with a shared Redis or CDN layer.
+  //   The Cache-Control headers forwarded to the browser ensure the browser's
+  //   own cache (and any CDN edge in front of Vercel) will honour tile lifetimes.
+
+  const TILE_FALLBACK_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
+  const TILE_CACHE_MAX_ENTRIES = 3000;
+
+  interface TileCacheEntry {
+    buffer: Buffer;
+    contentType: string;
+    expiresAt: number;       // local wall-clock expiry
+    etag?: string;           // forwarded to browser
+    lastModified?: string;   // forwarded to browser
+    cacheControl?: string;   // upstream value, forwarded to browser
+  }
+  const tileCache = new Map<string, TileCacheEntry>();
+
+  /** Parse upstream headers into a local TTL (ms). Returns fallback when no hint present. */
+  function parseTileTtlMs(headers: Headers): number {
+    // 1. Cache-Control: max-age=N
+    const cc = headers.get('cache-control');
+    if (cc) {
+      const match = cc.match(/max-age=(\d+)/);
+      if (match) return parseInt(match[1], 10) * 1000;
+    }
+    // 2. Expires header
+    const exp = headers.get('expires');
+    if (exp) {
+      const ms = new Date(exp).getTime() - Date.now();
+      if (ms > 0) return ms;
+    }
+    // 3. No signal — 7-day fallback
+    return TILE_FALLBACK_TTL_MS;
+  }
 
   app.get('/api/tiles/osm/:z/:x/:y.png', async (req, res) => {
     const { z, x, y } = req.params;
+
+    // Basic input validation — z/x/y must be numeric
+    if (!/^\d+$/.test(z) || !/^\d+$/.test(x) || !/^\d+$/.test(y)) {
+      return res.status(400).send('Invalid tile coordinates');
+    }
+
     const cacheKey = `${z}/${x}/${y}`;
 
+    // ── Serve from in-process cache ──────────────────────────────────────────
     const cached = tileCache.get(cacheKey);
     if (cached && Date.now() < cached.expiresAt) {
       res.setHeader('Content-Type', cached.contentType);
-      res.setHeader('Cache-Control', 'public, max-age=86400, immutable');
+      if (cached.etag) res.setHeader('ETag', cached.etag);
+      if (cached.lastModified) res.setHeader('Last-Modified', cached.lastModified);
+      // Forward the upstream Cache-Control so browsers and CDN edges cache correctly
+      res.setHeader('Cache-Control', cached.cacheControl || `public, max-age=${Math.floor(TILE_FALLBACK_TTL_MS / 1000)}`);
       return res.send(cached.buffer);
     }
 
+    // ── Fetch from OSM ───────────────────────────────────────────────────────
     try {
       const osmUrl = `https://tile.openstreetmap.org/${z}/${x}/${y}.png`;
       const response = await fetch(osmUrl, {
         headers: {
-          'User-Agent': 'ZeroFoodWastePlatform/1.0 (contact: admin@zerofoodwaste.org)',
+          'User-Agent': 'ZeroFoodWastePlatform/1.0 (https://zerofoodwaste.vercel.app; contact: admin@zerofoodwaste.org)',
           'Referer': 'https://zerofoodwaste.vercel.app/',
         },
       });
@@ -201,11 +251,17 @@ const PORT = parseInt(process.env.PORT || '3000', 10);
         return res.status(response.status).send('Tile fetch failed');
       }
 
-      const contentType = response.headers.get('content-type') || 'image/png';
-      const arrayBuffer = await response.arrayBuffer();
-      const buffer = Buffer.from(arrayBuffer);
+      const contentType  = response.headers.get('content-type')   || 'image/png';
+      const etag         = response.headers.get('etag')           ?? undefined;
+      const lastModified = response.headers.get('last-modified')  ?? undefined;
+      const cacheControl = response.headers.get('cache-control')  ?? undefined;
+      const ttlMs        = parseTileTtlMs(response.headers);
 
-      if (tileCache.size > 3000) {
+      const arrayBuffer = await response.arrayBuffer();
+      const buffer      = Buffer.from(arrayBuffer);
+
+      // ── Evict oldest entry when at capacity (simple LRU-evict) ──────────
+      if (tileCache.size >= TILE_CACHE_MAX_ENTRIES) {
         const firstKey = tileCache.keys().next().value;
         if (firstKey) tileCache.delete(firstKey);
       }
@@ -213,11 +269,17 @@ const PORT = parseInt(process.env.PORT || '3000', 10);
       tileCache.set(cacheKey, {
         buffer,
         contentType,
-        expiresAt: Date.now() + TILE_CACHE_TTL_MS,
+        expiresAt: Date.now() + ttlMs,
+        etag,
+        lastModified,
+        cacheControl,
       });
 
+      // ── Forward upstream caching signals to the browser / CDN ──────────
       res.setHeader('Content-Type', contentType);
-      res.setHeader('Cache-Control', 'public, max-age=86400, immutable');
+      if (etag) res.setHeader('ETag', etag);
+      if (lastModified) res.setHeader('Last-Modified', lastModified);
+      res.setHeader('Cache-Control', cacheControl || `public, max-age=${Math.floor(ttlMs / 1000)}`);
       res.send(buffer);
     } catch (err) {
       console.error('[osm/tile]', err);
@@ -820,13 +882,39 @@ Return ONLY valid JSON with no markdown or extra text:
           return res.status(400).json({ error: (error as Error).message });
         }
 
-        // Force insert into profiles table as admin, in case the trigger skipped or defaulted it.
-        // We do this to ensure the role escalates correctly through backend service_role.
-        await supabaseAdmin.from("profiles").upsert({
+        // Force upsert into profiles as admin using service_role.
+        // The auth trigger may have already created the row with role='donor';
+        // we override it here to 'admin'.
+        const { error: upsertError } = await supabaseAdmin.from("profiles").upsert({
           id: data.user.id,
           full_name: fullName,
           role: "admin"
         });
+
+        if (upsertError) {
+          // Auth user was created but profile could not be set to admin —
+          // roll back the auth user to avoid a dangling account.
+          await supabaseAdmin.auth.admin.deleteUser(data.user.id);
+          return res.status(500).json({
+            error: "Failed to set admin profile. Auth user rolled back.",
+            detail: upsertError.message,
+          });
+        }
+
+        // Double-check the resulting DB profile actually has role = admin
+        const { data: profile, error: profileFetchError } = await supabaseAdmin
+          .from("profiles")
+          .select("role")
+          .eq("id", data.user.id)
+          .single();
+
+        if (profileFetchError || profile?.role !== "admin") {
+          await supabaseAdmin.auth.admin.deleteUser(data.user.id);
+          return res.status(500).json({
+            error: "Profile role verification failed. Auth user rolled back.",
+            detail: profileFetchError?.message ?? `Expected role=admin, got role=${profile?.role}`,
+          });
+        }
 
         res.json({
           success: true,
