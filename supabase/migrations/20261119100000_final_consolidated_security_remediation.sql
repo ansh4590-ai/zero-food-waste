@@ -150,7 +150,6 @@ SELECT
   p.full_name,
   p.phone,
   p.role,
-  p.avatar_url,
   p.location_lat,
   p.location_lng,
   p.location_text,
