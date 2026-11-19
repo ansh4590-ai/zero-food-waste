@@ -76,15 +76,8 @@ CREATE POLICY "tasks_select" ON public.volunteer_tasks
 FOR SELECT TO authenticated
 USING (
   auth.uid() = volunteer_id
-  OR EXISTS (
-    SELECT 1 FROM public.food_requests fr
-    JOIN public.food_listings fl ON fl.id = fr.listing_id
-    WHERE fr.id = volunteer_tasks.request_id AND fl.donor_id = auth.uid()
-  )
-  OR EXISTS (
-    SELECT 1 FROM public.food_requests fr
-    WHERE fr.id = volunteer_tasks.request_id AND fr.receiver_id = auth.uid()
-  )
+  OR public.can_donor_view_task(request_id)
+  OR public.can_receiver_view_task(request_id)
   OR (
     status = 'open'::public.volunteer_status
     AND volunteer_id IS NULL

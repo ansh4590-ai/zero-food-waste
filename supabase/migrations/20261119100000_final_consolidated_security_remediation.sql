@@ -114,6 +114,79 @@ GRANT EXECUTE ON FUNCTION public.can_volunteer_view_request(UUID) TO authenticat
 GRANT EXECUTE ON FUNCTION public.can_donor_view_request(UUID) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.can_view_profile_for_task(UUID) TO authenticated;
 
+-- Helper to allow donors to view tasks for their listings without triggering mutual RLS recursion
+CREATE OR REPLACE FUNCTION public.can_donor_view_task(p_request_id UUID)
+RETURNS BOOLEAN
+LANGUAGE sql
+SECURITY DEFINER
+STABLE
+SET search_path = pg_catalog, public
+AS $$
+  SELECT EXISTS (
+    SELECT 1
+    FROM public.food_requests fr
+    JOIN public.food_listings fl ON fl.id = fr.listing_id
+    WHERE fr.id = p_request_id
+      AND fl.donor_id = auth.uid()
+  );
+$$;
+
+-- Helper to allow receivers to view tasks for their requests without triggering mutual RLS recursion
+CREATE OR REPLACE FUNCTION public.can_receiver_view_task(p_request_id UUID)
+RETURNS BOOLEAN
+LANGUAGE sql
+SECURITY DEFINER
+STABLE
+SET search_path = pg_catalog, public
+AS $$
+  SELECT EXISTS (
+    SELECT 1
+    FROM public.food_requests fr
+    WHERE fr.id = p_request_id
+      AND fr.receiver_id = auth.uid()
+  );
+$$;
+
+-- Helper to allow volunteers to view listings for their tasks/broadcasts without triggering mutual RLS recursion
+CREATE OR REPLACE FUNCTION public.can_volunteer_view_listing(p_listing_id UUID)
+RETURNS BOOLEAN
+LANGUAGE sql
+SECURITY DEFINER
+STABLE
+SET search_path = pg_catalog, public
+AS $$
+  SELECT EXISTS (
+    SELECT 1
+    FROM public.food_requests fr
+    JOIN public.volunteer_tasks vt ON vt.request_id = fr.id
+    JOIN public.profiles p ON p.id = auth.uid()
+    WHERE fr.listing_id = p_listing_id
+      AND p.role = 'volunteer'::public.user_role
+      AND p.verification_status = 'approved'
+      AND (
+        (
+          vt.volunteer_id = auth.uid()
+          AND vt.status IN (
+            'pending_acceptance'::public.volunteer_status,
+            'assigned'::public.volunteer_status,
+            'picked_up'::public.volunteer_status
+          )
+        )
+        OR (
+          vt.volunteer_id IS NULL
+          AND vt.status = 'open'::public.volunteer_status
+        )
+      )
+  );
+$$;
+
+REVOKE ALL ON FUNCTION public.can_donor_view_task(UUID) FROM PUBLIC, anon;
+REVOKE ALL ON FUNCTION public.can_receiver_view_task(UUID) FROM PUBLIC, anon;
+REVOKE ALL ON FUNCTION public.can_volunteer_view_listing(UUID) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.can_donor_view_task(UUID) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.can_receiver_view_task(UUID) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.can_volunteer_view_listing(UUID) TO authenticated;
+
 -- Drop obsolete 2-argument helper overloads (deferred: executed after all legacy policies are dropped in Section 6)
 
 -- ─── 2. Clean up & Harden PROFILES Policies ──────────────────────────────────
@@ -200,36 +273,8 @@ USING (
       AND fr.receiver_id = auth.uid()
   )
 
-  -- Assigned, KYC-approved volunteer sees listing associated with their task
-  OR EXISTS (
-    SELECT 1
-    FROM public.food_requests AS fr
-    JOIN public.volunteer_tasks AS vt ON vt.request_id = fr.id
-    JOIN public.profiles AS p ON p.id = auth.uid()
-    WHERE fr.listing_id = food_listings.id
-      AND vt.volunteer_id = auth.uid()
-      AND p.role = 'volunteer'::public.user_role
-      AND p.verification_status = 'approved'
-      AND vt.status IN (
-        'pending_acceptance'::public.volunteer_status,
-        'assigned'::public.volunteer_status,
-        'picked_up'::public.volunteer_status
-      )
-  )
-
-  -- KYC-approved volunteers can see listings associated with an open broadcast task
-  -- (needed so the Volunteer.tsx listing join succeeds for unassigned open tasks)
-  OR EXISTS (
-    SELECT 1
-    FROM public.food_requests AS fr
-    JOIN public.volunteer_tasks AS vt ON vt.request_id = fr.id
-    JOIN public.profiles AS p ON p.id = auth.uid()
-    WHERE fr.listing_id = food_listings.id
-      AND vt.status = 'open'::public.volunteer_status
-      AND vt.volunteer_id IS NULL
-      AND p.role = 'volunteer'::public.user_role
-      AND p.verification_status = 'approved'
-  )
+  -- Assigned or broadcast volunteer sees listing via SECURITY DEFINER helper (breaks mutual RLS recursion)
+  OR public.can_volunteer_view_listing(id)
 
   -- Admin
   OR public.has_permission(auth.uid(), 'users.read')
@@ -328,15 +373,8 @@ CREATE POLICY "tasks_select" ON public.volunteer_tasks
 FOR SELECT TO authenticated
 USING (
   auth.uid() = volunteer_id
-  OR EXISTS (
-    SELECT 1 FROM public.food_requests fr
-    JOIN public.food_listings fl ON fl.id = fr.listing_id
-    WHERE fr.id = volunteer_tasks.request_id AND fl.donor_id = auth.uid()
-  )
-  OR EXISTS (
-    SELECT 1 FROM public.food_requests fr
-    WHERE fr.id = volunteer_tasks.request_id AND fr.receiver_id = auth.uid()
-  )
+  OR public.can_donor_view_task(request_id)
+  OR public.can_receiver_view_task(request_id)
   OR (
     status = 'open'::public.volunteer_status
     AND volunteer_id IS NULL
