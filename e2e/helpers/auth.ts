@@ -41,6 +41,14 @@ export async function loginAs(page: Page, role: 'donor' | 'volunteer' | 'admin' 
     receiver:  '00000000-0000-0000-0000-000000000004',
   };
 
+  // Canonical permission sets per role (mirrors what the DB should contain)
+  const rolePermissions: Record<string, string[]> = {
+    donor:     ['food.create', 'food.update_own', 'food.delete_own'],
+    volunteer: ['tasks.view_assigned', 'food.read_all', 'requests.read_all'],
+    admin:     ['users.read', 'users.verify', 'food.create', 'food.update_own', 'food.delete_own', 'food.read_all', 'requests.create', 'requests.update', 'requests.read_own', 'requests.read_all', 'donations.manage', 'tasks.view_assigned'],
+    receiver:  ['requests.create', 'requests.update', 'requests.read_own', 'food.read_all'],
+  };
+
   const userId = roleIds[role];
   const userEmail = `${role}@test.local`;
   const mockSession = {
@@ -59,8 +67,8 @@ export async function loginAs(page: Page, role: 'donor' | 'volunteer' | 'admin' 
     },
   };
 
-  await page.addInitScript(({ session, userRole }) => {
-    // Inject into localStorage so Supabase & useAuthStore load the session
+  await page.addInitScript(({ session, userRole, permissions }) => {
+    // Inject into localStorage so Supabase & useAuthStore load the session (DEV-only path)
     try {
       localStorage.setItem('sb-test-auth-token', JSON.stringify(session));
       localStorage.setItem('sb-pjxrikmnahjbalhtmfkf-auth-token', JSON.stringify(session));
@@ -73,7 +81,9 @@ export async function loginAs(page: Page, role: 'donor' | 'volunteer' | 'admin' 
         }
       }
     } catch {}
-  }, { session: mockSession, userRole: role });
+    // Inject RBAC override so RBACContext skips the live Supabase query in DEV
+    (window as any).__testRBACOverride = { role: userRole, permissions };
+  }, { session: mockSession, userRole: role, permissions: rolePermissions[role] });
 
   // Navigate to appropriate landing page
   const targetPath = role === 'admin' ? '/admin' : role === 'volunteer' ? '/tasks' : '/dashboard';

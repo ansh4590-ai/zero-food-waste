@@ -30,7 +30,9 @@ const Listings = lazy(() => import("./pages/Listings"));
 const Activity = lazy(() => import("./pages/Activity"));
 const Analytics = lazy(() => import("./pages/Analytics"));
 const Settings = lazy(() => import("./pages/Settings"));
-const QRTestHarness = lazy(() => import("./pages/QRTestHarness"));
+const QRTestHarness = import.meta.env.DEV
+  ? lazy(() => import("./pages/QRTestHarness"))
+  : null;
 
 // Keep auth and lightweight pages statically imported
 import AdminSignup from "./pages/auth/AdminSignup";
@@ -74,7 +76,9 @@ export default function App() {
                 <Route path="privacy" element={<Privacy />} />
                 <Route path="terms" element={<Terms />} />
                 <Route path="support" element={<Support />} />
-                <Route path="test-qr" element={<QRTestHarness />} />
+                {import.meta.env.DEV && QRTestHarness && (
+                  <Route path="test-qr" element={<QRTestHarness />} />
+                )}
               </Route>
 
               {/* Protected Routes - using AppLayout (Sidebar + Header) */}

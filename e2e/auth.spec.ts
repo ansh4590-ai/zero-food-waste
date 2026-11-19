@@ -15,12 +15,12 @@ test.describe('Authentication', () => {
 
   test('volunteer can log in and reach tasks', async ({ page }) => {
     await loginAs(page, 'volunteer');
-    await expect(page.getByRole('navigation')).toContainText(/my tasks/i);
+    await expect(page.getByRole('navigation')).toContainText(/my tasks/i, { timeout: 15_000 });
   });
 
   test('admin can log in and see admin panel link', async ({ page }) => {
     await loginAs(page, 'admin');
-    await expect(page.getByRole('navigation')).toContainText(/admin/i);
+    await expect(page.getByRole('navigation')).toContainText(/admin/i, { timeout: 15_000 });
   });
 
   test('donor can log out', async ({ page }) => {

@@ -12,7 +12,8 @@ import { supabase } from "../lib/supabase";
 async function getAuthToken(): Promise<string | null> {
   const { data } = await supabase.auth.getSession();
   if (data.session?.access_token) return data.session.access_token;
-  if (typeof window !== "undefined") {
+  // DEV-only fallback: allow localStorage-injected tokens for E2E test harness
+  if (import.meta.env.DEV && typeof window !== "undefined") {
     const testToken = window.localStorage.getItem("test_access_token");
     if (testToken) return testToken;
     for (let i = 0; i < window.localStorage.length; i++) {
@@ -496,7 +497,14 @@ export function QRScannerModal({
 
     const initScanner = async () => {
       try {
-        const { Html5Qrcode } = await import("html5-qrcode");
+        // DEV-only: allow Playwright tests to inject a mock Html5Qrcode implementation
+        // by setting window.__html5QrcodeMock before the page renders.
+        let Html5Qrcode: { new(elementId: string): Html5QrcodeScanner };
+        if (import.meta.env.DEV && typeof window !== "undefined" && (window as any).__html5QrcodeMock) {
+          Html5Qrcode = (window as any).__html5QrcodeMock;
+        } else {
+          ({ Html5Qrcode } = await import("html5-qrcode"));
+        }
 
         // Wait for DOM element
         await new Promise(r => setTimeout(r, 400));

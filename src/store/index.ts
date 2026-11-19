@@ -36,8 +36,8 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
     set({ user: null, isAuthenticated: false });
   },
   initializeAuth: () => {
-    // ── Pre-check: if a test session was injected into localStorage ───────────
-    if (typeof window !== "undefined") {
+    // ── Pre-check: if a test session was injected into localStorage (DEV only) ─
+    if (import.meta.env.DEV && typeof window !== "undefined") {
       try {
         const raw = window.localStorage.getItem("sb-test-auth-token") || window.localStorage.getItem("test_session");
         if (raw) {

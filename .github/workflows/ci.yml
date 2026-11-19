@@ -48,7 +48,7 @@ jobs:
         run: npm run test:e2e -- --project=chromium --reporter=html
         env:
           CI: true
-          PLAYWRIGHT_BASE_URL: http://localhost:5173
+          PLAYWRIGHT_BASE_URL: http://localhost:3000
           TEST_DONOR_EMAIL: ${{ secrets.TEST_DONOR_EMAIL }}
           TEST_DONOR_PASSWORD: ${{ secrets.TEST_DONOR_PASSWORD }}
           TEST_VOLUNTEER_EMAIL: ${{ secrets.TEST_VOLUNTEER_EMAIL }}

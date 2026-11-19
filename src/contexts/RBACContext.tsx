@@ -44,38 +44,38 @@ export function RBACProvider({ children }: { children: React.ReactNode }) {
         return;
       }
 
-      // Default role fallback permissions
-      const defaultPerms: Record<AppRole, AppPermission[]> = {
-        admin: ['users.read', 'users.verify', 'food.create', 'food.update_own', 'food.delete_own', 'food.read_all', 'requests.create', 'requests.update', 'requests.read_own', 'requests.read_all', 'donations.manage', 'tasks.view_assigned'],
-        donor: ['food.create', 'food.update_own', 'food.delete_own'],
-        volunteer: ['tasks.view_assigned', 'food.read_all', 'requests.read_all'],
-        receiver: ['requests.create', 'requests.update', 'requests.read_own', 'food.read_all'],
-      };
-
-      const initialRole = (user.role as AppRole) || 'donor';
-      if (roles.length === 0) {
-        setRoles([initialRole]);
-        setPermissions(defaultPerms[initialRole] || []);
-        setIsLoading(false);
+      // DEV-only: allow Playwright/Jest tests to inject RBAC state via window.__testRBACOverride
+      // so tests can run without a live Supabase profiles/role_permissions query.
+      // This block is removed entirely in production builds (import.meta.env.DEV === false).
+      if (import.meta.env.DEV && typeof window !== 'undefined' && (window as any).__testRBACOverride) {
+        const override = (window as any).__testRBACOverride as { role: AppRole; permissions: AppPermission[] };
+        if (isMounted) {
+          setRoles([override.role]);
+          setPermissions(override.permissions || []);
+          setIsLoading(false);
+        }
+        return;
       }
 
       try {
-        // 1. Fetch user role from profiles
+        // 1. Fetch user role from authoritative profiles table (not JWT metadata)
         const { data: profile, error: profileErr } = await supabase
           .from('profiles')
           .select('role')
           .eq('id', user.id)
           .single();
 
-        let currentRole = profile?.role as AppRole;
-        if (!currentRole && user.role) {
-          currentRole = user.role as AppRole;
-        }
-
-        if (!currentRole) {
-          if (isMounted) setIsLoading(false);
+        if (profileErr || !profile?.role) {
+          // Fail closed: no role, no permissions
+          if (isMounted) {
+            setRoles([]);
+            setPermissions([]);
+            setIsLoading(false);
+          }
           return;
         }
+
+        const currentRole = profile.role as AppRole;
         
         // 2. Fetch specific permissions tied to this role
         const { data: permsData, error: permsErr } = await supabase
@@ -97,16 +97,8 @@ export function RBACProvider({ children }: { children: React.ReactNode }) {
           }
         });
 
-        // Default role fallback permissions if DB role_permissions query returned empty (e.g. offline or test environment)
-        if (loadedPerms.size === 0) {
-          const defaultPerms: Record<AppRole, AppPermission[]> = {
-            admin: ['users.read', 'users.verify', 'food.create', 'food.update_own', 'food.delete_own', 'food.read_all', 'requests.create', 'requests.update', 'requests.read_own', 'requests.read_all', 'donations.manage', 'tasks.view_assigned'],
-            donor: ['food.create', 'food.update_own', 'food.delete_own'],
-            volunteer: ['tasks.view_assigned', 'food.read_all', 'requests.read_all'],
-            receiver: ['requests.create', 'requests.update', 'requests.read_own', 'food.read_all'],
-          };
-          (defaultPerms[currentRole] || []).forEach(p => loadedPerms.add(p));
-        }
+        // If the permissions query returned nothing (e.g. table not seeded), fail closed.
+        // Do NOT apply hardcoded defaults — the security boundary is the database.
 
         if (isMounted) {
           setRoles([currentRole]);
@@ -114,6 +106,11 @@ export function RBACProvider({ children }: { children: React.ReactNode }) {
         }
       } catch (err) {
         /* console.error("RBAC Provider Exception:", err); removed for security */
+        // Fail closed on any unexpected exception
+        if (isMounted) {
+          setRoles([]);
+          setPermissions([]);
+        }
       } finally {
         if (isMounted) {
           setIsLoading(false);
@@ -126,7 +123,7 @@ export function RBACProvider({ children }: { children: React.ReactNode }) {
     return () => {
       isMounted = false;
     };
-  }, [user?.id, user?.role, isAuthenticated, isInitialized]);
+  }, [user?.id, isAuthenticated, isInitialized]);
 
   // Helper functions
   const can = (perm: AppPermission | AppPermission[]) => {
