@@ -54,6 +54,7 @@ AS $$
     JOIN public.profiles AS p ON p.id = auth.uid()
     WHERE vt.request_id = p_request_id
       AND p.role = 'volunteer'::public.user_role
+      AND p.verification_status = 'approved'
       AND (
         vt.volunteer_id = auth.uid()
         OR (
@@ -97,6 +98,12 @@ AS $$
         OR fl.donor_id = auth.uid()
       )
       AND p_target_profile_id IN (vt.volunteer_id, fr.receiver_id, fl.donor_id)
+      AND vt.status IN (
+        'open'::public.volunteer_status,
+        'pending_acceptance'::public.volunteer_status,
+        'assigned'::public.volunteer_status,
+        'picked_up'::public.volunteer_status
+      )
   );
 $$;
 
@@ -107,25 +114,7 @@ GRANT EXECUTE ON FUNCTION public.can_volunteer_view_request(UUID) TO authenticat
 GRANT EXECUTE ON FUNCTION public.can_donor_view_request(UUID) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.can_view_profile_for_task(UUID) TO authenticated;
 
--- Drop obsolete 2-argument helper overloads
-DO $$
-BEGIN
-  IF to_regprocedure('public.can_volunteer_view_request(uuid,uuid)') IS NOT NULL THEN
-    REVOKE ALL ON FUNCTION public.can_volunteer_view_request(UUID, UUID) FROM PUBLIC, anon, authenticated;
-    DROP FUNCTION public.can_volunteer_view_request(UUID, UUID);
-  END IF;
-
-  IF to_regprocedure('public.can_donor_view_request(uuid,uuid)') IS NOT NULL THEN
-    REVOKE ALL ON FUNCTION public.can_donor_view_request(UUID, UUID) FROM PUBLIC, anon, authenticated;
-    DROP FUNCTION public.can_donor_view_request(UUID, UUID);
-  END IF;
-
-  IF to_regprocedure('public.can_view_profile_for_task(uuid,uuid)') IS NOT NULL THEN
-    REVOKE ALL ON FUNCTION public.can_view_profile_for_task(UUID, UUID) FROM PUBLIC, anon, authenticated;
-    DROP FUNCTION public.can_view_profile_for_task(UUID, UUID);
-  END IF;
-END;
-$$;
+-- Drop obsolete 2-argument helper overloads (deferred: executed after all legacy policies are dropped in Section 6)
 
 -- ─── 2. Clean up & Harden PROFILES Policies ──────────────────────────────────
 -- Drop ALL legacy policies identified in the live introspection dump
@@ -243,26 +232,13 @@ GRANT UPDATE (
 ) ON TABLE public.food_listings TO authenticated;
 GRANT ALL PRIVILEGES ON TABLE public.food_listings TO service_role;
 
--- Enforce via trigger that status & donor_id cannot be changed by non-admins
-CREATE OR REPLACE FUNCTION public.prevent_donor_status_tampering()
-RETURNS TRIGGER AS $$
-BEGIN
-  IF NOT public.has_permission(auth.uid(), 'users.read') THEN
-    IF NEW.status IS DISTINCT FROM OLD.status THEN
-      RAISE EXCEPTION 'Status transitions must be performed via dedicated RPCs.';
-    END IF;
-    IF NEW.donor_id IS DISTINCT FROM OLD.donor_id THEN
-      RAISE EXCEPTION 'Changing listing donor_id is not allowed.';
-    END IF;
-  END IF;
-  RETURN NEW;
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = pg_catalog, public;
-
+-- Explicitly revoke any direct status/donor_id update capability from clients.
+-- Column-level GRANT above already limits which columns authenticated users can touch.
+REVOKE UPDATE (status, donor_id) ON public.food_listings FROM PUBLIC, anon, authenticated;
+-- Remove any previously installed anti-tampering trigger that would block trusted SECURITY DEFINER RPCs
+-- (verify_qr_token, cancel_food_request, abort_volunteer_task all update food_listings.status legitimately).
 DROP TRIGGER IF EXISTS trigger_prevent_donor_status_tampering ON public.food_listings;
-CREATE TRIGGER trigger_prevent_donor_status_tampering
-  BEFORE UPDATE ON public.food_listings
-  FOR EACH ROW EXECUTE FUNCTION public.prevent_donor_status_tampering();
+DROP FUNCTION IF EXISTS public.prevent_donor_status_tampering();
 
 -- Revoke direct anonymous access to the underlying table.
 -- Precise pickup coordinates and donor_id must never be exposed to anon.
@@ -275,7 +251,7 @@ SELECT
   title,
   food_category,
   quantity_description,
-  location_name,
+  NULL::text AS location_name,
   freshness_score,
   quality_status,
   spoilage_risk,
@@ -327,26 +303,50 @@ DROP POLICY IF EXISTS "Users can view tasks related to them" ON public.volunteer
 DROP POLICY IF EXISTS "tasks_select" ON public.volunteer_tasks;
 
 CREATE POLICY "tasks_select" ON public.volunteer_tasks
-FOR SELECT
+FOR SELECT TO authenticated
 USING (
-  status = 'open'::public.volunteer_status
-  OR (status = 'pending_acceptance'::public.volunteer_status AND volunteer_id IS NULL)
-  OR auth.uid() = volunteer_id
+  auth.uid() = volunteer_id
   OR EXISTS (
-    SELECT 1
-    FROM public.food_requests fr
+    SELECT 1 FROM public.food_requests fr
     JOIN public.food_listings fl ON fl.id = fr.listing_id
-    WHERE fr.id = volunteer_tasks.request_id
-      AND fl.donor_id = auth.uid()
+    WHERE fr.id = volunteer_tasks.request_id AND fl.donor_id = auth.uid()
   )
   OR EXISTS (
-    SELECT 1
-    FROM public.food_requests fr
-    WHERE fr.id = volunteer_tasks.request_id
-      AND fr.receiver_id = auth.uid()
+    SELECT 1 FROM public.food_requests fr
+    WHERE fr.id = volunteer_tasks.request_id AND fr.receiver_id = auth.uid()
+  )
+  OR (
+    status = 'open'::public.volunteer_status
+    AND volunteer_id IS NULL
+    AND EXISTS (
+      SELECT 1 FROM public.profiles p
+      WHERE p.id = auth.uid()
+        AND p.role = 'volunteer'::public.user_role
+        AND p.verification_status = 'approved'
+    )
   )
   OR public.has_permission(auth.uid(), 'users.read')
 );
+
+-- Now safe to drop the obsolete 2-argument helper overloads (all legacy policies using them are gone).
+DO $$
+BEGIN
+  IF to_regprocedure('public.can_volunteer_view_request(uuid,uuid)') IS NOT NULL THEN
+    REVOKE ALL ON FUNCTION public.can_volunteer_view_request(UUID, UUID) FROM PUBLIC, anon, authenticated;
+    DROP FUNCTION public.can_volunteer_view_request(UUID, UUID);
+  END IF;
+
+  IF to_regprocedure('public.can_donor_view_request(uuid,uuid)') IS NOT NULL THEN
+    REVOKE ALL ON FUNCTION public.can_donor_view_request(UUID, UUID) FROM PUBLIC, anon, authenticated;
+    DROP FUNCTION public.can_donor_view_request(UUID, UUID);
+  END IF;
+
+  IF to_regprocedure('public.can_view_profile_for_task(uuid,uuid)') IS NOT NULL THEN
+    REVOKE ALL ON FUNCTION public.can_view_profile_for_task(UUID, UUID) FROM PUBLIC, anon, authenticated;
+    DROP FUNCTION public.can_view_profile_for_task(UUID, UUID);
+  END IF;
+END;
+$$;
 
 -- Revoke direct mutations from authenticated users. All updates must use RPCs.
 REVOKE INSERT, UPDATE ON TABLE public.volunteer_tasks FROM PUBLIC, anon, authenticated;

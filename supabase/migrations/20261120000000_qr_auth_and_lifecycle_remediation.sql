@@ -34,26 +34,15 @@ GRANT UPDATE (
 ) ON TABLE public.food_listings TO authenticated;
 GRANT ALL PRIVILEGES ON TABLE public.food_listings TO service_role;
 
--- Enforce via trigger that status & donor_id cannot be changed by non-admins
-CREATE OR REPLACE FUNCTION public.prevent_donor_status_tampering()
-RETURNS TRIGGER AS $$
-BEGIN
-  IF NOT public.has_permission(auth.uid(), 'users.read') THEN
-    IF NEW.status IS DISTINCT FROM OLD.status THEN
-      RAISE EXCEPTION 'Status transitions must be performed via dedicated RPCs.';
-    END IF;
-    IF NEW.donor_id IS DISTINCT FROM OLD.donor_id THEN
-      RAISE EXCEPTION 'Changing listing donor_id is not allowed.';
-    END IF;
-  END IF;
-  RETURN NEW;
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = pg_catalog, public;
-
+-- Remove the trigger that blocks trusted lifecycle RPCs.
+-- SECURITY DEFINER RPCs (verify_qr_token, cancel_food_request, abort_volunteer_task) legitimately
+-- update food_listings.status; auth.uid() still identifies the original calling user inside those
+-- functions, so a trigger checking auth.uid() would reject their writes.
 DROP TRIGGER IF EXISTS trigger_prevent_donor_status_tampering ON public.food_listings;
-CREATE TRIGGER trigger_prevent_donor_status_tampering
-  BEFORE UPDATE ON public.food_listings
-  FOR EACH ROW EXECUTE FUNCTION public.prevent_donor_status_tampering();
+DROP FUNCTION IF EXISTS public.prevent_donor_status_tampering();
+-- Explicitly revoke direct status/donor_id update capability from all client roles.
+-- The column-level GRANT above already limits which columns authenticated users can touch.
+REVOKE UPDATE (status, donor_id) ON public.food_listings FROM PUBLIC, anon, authenticated;
 
 -- ─── 2. Update food_listings_public View with Freshness & Quality ─────────────
 CREATE OR REPLACE VIEW public.food_listings_public AS
@@ -62,7 +51,7 @@ SELECT
   title,
   food_category,
   quantity_description,
-  location_name,
+  NULL::text AS location_name,
   freshness_score,
   quality_status,
   spoilage_risk,
@@ -80,27 +69,31 @@ WHERE status = 'active'::public.listing_status;
 REVOKE ALL ON TABLE public.food_listings_public FROM PUBLIC, anon, authenticated;
 GRANT SELECT ON TABLE public.food_listings_public TO anon, authenticated;
 
--- ─── 3. Task SELECT Policy: Allow Donors & Receivers to View Tasks ────────────
+-- ─── 3. Task SELECT Policy: Restrict open task visibility to KYC-approved volunteers ──
 DROP POLICY IF EXISTS "tasks_select" ON public.volunteer_tasks;
 
 CREATE POLICY "tasks_select" ON public.volunteer_tasks
-FOR SELECT
+FOR SELECT TO authenticated
 USING (
-  status = 'open'::public.volunteer_status
-  OR (status = 'pending_acceptance'::public.volunteer_status AND volunteer_id IS NULL)
-  OR auth.uid() = volunteer_id
+  auth.uid() = volunteer_id
   OR EXISTS (
-    SELECT 1
-    FROM public.food_requests fr
+    SELECT 1 FROM public.food_requests fr
     JOIN public.food_listings fl ON fl.id = fr.listing_id
-    WHERE fr.id = volunteer_tasks.request_id
-      AND fl.donor_id = auth.uid()
+    WHERE fr.id = volunteer_tasks.request_id AND fl.donor_id = auth.uid()
   )
   OR EXISTS (
-    SELECT 1
-    FROM public.food_requests fr
-    WHERE fr.id = volunteer_tasks.request_id
-      AND fr.receiver_id = auth.uid()
+    SELECT 1 FROM public.food_requests fr
+    WHERE fr.id = volunteer_tasks.request_id AND fr.receiver_id = auth.uid()
+  )
+  OR (
+    status = 'open'::public.volunteer_status
+    AND volunteer_id IS NULL
+    AND EXISTS (
+      SELECT 1 FROM public.profiles p
+      WHERE p.id = auth.uid()
+        AND p.role = 'volunteer'::public.user_role
+        AND p.verification_status = 'approved'
+    )
   )
   OR public.has_permission(auth.uid(), 'users.read')
 );
