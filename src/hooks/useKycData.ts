@@ -241,7 +241,7 @@ export function useKycData(enabled: boolean): UseKycDataReturn {
         p_status: 'approved',
       });
       if (error) throw error;
-      if (data?.affected === 0) throw new Error('No rows updated — check permissions');
+      if (!data?.success) throw new Error(data?.error || 'Failed to approve user.');
       toast.success(`${selectedUser.full_name} verified successfully.`);
       setSelectedUser(null);
       fetchUsers();
@@ -262,7 +262,7 @@ export function useKycData(enabled: boolean): UseKycDataReturn {
         p_rejection_reason: reason,
       });
       if (error) throw error;
-      if (data?.affected === 0) throw new Error('No rows updated — check permissions');
+      if (!data?.success) throw new Error(data?.error || 'Failed to reject user.');
       toast.success(`Identity rejected.`);
       setSelectedUser(null);
       fetchUsers();

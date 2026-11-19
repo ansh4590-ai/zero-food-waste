@@ -19,7 +19,6 @@ export default function VolunteerSignup() {
     vehicleType: "car",
     availability: "weekends",
   });
-  const [idFile, setIdFile] = useState<File | null>(null);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -142,16 +141,11 @@ export default function VolunteerSignup() {
           </select>
         </div>
 
-        <div className="space-y-2">
-          <label className="text-sm font-medium leading-none text-zinc-300">ID Proof (Driver's License / State ID)</label>
-          <Input 
-            type="file" 
-            accept="image/*,.pdf" 
-            required 
-            className="bg-zinc-900/50 border-white/10 text-zinc-400 file:text-white file:bg-zinc-800 file:border-0 file:mr-4 file:py-1 file:px-3 file:rounded-md hover:file:bg-zinc-700" 
-            onChange={(e) => setIdFile(e.target.files?.[0] || null)} 
-          />
-          <p className="text-xs text-zinc-500 mt-1">This will be reviewed during identity verification after signup.</p>
+        <div className="p-3 rounded-lg bg-orange-950/30 border border-orange-500/20 text-xs text-orange-300 flex items-start gap-2">
+          <span>🛡️</span>
+          <span>
+            Identity verification is completed securely in the Smart KYC portal after registration.
+          </span>
         </div>
         
         <Button 

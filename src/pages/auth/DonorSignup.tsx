@@ -150,15 +150,6 @@ export default function DonorSignup() {
             required
           />
         </div>
-
-        <div className="space-y-2">
-          <label className="text-sm font-medium leading-none text-zinc-300">Profile Photo (Optional)</label>
-          <Input 
-            type="file" 
-            accept="image/*" 
-            className="bg-zinc-900/50 border-white/10 text-zinc-400 file:text-white file:bg-zinc-800 file:border-0 file:mr-4 file:py-1 file:px-3 file:rounded-md hover:file:bg-zinc-700" 
-          />
-        </div>
         
         <Button 
           type="submit" 

@@ -11,6 +11,8 @@
  *  - Built-in debounce utility
  */
 
+import { supabase } from "./supabase";
+
 // ─── CONFIGURATION ──────────────────────────────────────────────────────────
 // Route through the Express proxy (/api/llm) to avoid browser CORS restrictions.
 // The Express server forwards to the real LLM at LLM_BASE_URL (server-side env var).
@@ -55,10 +57,16 @@ async function llmChat(
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
 
+    const session = (await supabase.auth.getSession()).data.session;
+    const authHeaders: Record<string, string> = session?.access_token
+      ? { Authorization: `Bearer ${session.access_token}` }
+      : {};
+
     const response = await fetch(`${LLM_PROXY_URL}/chat/completions`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
+        ...authHeaders,
       },
       body: JSON.stringify({
         model: "auto",
@@ -298,10 +306,18 @@ export async function checkLLMHealth(): Promise<boolean> {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 4000);
 
+    const session = (await supabase.auth.getSession()).data.session;
+    const authHeaders: Record<string, string> = session?.access_token
+      ? { Authorization: `Bearer ${session.access_token}` }
+      : {};
+
     // Ping the proxy with a minimal request
     const response = await fetch(`${LLM_PROXY_URL}/chat/completions`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        ...authHeaders,
+      },
       body: JSON.stringify({
         model: "auto",
         messages: [{ role: "user", content: "ping" }],

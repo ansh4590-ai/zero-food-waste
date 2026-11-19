@@ -287,6 +287,79 @@ const PORT = parseInt(process.env.PORT || '3000', 10);
     }
   });
 
+  // Supabase Admin Client
+  const supabaseAdmin = createClient(
+    process.env.VITE_SUPABASE_URL || "",
+    process.env.SUPABASE_SERVICE_ROLE_KEY || "",
+    {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false
+      }
+    }
+  );
+
+  interface AuthenticatedRequest extends express.Request {
+    user?: { id: string; email?: string; role?: string };
+    token?: string;
+  }
+
+  // User-scoped Supabase client that carries the caller's JWT bearer token.
+  // Required so that PostgreSQL SECURITY DEFINER RPCs (like generate_qr_token and
+  // verify_qr_token) can reliably read auth.uid() and auth.role() = 'authenticated'.
+  const getUserSupabaseClient = (jwt: string) => {
+    return createClient(
+      process.env.VITE_SUPABASE_URL || "",
+      process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || "",
+      {
+        global: {
+          headers: {
+            Authorization: `Bearer ${jwt}`,
+          },
+        },
+        auth: {
+          autoRefreshToken: false,
+          persistSession: false,
+        },
+      }
+    );
+  };
+
+  // ─── AUTH MIDDLEWARE ───────────────────────────────────────────────────────
+  // Extracts user identity from Supabase JWT. Sets req.user from the
+  // authoritative database profile (not user_metadata which the client can supply).
+  // H-03: role is loaded from public.profiles, not from user_metadata.
+  const extractUser = async (req: AuthenticatedRequest, _res: express.Response, next: express.NextFunction) => {
+    try {
+      const authHeader = req.headers.authorization;
+      if (!authHeader?.startsWith('Bearer ')) return next();
+      const jwt = authHeader.slice(7);
+      req.token = jwt;
+      const { data: { user }, error } = await supabaseAdmin.auth.getUser(jwt);
+      if (!error && user) {
+        // Load role from the authoritative profiles table, not from JWT metadata
+        const { data: profile } = await supabaseAdmin
+          .from('profiles')
+          .select('role')
+          .eq('id', user.id)
+          .maybeSingle();
+        req.user = { id: user.id, email: user.email, role: profile?.role ?? undefined };
+      }
+    } catch {
+      // Non-blocking — unauthenticated requests just proceed without req.user
+    }
+    next();
+  };
+
+  // Blocking version: returns 401 if no valid user
+  const requireAuth = async (req: AuthenticatedRequest, res: express.Response, next: express.NextFunction) => {
+    await extractUser(req, res, () => {});
+    if (!req.user?.id) {
+      return res.status(401).json({ error: 'Authentication required' });
+    }
+    next();
+  };
+
   // Initialize Gemini safely
   const ai = process.env.GEMINI_API_KEY ? new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY }) : null;
 
@@ -314,9 +387,12 @@ const PORT = parseInt(process.env.PORT || '3000', 10);
         return res.status(400).json({ error: "Image too large. Please upload an image under 3MB." });
       }
 
-      // If no API key is provided, fall back to a mock response for the demo
+      // If no API key is provided, return 503 in production or mock in dev
       if (!ai) {
-        console.warn("No GEMINI_API_KEY provided. Falling back to mock classification.");
+        if (process.env.NODE_ENV === "production") {
+          return res.status(503).json({ error: "AI classification service unavailable: GEMINI_API_KEY is not configured." });
+        }
+        console.warn("No GEMINI_API_KEY provided. Falling back to mock classification in development.");
         return res.json({
           is_food: true,
           title: "Aloo Sabji with Puri",
@@ -439,7 +515,7 @@ Return ONLY valid JSON with no markdown or extra text:
   });
 
   // 12. Spoilage Risk Predictor
-  app.post("/api/predict-spoilage", (req, res) => {
+  app.post("/api/predict-spoilage", requireAuth, (req, res) => {
     const { food_type, preparation_time, current_temperature_celsius, travel_distance_km, storage_type } = req.body;
     
     let risk = "low";
@@ -469,12 +545,13 @@ Return ONLY valid JSON with no markdown or extra text:
     res.json({
       spoilage_risk: risk,
       estimated_safe_hours: safe_hours,
-      recommendation
+      recommendation,
+      method: "heuristic_rule_based"
     });
   });
 
   // 13. Fraud & Anomaly Detection
-  app.post("/api/detect-anomaly", (req, res) => {
+  app.post("/api/detect-anomaly", requireAuth, (req, res) => {
     const { donorId, foodType, quantity, listingFrequency, locationHistory } = req.body;
     
     let is_anomaly = false;
@@ -492,11 +569,17 @@ Return ONLY valid JSON with no markdown or extra text:
       reason = "High frequency of listings detected from this donor.";
     }
 
-    res.json({ is_anomaly, anomaly_score, reason });
+    res.json({ is_anomaly, anomaly_score, reason, method: "heuristic_rule_based" });
   });
 
   // 14. Demand Prediction
-  app.post("/api/predict-demand", (req, res) => {
+  app.post("/api/predict-demand", requireAuth, (req, res) => {
+    if (process.env.NODE_ENV === "production") {
+      return res.status(503).json({
+        error: "Demand prediction ML model is not yet configured for production."
+      });
+    }
+
     const { latMin, latMax, lngMin, lngMax } = req.body;
     
     // Mock time-series prediction based on bounding box
@@ -505,12 +588,13 @@ Return ONLY valid JSON with no markdown or extra text:
     res.json({
       predicted_meals_needed_24h: predicted_meals,
       top_3_food_types: ["cooked_meal", "raw_produce", "packaged_food"],
-      confidence_level: 0.82
+      confidence_level: 0.82,
+      is_simulation: true
     });
   });
 
   // 15. Route Optimizer (Nearest Neighbor TSP)
-  app.post("/api/optimize-route", (req, res) => {
+  app.post("/api/optimize-route", requireAuth, (req, res) => {
     const { startLocation, stops } = req.body;
     
     if (!startLocation || !stops || !Array.isArray(stops)) {
@@ -720,79 +804,6 @@ Return ONLY valid JSON with no markdown or extra text:
       extracted_data: parsed,
       auto_status: status,
     };
-  };
-
-  // Supabase Admin Client
-  const supabaseAdmin = createClient(
-    process.env.VITE_SUPABASE_URL || "",
-    process.env.SUPABASE_SERVICE_ROLE_KEY || "",
-    {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false
-      }
-    }
-  );
-
-  interface AuthenticatedRequest extends express.Request {
-    user?: { id: string; email?: string; role?: string };
-    token?: string;
-  }
-
-  // User-scoped Supabase client that carries the caller's JWT bearer token.
-  // Required so that PostgreSQL SECURITY DEFINER RPCs (like generate_qr_token and
-  // verify_qr_token) can reliably read auth.uid() and auth.role() = 'authenticated'.
-  const getUserSupabaseClient = (jwt: string) => {
-    return createClient(
-      process.env.VITE_SUPABASE_URL || "",
-      process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || "",
-      {
-        global: {
-          headers: {
-            Authorization: `Bearer ${jwt}`,
-          },
-        },
-        auth: {
-          autoRefreshToken: false,
-          persistSession: false,
-        },
-      }
-    );
-  };
-
-  // ─── AUTH MIDDLEWARE ───────────────────────────────────────────────────────
-  // Extracts user identity from Supabase JWT. Sets req.user from the
-  // authoritative database profile (not user_metadata which the client can supply).
-  // H-03: role is loaded from public.profiles, not from user_metadata.
-  const extractUser = async (req: AuthenticatedRequest, _res: express.Response, next: express.NextFunction) => {
-    try {
-      const authHeader = req.headers.authorization;
-      if (!authHeader?.startsWith('Bearer ')) return next();
-      const jwt = authHeader.slice(7);
-      req.token = jwt;
-      const { data: { user }, error } = await supabaseAdmin.auth.getUser(jwt);
-      if (!error && user) {
-        // Load role from the authoritative profiles table, not from JWT metadata
-        const { data: profile } = await supabaseAdmin
-          .from('profiles')
-          .select('role')
-          .eq('id', user.id)
-          .maybeSingle();
-        req.user = { id: user.id, email: user.email, role: profile?.role ?? undefined };
-      }
-    } catch {
-      // Non-blocking — unauthenticated requests just proceed without req.user
-    }
-    next();
-  };
-
-  // Blocking version: returns 401 if no valid user
-  const requireAuth = async (req: AuthenticatedRequest, res: express.Response, next: express.NextFunction) => {
-    await extractUser(req, res, () => {});
-    if (!req.user?.id) {
-      return res.status(401).json({ error: 'Authentication required' });
-    }
-    next();
   };
 
   // UUID format validator
@@ -1260,7 +1271,7 @@ Return ONLY valid JSON with no markdown or extra text:
   // ─── 25. GOOGLE GEMINI PROXY ────────────────────────────────────────────────
   // Replaces the local mock LLM with the production Gemini API key already in the project.
   // Adapts OpenAI's format from the frontend to Gemini's native format.
-  app.post("/api/llm/chat/completions", aiLimiter, async (req, res) => {
+  app.post("/api/llm/chat/completions", requireAuth, aiLimiter, async (req: AuthenticatedRequest, res) => {
     if (!ai) {
       return res.status(503).json({ error: "Gemini API key not configured on server" });
     }

@@ -42,10 +42,10 @@ export default function Verification() {
         
         setStatus(data.verification_status || "unset");
         setRejectionReason(data.verification_rejection_reason);
-        if (data.kyc_score || data.face_match_score) {
+        if (data.kyc_score != null || data.face_match_score != null || data.kyc_auto_status) {
           setKycResult({
-            kyc_score: data.kyc_score ?? 0,
-            face_match_score: data.face_match_score ?? 0,
+            kyc_score: data.kyc_score ?? null,
+            face_match_score: data.face_match_score ?? null,
             auto_status: data.kyc_auto_status ?? 'pending',
           });
         }
@@ -146,8 +146,8 @@ export default function Verification() {
             const data = await res.json();
             if (data.success) {
               setKycResult({
-                kyc_score: data.kyc_score ?? 0,
-                face_match_score: data.face_match_score ?? 0,
+                kyc_score: data.kyc_score ?? null,
+                face_match_score: data.face_match_score ?? null,
                 auto_status: data.auto_status ?? "manual_review",
                 extracted_data: data.extracted_data,
               });

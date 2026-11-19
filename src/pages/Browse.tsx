@@ -54,14 +54,12 @@ export default function Browse() {
   const fetchFood = async () => {
     try {
       const { data, error } = await supabase
-        .from('food_listings')
+        .from('food_listings_public')
         .select(`
           id, title, quantity_description, food_category,
           location_name, expiry_time, image_url, status, created_at, freshness_score, spoilage_risk, estimated_safe_hours, quality_status,
-          pickup_window_start, pickup_window_end,
-          profiles(full_name)
+          pickup_window_start, pickup_window_end
         `)
-        .eq('status', 'active')
         .gt('expiry_time', new Date().toISOString())
         .order('created_at', { ascending: false });
 
@@ -70,7 +68,7 @@ export default function Browse() {
       if (data) {
         setAvailableFood(data.map(item => ({
           id: item.id,
-          donor: (Array.isArray(item.profiles) ? item.profiles[0]?.full_name : (item.profiles as any)?.full_name) || 'Verified Donor',
+          donor: 'Verified Donor',
           foodType: item.title,
           quantity: item.quantity_description,
           locationText: item.location_name || "Location not provided",

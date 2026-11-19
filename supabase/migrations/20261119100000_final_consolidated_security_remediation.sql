@@ -226,19 +226,43 @@ USING (
 
 -- Donor UPDATE policy: donors may only edit descriptive fields, never status.
 -- Status transitions are handled exclusively by RPCs (claim, cancel, QR verify).
-CREATE POLICY "listings_update_donor_fields_only" ON public.food_listings
+DROP POLICY IF EXISTS "listings_update_donor" ON public.food_listings;
+DROP POLICY IF EXISTS "listings_update_donor_fields_only" ON public.food_listings;
+
+CREATE POLICY "listings_update_donor" ON public.food_listings
 FOR UPDATE
 USING (auth.uid() = donor_id OR public.has_permission(auth.uid(), 'users.read'))
-WITH CHECK (
-  -- Admins bypass; donors may not set status directly
-  public.has_permission(auth.uid(), 'users.read')
-  OR (
-    auth.uid() = donor_id
-    -- Reject any attempt to change status or donor_id
-    AND status = OLD.status
-    AND donor_id = OLD.donor_id
-  )
-);
+WITH CHECK (auth.uid() = donor_id OR public.has_permission(auth.uid(), 'users.read'));
+
+-- Column privilege restriction: authenticated users can only update safe descriptive fields
+REVOKE UPDATE ON TABLE public.food_listings FROM PUBLIC, anon, authenticated;
+GRANT UPDATE (
+  title, quantity_description, food_category, location_name,
+  image_url, pickup_window, pickup_window_start, pickup_window_end,
+  expiry_time, estimated_safe_hours, spoilage_risk, notes, updated_at
+) ON TABLE public.food_listings TO authenticated;
+GRANT ALL PRIVILEGES ON TABLE public.food_listings TO service_role;
+
+-- Enforce via trigger that status & donor_id cannot be changed by non-admins
+CREATE OR REPLACE FUNCTION public.prevent_donor_status_tampering()
+RETURNS TRIGGER AS $$
+BEGIN
+  IF NOT public.has_permission(auth.uid(), 'users.read') THEN
+    IF NEW.status IS DISTINCT FROM OLD.status THEN
+      RAISE EXCEPTION 'Status transitions must be performed via dedicated RPCs.';
+    END IF;
+    IF NEW.donor_id IS DISTINCT FROM OLD.donor_id THEN
+      RAISE EXCEPTION 'Changing listing donor_id is not allowed.';
+    END IF;
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = pg_catalog, public;
+
+DROP TRIGGER IF EXISTS trigger_prevent_donor_status_tampering ON public.food_listings;
+CREATE TRIGGER trigger_prevent_donor_status_tampering
+  BEFORE UPDATE ON public.food_listings
+  FOR EACH ROW EXECUTE FUNCTION public.prevent_donor_status_tampering();
 
 -- Revoke direct anonymous access to the underlying table.
 -- Precise pickup coordinates and donor_id must never be exposed to anon.
@@ -252,6 +276,8 @@ SELECT
   food_category,
   quantity_description,
   location_name,
+  freshness_score,
+  quality_status,
   spoilage_risk,
   estimated_safe_hours,
   pickup_window,
@@ -306,6 +332,19 @@ USING (
   status = 'open'::public.volunteer_status
   OR (status = 'pending_acceptance'::public.volunteer_status AND volunteer_id IS NULL)
   OR auth.uid() = volunteer_id
+  OR EXISTS (
+    SELECT 1
+    FROM public.food_requests fr
+    JOIN public.food_listings fl ON fl.id = fr.listing_id
+    WHERE fr.id = volunteer_tasks.request_id
+      AND fl.donor_id = auth.uid()
+  )
+  OR EXISTS (
+    SELECT 1
+    FROM public.food_requests fr
+    WHERE fr.id = volunteer_tasks.request_id
+      AND fr.receiver_id = auth.uid()
+  )
   OR public.has_permission(auth.uid(), 'users.read')
 );
 
@@ -391,6 +430,10 @@ CREATE TRIGGER trigger_auto_dispatch_closest_volunteer
   FOR EACH ROW EXECUTE FUNCTION public.auto_dispatch_closest_volunteer();
 
 -- ─── 7. QR Token Generation RPC ──────────────────────────────────────────────
+-- In our verification model:
+--   - The DONOR displays the pickup QR to the volunteer (type = 'pickup').
+--   - The RECEIVER displays the delivery QR to the volunteer (type = 'delivery').
+--   - The VOLUNTEER scans and verifies both QR codes.
 CREATE OR REPLACE FUNCTION public.generate_qr_token(
   p_task_id UUID,
   p_type TEXT
@@ -404,19 +447,20 @@ DECLARE
   v_token TEXT;
   v_expires_at TIMESTAMPTZ;
   v_task RECORD;
-  v_role public.user_role;
+  v_request RECORD;
+  v_listing RECORD;
+  v_caller_id UUID := auth.uid();
+  v_is_admin BOOLEAN := FALSE;
 BEGIN
   IF p_type IS NULL OR p_type NOT IN ('pickup', 'delivery') THEN
     RETURN json_build_object('success', false, 'error', 'Invalid type. Use pickup or delivery.');
   END IF;
 
-  SELECT role INTO v_role
-  FROM public.profiles
-  WHERE id = auth.uid();
-
-  IF v_role IS DISTINCT FROM 'volunteer'::public.user_role THEN
-    RETURN json_build_object('success', false, 'error', 'Unauthorized: only volunteers can generate QR tokens.');
+  IF v_caller_id IS NULL THEN
+    RETURN json_build_object('success', false, 'error', 'Unauthorized.');
   END IF;
+
+  v_is_admin := public.has_permission(v_caller_id, 'users.read');
 
   SELECT * INTO v_task
   FROM public.volunteer_tasks
@@ -427,16 +471,40 @@ BEGIN
     RETURN json_build_object('success', false, 'error', 'Task not found.');
   END IF;
 
-  IF auth.uid() IS DISTINCT FROM v_task.volunteer_id THEN
-    RETURN json_build_object('success', false, 'error', 'Unauthorized: you are not assigned to this task.');
+  SELECT * INTO v_request
+  FROM public.food_requests
+  WHERE id = v_task.request_id;
+
+  IF NOT FOUND THEN
+    RETURN json_build_object('success', false, 'error', 'Associated food request not found.');
   END IF;
 
-  IF p_type = 'pickup' AND v_task.status <> 'assigned'::public.volunteer_status THEN
-    RETURN json_build_object('success', false, 'error', 'Pickup QR can only be generated for an assigned task.');
+  SELECT * INTO v_listing
+  FROM public.food_listings
+  WHERE id = v_request.listing_id;
+
+  IF NOT FOUND THEN
+    RETURN json_build_object('success', false, 'error', 'Associated food listing not found.');
   END IF;
 
-  IF p_type = 'delivery' AND v_task.status NOT IN ('picked_up'::public.volunteer_status) THEN
-    RETURN json_build_object('success', false, 'error', 'Pickup must be completed before generating delivery QR.');
+  IF p_type = 'pickup' THEN
+    -- Donor (who owns the listing) generates pickup QR to show to volunteer
+    IF v_caller_id IS DISTINCT FROM v_listing.donor_id AND NOT v_is_admin THEN
+      RETURN json_build_object('success', false, 'error', 'Unauthorized: only the listing donor can generate the pickup QR.');
+    END IF;
+
+    IF v_task.status <> 'assigned'::public.volunteer_status THEN
+      RETURN json_build_object('success', false, 'error', 'Pickup QR can only be generated when task is assigned.');
+    END IF;
+  ELSIF p_type = 'delivery' THEN
+    -- Receiver (who requested the food) generates delivery QR to show to volunteer
+    IF v_caller_id IS DISTINCT FROM v_request.receiver_id AND NOT v_is_admin THEN
+      RETURN json_build_object('success', false, 'error', 'Unauthorized: only the request receiver can generate the delivery QR.');
+    END IF;
+
+    IF v_task.status <> 'picked_up'::public.volunteer_status THEN
+      RETURN json_build_object('success', false, 'error', 'Delivery QR can only be generated after food is picked up.');
+    END IF;
   END IF;
 
   v_token := gen_random_uuid()::TEXT;
@@ -482,6 +550,7 @@ AS $$
 DECLARE
   v_task RECORD;
   v_type TEXT;
+  v_volunteer_status TEXT;
 BEGIN
   IF p_token IS NULL OR length(btrim(p_token)) = 0 THEN
     RETURN json_build_object('success', false, 'error', 'QR token is required.');
@@ -491,13 +560,17 @@ BEGIN
     RETURN json_build_object('success', false, 'error', 'Identity mismatch: you can only verify QR codes as yourself.');
   END IF;
 
-  IF NOT EXISTS (
-    SELECT 1
-    FROM public.profiles
-    WHERE id = auth.uid()
-      AND role = 'volunteer'::public.user_role
-  ) THEN
-    RETURN json_build_object('success', false, 'error', 'Unauthorized: only volunteers can verify QR codes.');
+  -- KYC check: Volunteer must have role = volunteer and verification_status = approved
+  SELECT verification_status INTO v_volunteer_status
+  FROM public.profiles
+  WHERE id = auth.uid() AND role = 'volunteer'::public.user_role;
+
+  IF NOT FOUND THEN
+    RETURN json_build_object('success', false, 'error', 'Unauthorized: only registered volunteers can verify QR codes.');
+  END IF;
+
+  IF v_volunteer_status IS DISTINCT FROM 'approved' THEN
+    RETURN json_build_object('success', false, 'error', 'Volunteer identity verification required before verifying tasks.');
   END IF;
 
   SELECT * INTO v_task
@@ -615,9 +688,11 @@ BEGIN
 
   IF NOT EXISTS (
     SELECT 1 FROM public.profiles
-    WHERE id = p_volunteer_id AND role = 'volunteer'::public.user_role
+    WHERE id = p_volunteer_id
+      AND role = 'volunteer'::public.user_role
+      AND verification_status = 'approved'
   ) THEN
-    RETURN json_build_object('success', false, 'error', 'Unauthorized: Only registered volunteers can claim tasks.');
+    RETURN json_build_object('success', false, 'error', 'Unauthorized: Only KYC-approved volunteers can claim tasks.');
   END IF;
 
   SELECT * INTO v_request
@@ -705,9 +780,11 @@ BEGIN
 
   IF NOT EXISTS (
     SELECT 1 FROM public.profiles
-    WHERE id = p_volunteer_id AND role = 'volunteer'::public.user_role
+    WHERE id = p_volunteer_id
+      AND role = 'volunteer'::public.user_role
+      AND verification_status = 'approved'
   ) THEN
-    RETURN json_build_object('success', false, 'error', 'Unauthorized: Only registered volunteers can handle task assignments.');
+    RETURN json_build_object('success', false, 'error', 'Unauthorized: Only KYC-approved volunteers can handle task assignments.');
   END IF;
 
   SELECT * INTO v_task
@@ -728,6 +805,17 @@ BEGIN
     UPDATE public.food_requests
     SET status = 'pending'::public.request_status, updated_at = NOW()
     WHERE id = v_task.request_id;
+
+    -- Ensure an open broadcast task exists so other volunteers can claim it
+    IF NOT EXISTS (
+      SELECT 1 FROM public.volunteer_tasks
+      WHERE request_id = v_task.request_id
+        AND status = 'open'::public.volunteer_status
+    ) THEN
+      INSERT INTO public.volunteer_tasks (request_id, volunteer_id, status, created_at, updated_at)
+      VALUES (v_task.request_id, NULL, 'open'::public.volunteer_status, NOW(), NOW());
+    END IF;
+
     RETURN json_build_object('success', true);
   ELSE
     RETURN json_build_object('success', false, 'error', 'Invalid action');
@@ -773,8 +861,8 @@ BEGIN
     RETURN json_build_object('success', false, 'error', 'Task not found or you are not authorized to abort it.');
   END IF;
 
-  IF v_task.status IN ('delivered'::public.volunteer_status, 'completed'::public.volunteer_status) THEN
-    RETURN json_build_object('success', false, 'error', 'Cannot abort a task that is already completed or delivered.');
+  IF v_task.status IN ('picked_up'::public.volunteer_status, 'delivered'::public.volunteer_status, 'completed'::public.volunteer_status) THEN
+    RETURN json_build_object('success', false, 'error', 'Cannot abort task after food has been picked up. Please contact platform support for incident handling.');
   END IF;
 
   IF v_task.status = 'cancelled'::public.volunteer_status THEN
@@ -822,6 +910,16 @@ BEGIN
     SET status = 'pending'::public.request_status,
         updated_at = NOW()
     WHERE id = v_task.request_id;
+
+    -- Ensure an open broadcast task exists so other volunteers can claim it
+    IF NOT EXISTS (
+      SELECT 1 FROM public.volunteer_tasks
+      WHERE request_id = v_task.request_id
+        AND status = 'open'::public.volunteer_status
+    ) THEN
+      INSERT INTO public.volunteer_tasks (request_id, volunteer_id, status, created_at, updated_at)
+      VALUES (v_task.request_id, NULL, 'open'::public.volunteer_status, NOW(), NOW());
+    END IF;
   END IF;
 
   IF v_listing IS NOT NULL THEN
@@ -874,26 +972,34 @@ SECURITY DEFINER
 SET search_path = pg_catalog, public
 AS $$
 DECLARE
-  v_count INT;
+  v_count INT := 0;
+  v_stale RECORD;
 BEGIN
-  WITH stale AS (
+  FOR v_stale IN
     SELECT id, request_id, volunteer_id
     FROM public.volunteer_tasks
     WHERE status = 'pending_acceptance'::public.volunteer_status
       AND created_at < NOW() - INTERVAL '10 minutes'
-  )
-  UPDATE public.food_requests fr
-  SET status = 'pending'::public.request_status, updated_at = NOW()
-  FROM stale s
-  WHERE fr.id = s.request_id;
+    FOR UPDATE
+  LOOP
+    DELETE FROM public.volunteer_tasks WHERE id = v_stale.id;
 
-  WITH deleted AS (
-    DELETE FROM public.volunteer_tasks
-    WHERE status = 'pending_acceptance'::public.volunteer_status
-      AND created_at < NOW() - INTERVAL '10 minutes'
-    RETURNING id
-  )
-  SELECT COUNT(*) INTO v_count FROM deleted;
+    UPDATE public.food_requests
+    SET status = 'pending'::public.request_status, updated_at = NOW()
+    WHERE id = v_stale.request_id;
+
+    -- Ensure an open broadcast task exists so other volunteers can claim it
+    IF NOT EXISTS (
+      SELECT 1 FROM public.volunteer_tasks
+      WHERE request_id = v_stale.request_id
+        AND status = 'open'::public.volunteer_status
+    ) THEN
+      INSERT INTO public.volunteer_tasks (request_id, volunteer_id, status, created_at, updated_at)
+      VALUES (v_stale.request_id, NULL, 'open'::public.volunteer_status, NOW(), NOW());
+    END IF;
+
+    v_count := v_count + 1;
+  END LOOP;
 
   RETURN json_build_object('success', true, 'expired_count', v_count);
 EXCEPTION WHEN OTHERS THEN

@@ -20,7 +20,6 @@ export default function ReceiverSignup() {
     orgType: "ngo",
     serviceArea: "",
   });
-  const [verificationFile, setVerificationFile] = useState<File | null>(null);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -155,16 +154,11 @@ export default function ReceiverSignup() {
           />
         </div>
 
-        <div className="space-y-2">
-          <label className="text-sm font-medium leading-none text-zinc-300">Verification Document (PDF/Image)</label>
-          <Input 
-            type="file" 
-            accept=".pdf,image/*" 
-            required 
-            className="bg-zinc-900/50 border-white/10 text-zinc-400 file:text-white file:bg-zinc-800 file:border-0 file:mr-4 file:py-1 file:px-3 file:rounded-md hover:file:bg-zinc-700" 
-            onChange={(e) => setVerificationFile(e.target.files?.[0] || null)} 
-          />
-          <p className="text-xs text-zinc-500 mt-1">Registration certificate or any official NGO document.</p>
+        <div className="p-3 rounded-lg bg-blue-950/30 border border-blue-500/20 text-xs text-blue-300 flex items-start gap-2">
+          <span>🏛️</span>
+          <span>
+            Organization verification documents can be uploaded securely in the Verification center after registration.
+          </span>
         </div>
         
         <Button 
