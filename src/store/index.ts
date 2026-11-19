@@ -115,9 +115,11 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
         });
       } else {
         // Supabase session ended; only clear state if the current user is a
-        // Supabase user (don't evict a Firebase-only user)
+        // Supabase user (don't evict a Firebase-only user or a DEV test session)
+        const isDevTestSession = import.meta.env.DEV && typeof window !== "undefined" &&
+          Boolean(window.localStorage.getItem("sb-test-auth-token") || window.localStorage.getItem("test_session"));
         const current = get().user;
-        if (current && !current.isFirebaseUser) {
+        if (current && !current.isFirebaseUser && !isDevTestSession) {
           set({ user: null, isAuthenticated: false });
         }
       }

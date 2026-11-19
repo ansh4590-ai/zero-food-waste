@@ -20,12 +20,12 @@ interface ProtectedRouteProps {
 export function ProtectedRoute({ 
   permission, 
   requireAll = false, 
-  redirectPath = '/' 
+  redirectPath = '/dashboard' 
 }: ProtectedRouteProps) {
   const { can, isLoading } = usePermissions();
-  const { isAuthenticated } = useAuthStore(); // Check if logged in
+  const { isAuthenticated, isInitialized } = useAuthStore(); // Check if logged in
 
-  if (isLoading) {
+  if (isLoading || !isInitialized) {
     // Render nothing or a full page loader while checking remote capabilities
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-zinc-900">

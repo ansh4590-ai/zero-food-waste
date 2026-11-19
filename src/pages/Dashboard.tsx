@@ -23,6 +23,7 @@ import { StatusTimeline } from "../components/ui/StatusTimeline";
 function DonorDashboard() {
   const navigate = useNavigate();
   const { user } = useAuthStore();
+  const { can } = usePermissions();
   const [stats, setStats] = useState({ mealsDonated: 0, activeListings: 0, successfulDeliveries: 0, impactScore: 0 });
   const [recentListings, setRecentListings] = useState<any[]>([]);
   const [upcomingPickups, setUpcomingPickups] = useState<any[]>([]);
@@ -90,7 +91,11 @@ function DonorDashboard() {
           <p className="text-muted-foreground mt-1">Here is the overview of your food rescue impact.</p>
         </div>
         <div className="flex gap-2">
-          <Button onClick={() => navigate("/donate")} className="gap-2 bg-primary hover:bg-primary/90 text-primary-foreground"><PlusCircle className="w-4 h-4" /> Donate Food</Button>
+          {can("food.create") && (
+            <Button onClick={() => navigate("/donate")} className="gap-2 bg-primary hover:bg-primary/90 text-primary-foreground">
+              <PlusCircle className="w-4 h-4" /> Donate Food
+            </Button>
+          )}
           <Button onClick={() => navigate("/listings")} variant="outline" className="gap-2"><LayoutList className="w-4 h-4" /> View Listings</Button>
         </div>
       </div>

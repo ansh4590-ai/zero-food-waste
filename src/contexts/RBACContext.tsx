@@ -57,6 +57,10 @@ export function RBACProvider({ children }: { children: React.ReactNode }) {
         return;
       }
 
+      if (isMounted) {
+        setIsLoading(true);
+      }
+
       try {
         // 1. Fetch user role from authoritative profiles table (not JWT metadata)
         const { data: profile, error: profileErr } = await supabase
@@ -92,8 +96,11 @@ export function RBACProvider({ children }: { children: React.ReactNode }) {
         const loadedPerms: Set<AppPermission> = new Set();
         
         permsData?.forEach((rp: any) => {
-          if (rp.permissions?.name) {
-            loadedPerms.add(rp.permissions.name as AppPermission);
+          const permName = Array.isArray(rp.permissions)
+            ? rp.permissions[0]?.name
+            : rp.permissions?.name;
+          if (permName) {
+            loadedPerms.add(permName as AppPermission);
           }
         });
 
