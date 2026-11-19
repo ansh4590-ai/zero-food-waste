@@ -343,6 +343,7 @@ export function QRScannerModal({
   open, onOpenChange, scanType, volunteerId, onVerified,
 }: QRScannerModalProps) {
   const [isVerifying, setIsVerifying] = useState(false);
+  const isVerifyingRef = useRef(false);
   const [error, setError] = useState<string | null>(null);
   const [verified, setVerified] = useState(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
@@ -350,6 +351,14 @@ export function QRScannerModal({
   const html5QrRef = useRef<Html5QrcodeScanner | null>(null);
   const hasScannedRef = useRef(false);
   const lastScannedRef = useRef("");
+
+  // Keep latest callbacks and props in refs to keep verifyToken reference completely stable
+  const volunteerIdRef = useRef(volunteerId);
+  volunteerIdRef.current = volunteerId;
+  const onVerifiedRef = useRef(onVerified);
+  onVerifiedRef.current = onVerified;
+  const onOpenChangeRef = useRef(onOpenChange);
+  onOpenChangeRef.current = onOpenChange;
 
   const label = scanType === "pickup" ? "Pickup" : "Delivery";
 
@@ -360,13 +369,17 @@ export function QRScannerModal({
       setVerified(false);
       setCameraError(null);
       setCameraRetryCount(0);
+      isVerifyingRef.current = false;
+      setIsVerifying(false);
       hasScannedRef.current = false;
       lastScannedRef.current = "";
     }
   }, [open]);
 
+  // Stable verifyToken callback — uses refs to prevent duplicate calls and avoid re-renders
   const verifyToken = useCallback(async (token: string) => {
-    if (isVerifying) return;
+    if (isVerifyingRef.current) return;
+    isVerifyingRef.current = true;
     setIsVerifying(true);
     setError(null);
     try {
@@ -377,6 +390,12 @@ export function QRScannerModal({
       const authToken = await getAuthToken();
       if (!authToken) {
         setError("Not authenticated. Please log in again.");
+        hasScannedRef.current = false;
+        if (html5QrRef.current) {
+          setTimeout(() => {
+            if (html5QrRef.current) html5QrRef.current.resume();
+          }, 2000);
+        }
         return;
       }
       const res = await fetch("/api/tasks/verify-qr", {
@@ -385,7 +404,7 @@ export function QRScannerModal({
           "Content-Type": "application/json",
           "Authorization": `Bearer ${authToken}`,
         },
-        body: JSON.stringify({ token, volunteerId }),
+        body: JSON.stringify({ token, volunteerId: volunteerIdRef.current }),
       });
       const data = await res.json().catch(() => null);
 
@@ -395,10 +414,10 @@ export function QRScannerModal({
           navigator.vibrate([100, 50, 100]);
         }
         // Server returns new_status (snake_case) — support both for safety
-        onVerified(data.new_status ?? data.newStatus);
+        onVerifiedRef.current(data.new_status ?? data.newStatus);
         // Auto-close modal after brief success display
         setTimeout(() => {
-          onOpenChange(false);
+          onOpenChangeRef.current(false);
         }, 1500);
       } else {
         setError(data?.error || "Verification failed. Please scan again.");
@@ -418,11 +437,12 @@ export function QRScannerModal({
         }, 2000);
       }
     } finally {
+      isVerifyingRef.current = false;
       setIsVerifying(false);
     }
-  }, [isVerifying, volunteerId, onVerified, onOpenChange]);
+  }, []);
 
-  // Initialize camera scanner
+  // Initialize camera scanner — stable lifecycle, only restarts on open or explicit retry
   useEffect(() => {
     if (!open || verified) return;
 
