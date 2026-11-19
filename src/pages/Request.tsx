@@ -26,8 +26,6 @@ interface FoodRequest {
   donor_name: string;
   task_status: string | null;
   task_id: string | null;
-  delivery_qr_token: string | null;
-  delivery_qr_expires_at: string | null;
 }
 
 const STATUS_CONFIG: Record<string, { label: string; variant: string; icon: React.ReactNode; pulse?: boolean }> = {
@@ -57,10 +55,9 @@ export default function Request() {
           id, listing_id, status, created_at, updated_at,
           receiver_rating, receiver_feedback,
           food_listings (
-            title, quantity_description, location_name, food_category,
-            profiles ( full_name )
+            title, quantity_description, location_name, food_category, donor_id
           ),
-          volunteer_tasks ( id, status, delivery_qr_token, delivery_qr_expires_at )
+          volunteer_tasks ( id, status )
         `)
         .eq("receiver_id", user.id)
         .order("created_at", { ascending: false });
@@ -68,11 +65,35 @@ export default function Request() {
       if (error) throw error;
 
       if (data) {
-          setRequests(data.map((r: Record<string, unknown>) => {
+        // Collect donor_ids to look up via the privacy-safe task_participants_contact view.
+        // Direct profiles join is not allowed: profiles RLS restricts to own row + admin.
+        const donorIds = [...new Set(
+          data
+            .map((r: Record<string, unknown>) => {
+              const l = r.food_listings as Record<string, unknown> | null;
+              return l?.donor_id as string | undefined;
+            })
+            .filter(Boolean) as string[]
+        )];
+
+        const donorNameMap: Record<string, string> = {};
+        if (donorIds.length > 0) {
+          const { data: contactRows } = await supabase
+            .from("task_participants_contact")
+            .select("id, full_name")
+            .in("id", donorIds);
+          (contactRows ?? []).forEach((c: Record<string, unknown>) => {
+            donorNameMap[c.id as string] = (c.full_name as string) || "Verified Donor";
+          });
+        }
+
+        setRequests(data.map((r: Record<string, unknown>) => {
           // volunteer_tasks may be an object (single join) or array
           const taskObj = Array.isArray(r.volunteer_tasks)
             ? r.volunteer_tasks[0]
             : r.volunteer_tasks;
+          const listing = r.food_listings as Record<string, unknown> | null;
+          const donorId = listing?.donor_id as string | undefined;
           return {
             id: r.id as string,
             listing_id: r.listing_id as string,
@@ -81,15 +102,13 @@ export default function Request() {
             updated_at: r.updated_at as string,
             receiver_rating: r.receiver_rating as number | null,
             receiver_feedback: r.receiver_feedback as string | null,
-            listing_title: (r.food_listings as Record<string, unknown>)?.title as string || "Unknown Listing",
-            listing_quantity: (r.food_listings as Record<string, unknown>)?.quantity_description as string || "—",
-            listing_location: (r.food_listings as Record<string, unknown>)?.location_name as string || "Location not set",
-            listing_category: ((r.food_listings as Record<string, unknown>)?.food_category as string)?.replace("_", " ") || "Food",
-            donor_name: ((r.food_listings as Record<string, unknown>)?.profiles as Record<string, unknown>)?.full_name as string || "Verified Donor",
+            listing_title: listing?.title as string || "Unknown Listing",
+            listing_quantity: listing?.quantity_description as string || "—",
+            listing_location: listing?.location_name as string || "Location not set",
+            listing_category: ((listing?.food_category as string) ?? "Food").replace("_", " "),
+            donor_name: (donorId && donorNameMap[donorId]) || "Verified Donor",
             task_status: taskObj?.status || null,
             task_id: taskObj?.id || null,
-            delivery_qr_token: taskObj?.delivery_qr_token || null,
-            delivery_qr_expires_at: taskObj?.delivery_qr_expires_at || null,
           };
         }));
       }
@@ -286,14 +305,12 @@ export default function Request() {
                       ]} />
                     </div>
 
-                    {/* Delivery QR — show when volunteer has picked up and is en route */}
+                    {/* Delivery QR — show when volunteer has picked up and is en route; QRCodeCard self-generates the token */}
                     {req.task_id && req.task_status === 'picked_up' && (
                       <div className="mt-4 border-t pt-4">
                         <QRCodeCard
                           taskId={req.task_id}
                           type="delivery"
-                          token={req.delivery_qr_token}
-                          expiresAt={req.delivery_qr_expires_at}
                           compact
                         />
                       </div>

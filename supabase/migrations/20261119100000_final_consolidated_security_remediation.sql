@@ -182,34 +182,56 @@ DROP POLICY IF EXISTS "listings_update" ON public.food_listings;
 
 -- RLS policy: authenticated users can read listings they are involved with.
 -- Anonymous browsing is handled through the food_listings_public view below.
+-- The global `OR status = 'active'` clause has been REMOVED to prevent any
+-- authenticated user from querying raw pickup_lat/pickup_lng/donor_id on all active listings.
+-- Public browse access is exclusively through the food_listings_public view (no coordinates).
+DROP POLICY IF EXISTS "listings_select_authorized" ON public.food_listings;
 CREATE POLICY "listings_select_authorized" ON public.food_listings
-FOR SELECT
+FOR SELECT TO authenticated
 USING (
+  -- Donor sees their own listings (all statuses)
   auth.uid() = donor_id
-  OR status = 'active'::public.listing_status
+
+  -- Receiver sees listings they have requested
   OR EXISTS (
     SELECT 1
     FROM public.food_requests AS fr
     WHERE fr.listing_id = food_listings.id
       AND fr.receiver_id = auth.uid()
-      AND fr.status IN (
-        'pending'::public.request_status,
-        'assigned'::public.request_status,
-        'picked_up'::public.request_status,
-        'delivered'::public.request_status,
-        'completed'::public.request_status
+  )
+
+  -- Assigned, KYC-approved volunteer sees listing associated with their task
+  OR EXISTS (
+    SELECT 1
+    FROM public.food_requests AS fr
+    JOIN public.volunteer_tasks AS vt ON vt.request_id = fr.id
+    JOIN public.profiles AS p ON p.id = auth.uid()
+    WHERE fr.listing_id = food_listings.id
+      AND vt.volunteer_id = auth.uid()
+      AND p.role = 'volunteer'::public.user_role
+      AND p.verification_status = 'approved'
+      AND vt.status IN (
+        'pending_acceptance'::public.volunteer_status,
+        'assigned'::public.volunteer_status,
+        'picked_up'::public.volunteer_status
       )
   )
-  OR (
-    status = 'reserved'::public.listing_status
-    AND EXISTS (
-      SELECT 1
-      FROM public.food_requests AS fr
-      JOIN public.volunteer_tasks AS vt ON vt.request_id = fr.id
-      WHERE fr.listing_id = food_listings.id
-        AND vt.volunteer_id = auth.uid()
-    )
+
+  -- KYC-approved volunteers can see listings associated with an open broadcast task
+  -- (needed so the Volunteer.tsx listing join succeeds for unassigned open tasks)
+  OR EXISTS (
+    SELECT 1
+    FROM public.food_requests AS fr
+    JOIN public.volunteer_tasks AS vt ON vt.request_id = fr.id
+    JOIN public.profiles AS p ON p.id = auth.uid()
+    WHERE fr.listing_id = food_listings.id
+      AND vt.status = 'open'::public.volunteer_status
+      AND vt.volunteer_id IS NULL
+      AND p.role = 'volunteer'::public.user_role
+      AND p.verification_status = 'approved'
   )
+
+  -- Admin
   OR public.has_permission(auth.uid(), 'users.read')
 );
 
@@ -348,8 +370,10 @@ BEGIN
 END;
 $$;
 
--- Revoke direct mutations from authenticated users. All updates must use RPCs.
-REVOKE INSERT, UPDATE ON TABLE public.volunteer_tasks FROM PUBLIC, anon, authenticated;
+-- Revoke direct mutations from authenticated users. All task changes must go through RPCs.
+-- DELETE is included: task deletion (on decline/expiry/abort) is handled exclusively by
+-- SECURITY DEFINER RPCs which execute with owner privileges, not the caller's grants.
+REVOKE INSERT, UPDATE, DELETE ON TABLE public.volunteer_tasks FROM PUBLIC, anon, authenticated;
 GRANT ALL PRIVILEGES ON TABLE public.volunteer_tasks TO service_role;
 
 -- ─── 6b. Replace auto_dispatch_closest_volunteer trigger ─────────────────────

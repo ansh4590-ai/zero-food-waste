@@ -34,7 +34,7 @@ function DonorDashboard() {
       try {
         const { data: listings } = await supabase
           .from("food_listings")
-          .select("id, title, status, quantity_description, created_at, food_requests(volunteer_tasks(status, id, pickup_qr_token, pickup_qr_expires_at))")
+          .select("id, title, status, quantity_description, created_at, food_requests(volunteer_tasks(status, id))")
           .eq("donor_id", user.id)
           .order("created_at", { ascending: false });
 
@@ -60,9 +60,7 @@ function DonorDashboard() {
                 if (t.status === 'assigned') {
                   upcoming.push({ 
                     ...l, 
-                    taskId: t.id, 
-                    pickup_qr_token: t.pickup_qr_token, 
-                    pickup_qr_expires_at: t.pickup_qr_expires_at 
+                    taskId: t.id,
                   });
                 }
               }
@@ -188,13 +186,11 @@ function DonorDashboard() {
                         <p className="text-xs text-blue-500 font-medium mt-0.5">Volunteer En Route for Pickup</p>
                       </div>
                     </div>
-                    {p.taskId && p.pickup_qr_token && (
+                    {p.taskId && (
                       <div className="pt-2 border-t border-blue-500/10">
                         <QRCodeCard
                           taskId={p.taskId}
                           type="pickup"
-                          token={p.pickup_qr_token}
-                          expiresAt={p.pickup_qr_expires_at}
                           compact
                         />
                       </div>
@@ -226,7 +222,7 @@ function ReceiverDashboard() {
         .select(`
           id, status, created_at, updated_at,
           food_listings(title, donor_id, quantity_description, location_name, food_category),
-          volunteer_tasks(id, status, delivery_qr_token, delivery_qr_expires_at)
+          volunteer_tasks(id, status)
         `)
         .eq("receiver_id", user.id)
         .order("created_at", { ascending: false });
@@ -415,13 +411,11 @@ function ReceiverDashboard() {
                       { label: "Delivered", isCompleted: d.task?.status === 'delivered', isCurrent: d.task?.status === 'picked_up' },
                     ]} />
 
-                    {/* Delivery QR — shown when volunteer has picked up food */}
+                    {/* Delivery QR — shown when volunteer has picked up food; QRCodeCard self-generates the token */}
                     {d.task?.id && d.task?.status === 'picked_up' && (
                       <QRCodeCard
                         taskId={d.task.id}
                         type="delivery"
-                        token={d.task.delivery_qr_token}
-                        expiresAt={d.task.delivery_qr_expires_at}
                         compact
                       />
                     )}
