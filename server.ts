@@ -7,7 +7,7 @@ import { RekognitionClient, CompareFacesCommand } from "@aws-sdk/client-rekognit
 import vision from "@google-cloud/vision";
 import cors from "cors";
 import compression from "compression";
-import rateLimit from "express-rate-limit";
+import rateLimit, { ipKeyGenerator } from "express-rate-limit";
 import helmet from "helmet";
 // `vite` is intentionally NOT imported here at the top level — it's a
 // dev-only tool, imported dynamically further down inside the
@@ -143,7 +143,11 @@ const PORT = parseInt(process.env.PORT || '3000', 10);
     max: 10,
     standardHeaders: true,
     legacyHeaders: false,
-    keyGenerator: (req: express.Request) => (req as AuthenticatedRequest).user?.id || req.ip || 'anonymous',
+    keyGenerator: (req: express.Request) => {
+      const user = (req as AuthenticatedRequest).user;
+      if (user?.id) return user.id;
+      return ipKeyGenerator(req.ip || '127.0.0.1');
+    },
     message: { error: 'Too many AI requests from this user account. Please wait 60 seconds.' },
   });
 

@@ -465,7 +465,7 @@ export default function Donate() {
             <HeartHandshake className="h-8 w-8 text-emerald-500" />
           </div>
           <div>
-            <h2 className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
+            <h2 data-testid="donate-heading" className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
               Donate Surplus Food
             </h2>
             <p className="mt-2 text-sm md:text-base text-muted-foreground max-w-xl">

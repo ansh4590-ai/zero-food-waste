@@ -14,7 +14,7 @@ test.describe('Donation Lifecycle', () => {
   test('donor can navigate to donate page', async ({ page }) => {
     const donateLinkOrBtn = page.locator('a[href*="/donate"], button:has-text("Donate Food")').first();
     await donateLinkOrBtn.click();
-    await expect(page).toHaveURL(/\/donate/);
+    await page.waitForURL('**/donate', { timeout: 15_000 });
     await expect(page.getByRole('heading', { name: /donate surplus food/i })).toBeVisible({ timeout: 15_000 });
   });
 
