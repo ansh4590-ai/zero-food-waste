@@ -50,21 +50,40 @@ export function QRCodeCard({
   const [token, setToken] = useState<string | null>(externalToken ?? null);
   const [expiresAt, setExpiresAt] = useState<string | null>(externalExpiry ?? null);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [hasAttempted, setHasAttempted] = useState(false);
   const [secondsLeft, setSecondsLeft] = useState<number>(600);
   const [copied, setCopied] = useState(false);
 
   // Sync external token
   useEffect(() => {
-    if (externalToken) setToken(externalToken);
+    if (externalToken) {
+      setToken(externalToken);
+      setError(null);
+    }
     if (externalExpiry) setExpiresAt(externalExpiry);
   }, [externalToken, externalExpiry]);
+
+  // Reset attempt state if taskId or type changes
+  useEffect(() => {
+    if (!externalToken) {
+      setToken(null);
+      setExpiresAt(null);
+      setError(null);
+      setHasAttempted(false);
+    }
+  }, [taskId, type, externalToken]);
 
   // Generate token if not provided
   const generateToken = useCallback(async () => {
     setIsGenerating(true);
+    setError(null);
     try {
       const authToken = await getAuthToken();
-      if (!authToken) return; // not logged in — skip silently
+      if (!authToken) {
+        setError("Sign in required to view QR code.");
+        return;
+      }
       const res = await fetch(`/api/tasks/${taskId}/generate-qr`, {
         method: "POST",
         headers: {
@@ -73,21 +92,27 @@ export function QRCodeCard({
         },
         body: JSON.stringify({ type }),
       });
-      const data = await res.json();
-      if (data.success) {
+      const data = await res.json().catch(() => null);
+      if (res.ok && data?.success) {
         setToken(data.qrValue);
         setExpiresAt(data.expiresAt);
+        setError(null);
+      } else {
+        setError(data?.error || `Failed to generate ${type} QR code.`);
       }
     } catch {
-      // silent
+      setError("Network error while generating QR code.");
     } finally {
       setIsGenerating(false);
+      setHasAttempted(true);
     }
   }, [taskId, type]);
 
   useEffect(() => {
-    if (!token && !isGenerating) generateToken();
-  }, [token, isGenerating, generateToken]);
+    if (!token && !isGenerating && !hasAttempted && !error) {
+      generateToken();
+    }
+  }, [token, isGenerating, hasAttempted, error, generateToken]);
 
   // Countdown timer
   useEffect(() => {
@@ -117,6 +142,8 @@ export function QRCodeCard({
   const handleRegenerate = () => {
     setToken(null);
     setExpiresAt(null);
+    setError(null);
+    setHasAttempted(false);
     setSecondsLeft(600);
     if (onRegenerate) onRegenerate();
     generateToken();
@@ -146,6 +173,13 @@ export function QRCodeCard({
         {isGenerating ? (
           <div className="flex justify-center py-4">
             <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+          </div>
+        ) : error ? (
+          <div className="text-center space-y-2 py-2">
+            <p className="text-xs text-red-400 font-medium">{error}</p>
+            <Button size="sm" variant="outline" onClick={handleRegenerate} className="text-xs">
+              <RefreshCw className="w-3 h-3 mr-1" /> Retry
+            </Button>
           </div>
         ) : isExpired ? (
           <div className="text-center space-y-2">
@@ -209,6 +243,16 @@ export function QRCodeCard({
           <div className="py-8 flex flex-col items-center gap-3">
             <Loader2 className="w-8 h-8 animate-spin text-white/40" />
             <p className="text-sm text-white/40">Generating secure QR code…</p>
+          </div>
+        ) : error ? (
+          <div className="py-8 flex flex-col items-center gap-3">
+            <XCircle className="w-10 h-10 text-red-400" />
+            <p className="text-sm text-red-400 font-semibold text-center max-w-xs">{error}</p>
+            <Button onClick={handleRegenerate} size="sm" className={`${
+              type === "pickup" ? "bg-amber-500 hover:bg-amber-400" : "bg-emerald-500 hover:bg-emerald-400"
+            } text-black font-bold`}>
+              <RefreshCw className="w-4 h-4 mr-2" /> Try Again
+            </Button>
           </div>
         ) : isExpired ? (
           <div className="py-8 flex flex-col items-center gap-3">

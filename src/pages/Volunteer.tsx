@@ -17,7 +17,7 @@ import { Link } from "react-router-dom";
 import { calculateHaversineDistance, formatDistance } from "../lib/distance";
 import { fetchOSRMRoute, OSRMRouteResult, formatETA } from "../lib/osrm";
 import { computePriorityScore, sortMultiTaskSequence, MultiTaskContext } from "../lib/dispatch";
-import { GEO_CONFIG, API_BASE, RPC, TABLES, VOLUNTEER_STATUS, ROUTABLE_STATUSES, MY_TASK_STATUSES, OSM_TILE_URL, OSM_TILE_ATTRIBUTION } from "../lib/constants";
+import { GEO_CONFIG, RPC, TABLES, VOLUNTEER_STATUS, ROUTABLE_STATUSES, MY_TASK_STATUSES, OSM_TILE_URL, OSM_TILE_ATTRIBUTION } from "../lib/constants";
 import { getPickupWindowStatus, formatPickupCountdown } from "../lib/utils";
 import { TaskAssignmentModal } from "../components/TaskAssignmentModal";
 import { QRScannerModal } from "../components/QRVerification";
@@ -734,30 +734,6 @@ export default function Volunteer() {
       if (error || !data?.success) throw error || new Error(data?.error);
 
       toast.success(action === "accept" ? "Assignment Accepted!" : "Assignment Declined.");
-      if (action === "accept") {
-        // Pre-generate pickup QR for the donor to display
-        const session = (await supabase.auth.getSession()).data.session;
-        if (!session) {
-          toast.error("Session expired. Please log in again.");
-          return;
-        }
-        try {
-          const res = await fetch(`${API_BASE}/tasks/${task.id}/generate-qr`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${session.access_token}`
-            },
-            body: JSON.stringify({ type: 'pickup' }),
-          });
-          if (!res.ok) {
-            const msg = await res.text();
-            throw new Error(msg || "QR generation failed");
-          }
-        } catch (err: unknown) {
-          console.error("Failed to generate pickup QR:", err);
-        }
-      }
       fetchTasks();
     } catch (err: unknown) {
       toast.error((err as Error)?.message || "Network error. Please try again.");
@@ -804,42 +780,8 @@ export default function Volunteer() {
         return;
       }
 
-      // Pre-generate pickup QR token
-      // We need the volunteer_task ID — refetch to get it
-      const { data: newTask } = await supabase
-        .from(TABLES.VOLUNTEER_TASKS)
-        .select('id')
-        .eq('request_id', task.requestId)
-        .eq('volunteer_id', user.id)
-        .single();
-      if (newTask) {
-        // Pre-generate pickup QR token for donor to display
-        const session = (await supabase.auth.getSession()).data.session;
-        if (!session) {
-          toast.error("Session expired. Please log in again.");
-          setOpenTasks(prevTasks); // restore since we couldn't generate QR
-          return;
-        }
-        try {
-          const res = await fetch(`${API_BASE}/tasks/${newTask.id}/generate-qr`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${session.access_token}`
-            },
-            body: JSON.stringify({ type: 'pickup' }),
-          });
-          if (!res.ok) {
-            const msg = await res.text();
-            throw new Error(msg || "QR generation failed");
-          }
-        } catch (err: unknown) {
-          console.error("Failed to generate pickup QR:", err);
-        }
-      }
-
       toast.success("Route Dispatched!", {
-        description: "OSRM is calculating your optimal path. QR code sent to donor.",
+        description: "OSRM is calculating your optimal path. Proceed to pickup location.",
         style: { background: "#171a1a", color: "#f5f3ef", border: "1px solid #10b981" },
       });
       await fetchTasks();
@@ -878,35 +820,9 @@ export default function Volunteer() {
   const handleQRVerified = async (newStatus: string) => {
     if (newStatus === 'picked_up') {
       toast.success("Pickup Confirmed via QR! 📱", {
-        description: "Rerouting to delivery address. Delivery QR sent to receiver.",
+        description: "Rerouting to delivery address. Scan receiver's QR code on arrival.",
         style: { background: "#171a1a", color: "#f5f3ef", border: "1px solid #3b82f6" },
       });
-      // Generate delivery QR for the receiver
-      const targetTaskId = qrScan.taskId || activeTaskId;
-      if (targetTaskId) {
-        const session = (await supabase.auth.getSession()).data.session;
-        if (!session) {
-          toast.error("Session expired. Please log in again.");
-          return;
-        }
-        try {
-          const res = await fetch(`${API_BASE}/tasks/${targetTaskId}/generate-qr`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${session.access_token}`
-            },
-            body: JSON.stringify({ type: 'delivery' }),
-          });
-          if (!res.ok) {
-            const msg = await res.text();
-            throw new Error(msg || "QR generation failed");
-          }
-        } catch (err: unknown) {
-          console.error(err);
-          toast.error("Failed to generate delivery QR");
-        }
-      }
     } else if (newStatus === 'delivered') {
       toast.success("Delivery Verified via QR! ✅", {
         description: "Thank you for making a difference today.",
