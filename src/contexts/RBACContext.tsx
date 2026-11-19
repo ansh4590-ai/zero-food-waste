@@ -44,8 +44,19 @@ export function RBACProvider({ children }: { children: React.ReactNode }) {
         return;
       }
 
+      // Default role fallback permissions
+      const defaultPerms: Record<AppRole, AppPermission[]> = {
+        admin: ['users.read', 'users.verify', 'food.create', 'food.update_own', 'food.delete_own', 'food.read_all', 'requests.create', 'requests.update', 'requests.read_own', 'requests.read_all', 'donations.manage', 'tasks.view_assigned'],
+        donor: ['food.create', 'food.update_own', 'food.delete_own'],
+        volunteer: ['tasks.view_assigned', 'food.read_all', 'requests.read_all'],
+        receiver: ['requests.create', 'requests.update', 'requests.read_own', 'food.read_all'],
+      };
+
+      const initialRole = (user.role as AppRole) || 'donor';
       if (roles.length === 0) {
-        setIsLoading(true);
+        setRoles([initialRole]);
+        setPermissions(defaultPerms[initialRole] || []);
+        setIsLoading(false);
       }
 
       try {
@@ -56,13 +67,15 @@ export function RBACProvider({ children }: { children: React.ReactNode }) {
           .eq('id', user.id)
           .single();
 
-        if (profileErr || !profile) {
-          /* console.error("Error fetching profile role:", profileErr); removed for security */
+        let currentRole = profile?.role as AppRole;
+        if (!currentRole && user.role) {
+          currentRole = user.role as AppRole;
+        }
+
+        if (!currentRole) {
           if (isMounted) setIsLoading(false);
           return;
         }
-
-        const currentRole = profile.role as AppRole;
         
         // 2. Fetch specific permissions tied to this role
         const { data: permsData, error: permsErr } = await supabase
@@ -83,6 +96,17 @@ export function RBACProvider({ children }: { children: React.ReactNode }) {
             loadedPerms.add(rp.permissions.name as AppPermission);
           }
         });
+
+        // Default role fallback permissions if DB role_permissions query returned empty (e.g. offline or test environment)
+        if (loadedPerms.size === 0) {
+          const defaultPerms: Record<AppRole, AppPermission[]> = {
+            admin: ['users.read', 'users.verify', 'food.create', 'food.update_own', 'food.delete_own', 'food.read_all', 'requests.create', 'requests.update', 'requests.read_own', 'requests.read_all', 'donations.manage', 'tasks.view_assigned'],
+            donor: ['food.create', 'food.update_own', 'food.delete_own'],
+            volunteer: ['tasks.view_assigned', 'food.read_all', 'requests.read_all'],
+            receiver: ['requests.create', 'requests.update', 'requests.read_own', 'food.read_all'],
+          };
+          (defaultPerms[currentRole] || []).forEach(p => loadedPerms.add(p));
+        }
 
         if (isMounted) {
           setRoles([currentRole]);

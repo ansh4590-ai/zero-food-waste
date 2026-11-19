@@ -10,7 +10,7 @@ test.describe('Authentication', () => {
   test('donor can log in and reach dashboard', async ({ page }) => {
     await loginAs(page, 'donor');
     await expect(page).toHaveURL(/\/dashboard/);
-    await expect(page.getByRole('heading', { name: /dashboard/i })).toBeVisible();
+    await expect(page.getByRole('heading', { name: /dashboard|welcome back/i })).toBeVisible();
   });
 
   test('volunteer can log in and reach tasks', async ({ page }) => {

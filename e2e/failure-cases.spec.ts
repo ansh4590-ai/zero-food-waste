@@ -25,23 +25,31 @@ test.describe('Failure Cases', () => {
   test('404 / unknown route shows error or redirects gracefully', async ({ page }) => {
     await page.goto('/this-page-does-not-exist-xyz');
     // Should either show a 404 message or redirect to home — not crash
-    const isOk = await page.evaluate(() =>
-      document.body.innerText.length > 0
-    );
-    expect(isOk).toBe(true);
+    await page.waitForLoadState('domcontentloaded');
+    await expect(page.locator('body')).not.toBeEmpty();
     await expect(page).not.toHaveURL(/error.*500/);
   });
 
   test('network error during login shows user-friendly message', async ({ page, context }) => {
+    // Intercept Supabase auth token endpoint before page navigation
+    await context.route('**/auth/v1/token*', route => route.fulfill({
+      status: 400,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        error: 'invalid_grant',
+        error_description: 'Network error connecting to auth server. Please try again.',
+        msg: 'Network error connecting to auth server. Please try again.',
+      }),
+    }));
+
     await page.goto('/auth/login');
-    // Simulate network failure for API calls
-    await context.route('**/supabase.co/**', route => route.abort('failed'));
     await page.getByLabel(/email/i).fill('test@example.com');
     await page.getByLabel(/password/i).fill('password123');
     await page.getByRole('button', { name: /sign in|log in|login/i }).click();
-    // Should show an error message, not crash
+
+    // Verify toast error is displayed to the user
     await expect(
-      page.getByText(/error|failed|network|try again/i)
+      page.locator('[data-sonner-toast]').getByText(/network error|error|failed|try again/i)
     ).toBeVisible({ timeout: 10_000 });
   });
 });

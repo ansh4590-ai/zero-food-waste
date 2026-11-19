@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import { ThemeProvider } from "./components/ThemeProvider";
 import { Toaster } from "sonner";
 import { ProtectedRoute } from "./components/auth/ProtectedRoute";
@@ -30,6 +30,7 @@ const Listings = lazy(() => import("./pages/Listings"));
 const Activity = lazy(() => import("./pages/Activity"));
 const Analytics = lazy(() => import("./pages/Analytics"));
 const Settings = lazy(() => import("./pages/Settings"));
+const QRTestHarness = lazy(() => import("./pages/QRTestHarness"));
 
 // Keep auth and lightweight pages statically imported
 import AdminSignup from "./pages/auth/AdminSignup";
@@ -73,6 +74,7 @@ export default function App() {
                 <Route path="privacy" element={<Privacy />} />
                 <Route path="terms" element={<Terms />} />
                 <Route path="support" element={<Support />} />
+                <Route path="test-qr" element={<QRTestHarness />} />
               </Route>
 
               {/* Protected Routes - using AppLayout (Sidebar + Header) */}
@@ -103,6 +105,9 @@ export default function App() {
                   </Route>
                 </Route>
               </Route>
+
+              {/* Catch-all unknown routes: redirect gracefully to home */}
+              <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
           </Suspense>
           <NotificationsListener />

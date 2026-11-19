@@ -137,7 +137,7 @@ export default function AppLayout() {
         </div>
 
         {/* Sidebar Scrollable Content */}
-        <div className="flex-1 overflow-y-auto py-4 flex flex-col gap-1">
+        <nav aria-label="Main Navigation" className="flex-1 overflow-y-auto py-4 flex flex-col gap-1">
           <div className="px-3 mb-2 sidebar-label text-xs font-semibold text-sidebar-foreground/50 uppercase tracking-wider">
             Main Menu
           </div>
@@ -186,7 +186,7 @@ export default function AppLayout() {
               <span className="sidebar-label">Admin Panel</span>
             </Link>
           )}
-        </div>
+        </nav>
 
         {/* Sidebar Footer */}
         <div className="mt-auto p-4 border-t border-sidebar-border shrink-0">
@@ -215,6 +215,7 @@ export default function AppLayout() {
               onClick={handleLogout}
               className="sidebar-label p-2 rounded-md hover:bg-sidebar-accent text-sidebar-foreground/60 hover:text-destructive transition-colors shrink-0"
               title="Logout"
+              aria-label="Logout"
             >
               <LogOut className="h-4 w-4" />
             </button>

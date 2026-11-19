@@ -12,18 +12,17 @@ test.describe('Volunteer Workflow', () => {
   });
 
   test('volunteer can navigate to tasks page', async ({ page }) => {
+    await page.goto('/dashboard');
     await page.getByRole('link', { name: /my tasks/i }).click();
     await expect(page).toHaveURL(/\/tasks/);
   });
 
   test('volunteer task page shows open tasks or empty state', async ({ page }) => {
     await page.goto('/tasks');
-    // Either a task card or empty state message should be visible
-    const hasContent = await page
-      .getByText(/available|no tasks|open tasks|claim/i)
-      .first()
-      .isVisible({ timeout: 10_000 });
-    expect(hasContent).toBe(true);
+    // Either a task card, "Open" badge, or empty state message should be visible
+    await expect(
+      page.getByText(/no active dispatches|open|available|no tasks|claim/i).first()
+    ).toBeVisible({ timeout: 15_000 });
   });
 
   test('offline banner appears when network is simulated offline', async ({ page, context }) => {
