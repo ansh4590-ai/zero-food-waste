@@ -164,7 +164,7 @@ interface JoinedTaskRow {
     listing_id: string;
     drop_lat: number | null;
     drop_lng: number | null;
-    receiver?: { location_text: string } | null;
+    receiver_id?: string | null;
     food_listings?: {
       id: string;
       pickup_lat: number | null;
@@ -414,8 +414,7 @@ export default function Volunteer() {
         .select(`
           id, request_id, status, created_at,
           food_requests (
-            id, listing_id, drop_lat, drop_lng,
-            receiver:profiles!food_requests_receiver_id_fkey(location_text),
+            id, listing_id, drop_lat, drop_lng, receiver_id,
             food_listings (
               id, pickup_lat, pickup_lng, title, pickup_window, pickup_window_start, pickup_window_end, quantity_description, location_name, expiry_time, priority_score, estimated_safe_hours, spoilage_risk
             )
@@ -431,25 +430,42 @@ export default function Volunteer() {
       );
 
       // ── Open/Unassigned Tasks ──────────────────────────────────────────────
-      // Query volunteer_tasks directly for tasks that are open (no volunteer yet)
-      // OR pending_acceptance for a DIFFERENT volunteer (so current user can see
-      // broadcast tasks they haven't yet claimed).
-      // food_requests.volunteer_id does NOT exist — we use volunteer_tasks instead.
       const { data: openData, error: openError } = await supabase
         .from(TABLES.VOLUNTEER_TASKS)
         .select(`
             id, request_id, status, created_at,
             food_requests!inner (
-              id, listing_id, drop_lat, drop_lng,
-              receiver:profiles!food_requests_receiver_id_fkey(location_text),
+              id, listing_id, drop_lat, drop_lng, receiver_id,
               food_listings!inner ( id, pickup_lat, pickup_lng, title, pickup_window, pickup_window_start, pickup_window_end, quantity_description, location_name, expiry_time, priority_score, estimated_safe_hours, spoilage_risk )
             )
           `)
         .in("status", ["open", "pending_acceptance"])
-        .is("volunteer_id", null); // Only show truly unclaimed tasks in the broadcast pool
+        .is("volunteer_id", null);
 
       if (openError && import.meta.env.DEV) console.error("Supabase error [openData]:", openError);
 
+      // ── Collect receiver IDs for location lookup via privacy-safe view ─────
+      const allRows = [...(myTasksRaw ?? []), ...(openData ?? [])] as unknown as JoinedTaskRow[];
+      const receiverIds = [...new Set(
+        allRows
+          .map(row => {
+            const req = Array.isArray(row.food_requests) ? row.food_requests[0] : row.food_requests;
+            return (req as any)?.receiver_id as string | undefined;
+          })
+          .filter(Boolean) as string[]
+      )];
+
+      // Fetch receiver location_text from task_participants_contact (privileged view)
+      const receiverLocationMap: Record<string, string> = {};
+      if (receiverIds.length > 0) {
+        const { data: contactRows } = await supabase
+          .from("task_participants_contact")
+          .select("id, location_text")
+          .in("id", receiverIds);
+        (contactRows ?? []).forEach((c: any) => {
+          if (c.location_text) receiverLocationMap[c.id] = c.location_text;
+        });
+      }
 
       let mappedOpen = openData
         ? (openData.map(transformOpenRow).filter(Boolean) as VolunteerTask[])
@@ -487,7 +503,8 @@ export default function Volunteer() {
         const pickupLng = listing.pickup_lng;
         const dropoffLat = request.drop_lat ?? null;
         const dropoffLng = request.drop_lng ?? null;
-        const receiverLocation = Array.isArray(request.receiver) ? request.receiver[0]?.location_text : request.receiver?.location_text || "Location unavailable";
+        // Look up receiver location via the privacy-safe contact view
+        const receiverLocation = ((request as any).receiver_id && receiverLocationMap[(request as any).receiver_id]) || "Location unavailable";
 
         finalTasks.push({
           id: row.id,

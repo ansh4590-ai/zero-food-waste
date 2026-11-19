@@ -1021,6 +1021,17 @@ Return ONLY valid JSON with no markdown or extra text:
         return res.status(404).json({ error: "Task not found or not assigned to you." });
       }
 
+      // Enforce task stage based on proof_type
+      if (proof_type === 'pickup') {
+        if (!['assigned', 'pending_acceptance'].includes(task.status)) {
+          return res.status(409).json({ error: `Cannot upload pickup proof: task is in '${task.status}' state, expected 'assigned'.` });
+        }
+      } else if (proof_type === 'delivery') {
+        if (task.status !== 'picked_up') {
+          return res.status(409).json({ error: `Cannot upload delivery proof: task is in '${task.status}' state, expected 'picked_up'.` });
+        }
+      }
+
       // Extract raw base64
       const raw = imageBase64.replace(/^data:image\/\w+;base64,/, "");
       const buffer = Buffer.from(raw, 'base64');

@@ -6,7 +6,7 @@
     { "source": "/(.*)", "destination": "/index.html" }
   ],
   "crons": [
-    { "path": "/api/tasks/cleanup-stale", "schedule": "0 * * * *" }
+    { "path": "/api/tasks/cleanup-stale", "schedule": "*/10 * * * *" }
   ],
   "functions": {
     "api/**/*.ts": {

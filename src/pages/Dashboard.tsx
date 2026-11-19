@@ -225,9 +225,7 @@ function ReceiverDashboard() {
         .from("food_requests")
         .select(`
           id, status, created_at, updated_at,
-          food_listings(title, donor_id, quantity_description, location_name, food_category,
-            profiles(full_name)
-          ),
+          food_listings(title, donor_id, quantity_description, location_name, food_category),
           volunteer_tasks(id, status, delivery_qr_token, delivery_qr_expires_at)
         `)
         .eq("receiver_id", user.id)
@@ -237,20 +235,36 @@ function ReceiverDashboard() {
         let meals = 0;
         let active = 0;
         let deliveries = 0;
-        const partners = new Set();
+        const partners = new Set<string>();
         const liveDeliveries: any[] = [];
+
+        // Collect donor IDs to look up via the safe contact view
+        const donorIds = [...new Set(
+          requests
+            .map(r => { const l = Array.isArray(r.food_listings) ? r.food_listings[0] : r.food_listings; return l?.donor_id as string | undefined; })
+            .filter(Boolean) as string[]
+        )];
+
+        // Fetch donor display names from task_participants_contact (privacy-safe view)
+        const donorNameMap: Record<string, string> = {};
+        if (donorIds.length > 0) {
+          const { data: contactRows } = await supabase
+            .from("task_participants_contact")
+            .select("id, full_name")
+            .in("id", donorIds);
+          (contactRows ?? []).forEach((c: any) => { donorNameMap[c.id] = c.full_name || "Verified Donor"; });
+        }
 
         requests.forEach(r => {
           const l = Array.isArray(r.food_listings) ? r.food_listings[0] : r.food_listings;
           const taskObj = Array.isArray(r.volunteer_tasks) ? r.volunteer_tasks[0] : r.volunteer_tasks;
-          const profileObj = Array.isArray(l?.profiles) ? l.profiles[0] : l?.profiles;
           if (['pending', 'assigned', 'picked_up'].includes(r.status)) {
             active++;
             liveDeliveries.push({
               ...r,
               listing: l,
               task: taskObj,
-              donor_name: profileObj?.full_name || 'Verified Donor',
+              donor_name: (l?.donor_id && donorNameMap[l.donor_id]) || 'Verified Donor',
             });
           }
           if (['delivered', 'fulfilled'].includes(r.status)) {

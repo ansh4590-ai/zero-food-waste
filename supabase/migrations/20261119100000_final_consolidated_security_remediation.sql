@@ -152,6 +152,13 @@ FOR UPDATE
 USING (auth.uid() = id);
 
 -- ─── 3. Task Participants Contact View (Safe Column Projection) ───────────────
+-- This view exposes contact info ONLY to:
+--   (a) the user themselves
+--   (b) authenticated task participants (via can_view_profile_for_task)
+--   (c) admins with users.read
+-- The original donor-active-listing condition is intentionally removed:
+-- exposing donor contact to any authenticated user browsing active listings
+-- is a privacy violation.
 CREATE OR REPLACE VIEW public.task_participants_contact
 WITH (security_invoker = false)
 AS
@@ -168,27 +175,29 @@ FROM public.profiles p
 WHERE
   auth.uid() = p.id
   OR public.can_view_profile_for_task(p.id)
-  OR EXISTS (
-    SELECT 1 FROM public.food_listings fl
-    WHERE fl.donor_id = p.id AND fl.status = 'active'::public.listing_status
-  )
   OR public.has_permission(auth.uid(), 'users.read');
 
-REVOKE ALL ON TABLE public.task_participants_contact FROM PUBLIC, anon;
-GRANT SELECT ON TABLE public.task_participants_contact TO authenticated, anon;
+-- Remove all prior grants and re-grant to authenticated only (never anon)
+REVOKE ALL ON TABLE public.task_participants_contact FROM PUBLIC, anon, authenticated;
+GRANT SELECT ON TABLE public.task_participants_contact TO authenticated;
 
 -- ─── 4. Clean up & Harden FOOD_LISTINGS Policies ─────────────────────────────
+-- Drop ALL existing listing policies (permissive and replacements)
 DROP POLICY IF EXISTS "Food listings are viewable by authenticated users." ON public.food_listings;
 DROP POLICY IF EXISTS "listings_select" ON public.food_listings;
 DROP POLICY IF EXISTS "listings_select_volunteer" ON public.food_listings;
 DROP POLICY IF EXISTS "listings_select_all" ON public.food_listings;
 DROP POLICY IF EXISTS "listings_select_authorized" ON public.food_listings;
+DROP POLICY IF EXISTS "listings_update_donor" ON public.food_listings;
+DROP POLICY IF EXISTS "listings_update" ON public.food_listings;
 
+-- RLS policy: authenticated users can read listings they are involved with.
+-- Anonymous browsing is handled through the food_listings_public view below.
 CREATE POLICY "listings_select_authorized" ON public.food_listings
 FOR SELECT
 USING (
-  status = 'active'::public.listing_status
-  OR auth.uid() = donor_id
+  auth.uid() = donor_id
+  OR status = 'active'::public.listing_status
   OR EXISTS (
     SELECT 1
     FROM public.food_requests AS fr
@@ -215,6 +224,49 @@ USING (
   OR public.has_permission(auth.uid(), 'users.read')
 );
 
+-- Donor UPDATE policy: donors may only edit descriptive fields, never status.
+-- Status transitions are handled exclusively by RPCs (claim, cancel, QR verify).
+CREATE POLICY "listings_update_donor_fields_only" ON public.food_listings
+FOR UPDATE
+USING (auth.uid() = donor_id OR public.has_permission(auth.uid(), 'users.read'))
+WITH CHECK (
+  -- Admins bypass; donors may not set status directly
+  public.has_permission(auth.uid(), 'users.read')
+  OR (
+    auth.uid() = donor_id
+    -- Reject any attempt to change status or donor_id
+    AND status = OLD.status
+    AND donor_id = OLD.donor_id
+  )
+);
+
+-- Revoke direct anonymous access to the underlying table.
+-- Precise pickup coordinates and donor_id must never be exposed to anon.
+REVOKE SELECT ON TABLE public.food_listings FROM anon;
+
+-- Public browse view: safe columns only (no coordinates, no donor_id).
+CREATE OR REPLACE VIEW public.food_listings_public AS
+SELECT
+  id,
+  title,
+  food_category,
+  quantity_description,
+  location_name,
+  spoilage_risk,
+  estimated_safe_hours,
+  pickup_window,
+  pickup_window_start,
+  pickup_window_end,
+  expiry_time,
+  image_url,
+  status,
+  created_at
+FROM public.food_listings
+WHERE status = 'active'::public.listing_status;
+
+REVOKE ALL ON TABLE public.food_listings_public FROM PUBLIC, anon, authenticated;
+GRANT SELECT ON TABLE public.food_listings_public TO anon, authenticated;
+
 -- ─── 5. Clean up & Harden FOOD_REQUESTS Policies ─────────────────────────────
 DROP POLICY IF EXISTS "Users can view requests they are part of." ON public.food_requests;
 DROP POLICY IF EXISTS "requests_select" ON public.food_requests;
@@ -234,6 +286,13 @@ USING (
 );
 
 -- ─── 6. Clean up & Lock Down VOLUNTEER_TASKS (P0 QR-Only Enforcement) ────────
+-- CRITICAL: Disable the original generic trigger that created an 'open' task on
+-- every food_request INSERT (from migration 20260410010000_core_schema_update.sql).
+-- The auto_dispatch trigger (20260420000000_fix_auto_dispatch_coords.sql) already
+-- creates either an 'open' task (no matching volunteer) OR a 'pending_acceptance'
+-- task (volunteer found). Having both triggers active causes duplicate tasks.
+DROP TRIGGER IF EXISTS trigger_create_volunteer_task ON public.food_requests;
+
 DROP POLICY IF EXISTS "Authenticated users can create tasks" ON public.volunteer_tasks;
 DROP POLICY IF EXISTS "tasks_insert" ON public.volunteer_tasks;
 DROP POLICY IF EXISTS "Volunteers can update their own tasks" ON public.volunteer_tasks;
@@ -253,6 +312,83 @@ USING (
 -- Revoke direct mutations from authenticated users. All updates must use RPCs.
 REVOKE INSERT, UPDATE ON TABLE public.volunteer_tasks FROM PUBLIC, anon, authenticated;
 GRANT ALL PRIVILEGES ON TABLE public.volunteer_tasks TO service_role;
+
+-- ─── 6b. Replace auto_dispatch_closest_volunteer trigger ─────────────────────
+-- This unified trigger is the SOLE creator of volunteer tasks after a food_request
+-- INSERT. It replaces both the old generic trigger_create_volunteer_task (open task)
+-- and the old trigger_auto_dispatch_closest_volunteer (pending_acceptance task).
+-- When a matching volunteer is found: creates 'pending_acceptance' task.
+-- When no volunteer is found: creates an 'open' broadcast task so volunteers can
+-- still manually claim it.
+CREATE OR REPLACE FUNCTION public.auto_dispatch_closest_volunteer()
+RETURNS TRIGGER AS $$
+DECLARE
+  v_volunteer_id UUID;
+  v_target_title TEXT;
+  v_pickup_lat FLOAT8;
+  v_pickup_lng FLOAT8;
+BEGIN
+  IF pg_trigger_depth() > 1 THEN RETURN NEW; END IF;
+
+  -- Fetch listing info (title + pickup coords)
+  SELECT pickup_lat, pickup_lng, title
+  INTO v_pickup_lat, v_pickup_lng, v_target_title
+  FROM public.food_listings
+  WHERE id = NEW.listing_id;
+
+  -- Try to find the closest eligible volunteer (requires drop_lat / pickup coords)
+  IF NEW.drop_lat IS NOT NULL AND NEW.drop_lng IS NOT NULL THEN
+    SELECT id INTO v_volunteer_id
+    FROM public.profiles
+    WHERE role = 'volunteer'::public.user_role
+      AND verification_status = 'approved'
+      AND location_lat IS NOT NULL
+      AND location_lng IS NOT NULL
+      AND id <> NEW.receiver_id
+      AND (
+        SELECT COUNT(*)
+        FROM public.volunteer_tasks
+        WHERE volunteer_id = profiles.id
+          AND status IN ('assigned'::public.volunteer_status, 'picked_up'::public.volunteer_status, 'pending_acceptance'::public.volunteer_status)
+      ) < 3
+    ORDER BY (
+      POW(location_lat - COALESCE(v_pickup_lat, NEW.drop_lat), 2) +
+      POW(location_lng - COALESCE(v_pickup_lng, NEW.drop_lng), 2)
+    ) ASC
+    LIMIT 1;
+  END IF;
+
+  IF v_volunteer_id IS NOT NULL THEN
+    -- Auto-dispatch: assign to nearest volunteer
+    INSERT INTO public.volunteer_tasks (request_id, volunteer_id, status, created_at, updated_at)
+    VALUES (NEW.id, v_volunteer_id, 'pending_acceptance'::public.volunteer_status, NOW(), NOW());
+
+    UPDATE public.food_requests
+    SET status = 'assigned'::public.request_status, updated_at = NOW()
+    WHERE id = NEW.id;
+
+    INSERT INTO public.notifications (user_id, title, message, type, link)
+    VALUES (
+      v_volunteer_id,
+      'New Dispatch Ping!',
+      'You have been automatically assigned a new pickup: ' || COALESCE(v_target_title, 'Food Donation') || '. Please accept or decline.',
+      'task_assigned',
+      '/tasks'
+    );
+  ELSE
+    -- No volunteer found — create an open broadcast task so volunteers can claim it
+    INSERT INTO public.volunteer_tasks (request_id, volunteer_id, status, created_at, updated_at)
+    VALUES (NEW.id, NULL, 'open'::public.volunteer_status, NOW(), NOW());
+  END IF;
+
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = pg_catalog, public;
+
+DROP TRIGGER IF EXISTS trigger_auto_dispatch_closest_volunteer ON public.food_requests;
+CREATE TRIGGER trigger_auto_dispatch_closest_volunteer
+  AFTER INSERT ON public.food_requests
+  FOR EACH ROW EXECUTE FUNCTION public.auto_dispatch_closest_volunteer();
 
 -- ─── 7. QR Token Generation RPC ──────────────────────────────────────────────
 CREATE OR REPLACE FUNCTION public.generate_qr_token(
@@ -299,7 +435,7 @@ BEGIN
     RETURN json_build_object('success', false, 'error', 'Pickup QR can only be generated for an assigned task.');
   END IF;
 
-  IF p_type = 'delivery' AND v_task.status NOT IN ('picked_up'::public.volunteer_status, 'in_progress'::public.volunteer_status) THEN
+  IF p_type = 'delivery' AND v_task.status NOT IN ('picked_up'::public.volunteer_status) THEN
     RETURN json_build_object('success', false, 'error', 'Pickup must be completed before generating delivery QR.');
   END IF;
 
@@ -417,7 +553,7 @@ BEGIN
     IF v_task.delivery_qr_expires_at IS NULL OR v_task.delivery_qr_expires_at < NOW() THEN
       RETURN json_build_object('success', false, 'error', 'QR code has expired. Please ask for a new one.');
     END IF;
-    IF v_task.status NOT IN ('picked_up'::public.volunteer_status, 'in_progress'::public.volunteer_status) THEN
+    IF v_task.status NOT IN ('picked_up'::public.volunteer_status) THEN
       RETURN json_build_object('success', false, 'error', 'Pickup must be completed before delivery verification.');
     END IF;
 
