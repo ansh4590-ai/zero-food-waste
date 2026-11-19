@@ -1,0 +1,28 @@
+name: Scheduled Stale Task Cleanup (Vercel Hobby Compatibility)
+
+on:
+  schedule:
+    # Runs every 10 minutes (compatible with GitHub Actions on free tier)
+    - cron: '*/10 * * * *'
+  workflow_dispatch: # Allows manual trigger from GitHub Actions tab
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Stale Task Cleanup API
+        run: |
+          if [ -z "${{ secrets.APP_URL }}" ] || [ -z "${{ secrets.CRON_SECRET }}" ]; then
+            echo "APP_URL or CRON_SECRET not configured in repository secrets. Skipping external cron."
+            exit 0
+          fi
+          RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "${{ secrets.APP_URL }}/api/tasks/cleanup-stale" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}")
+          HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+          BODY=$(echo "$RESPONSE" | sed '$d')
+          echo "Response HTTP Status: $HTTP_CODE"
+          echo "Response Body: $BODY"
+          if [ "$HTTP_CODE" -ne 200 ]; then
+            echo "Cleanup API invocation failed with status $HTTP_CODE"
+            exit 1
+          fi

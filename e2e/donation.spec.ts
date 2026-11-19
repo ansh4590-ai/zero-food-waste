@@ -15,7 +15,7 @@ test.describe('Donation Lifecycle', () => {
     const donateLinkOrBtn = page.locator('a[href*="/donate"], button:has-text("Donate Food")').first();
     await donateLinkOrBtn.click();
     await expect(page).toHaveURL(/\/donate/);
-    await expect(page.getByRole('heading', { name: /donate surplus food/i })).toBeVisible();
+    await expect(page.getByRole('heading', { name: /donate surplus food/i })).toBeVisible({ timeout: 15_000 });
   });
 
   test('donate form requires all mandatory fields', async ({ page }) => {

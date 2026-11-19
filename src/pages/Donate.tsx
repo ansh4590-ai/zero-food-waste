@@ -180,9 +180,14 @@ export default function Donate() {
 
       setIsClassifying(true);
       try {
+        const { data: sessionData } = await supabase.auth.getSession();
+        const authToken = sessionData.session?.access_token || (import.meta.env.DEV ? (window.localStorage.getItem("test_access_token") || "") : "");
         const response = await fetch("/api/classify", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: {
+            "Content-Type": "application/json",
+            ...(authToken ? { "Authorization": `Bearer ${authToken}` } : {}),
+          },
           body: JSON.stringify({ imageBase64: base64String }),
         });
 
@@ -655,6 +660,11 @@ export default function Donate() {
                           }`}>{classificationResult.spoilage_risk || 'N/A'}</p>
                         </div>
                       </div>
+
+                      {/* Food safety advisory disclaimer */}
+                      <p className="text-[10px] text-muted-foreground/80 text-center italic mt-1">
+                        * Advisory AI estimate only. Not an official food safety inspection or certification.
+                      </p>
                     </div>
                   ) : null}
                   </div>

@@ -3,7 +3,7 @@ import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Badge } from "../components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "../components/ui/dialog";
-import { Search, MapPin, Clock, Filter, ShieldCheck, Utensils, ArrowUpDown, Leaf, Package, AlertTriangle, CheckCircle2 } from "lucide-react";
+import { Search, MapPin, Clock, Filter, ShieldCheck, Utensils, ArrowUpDown, Leaf, Package, AlertTriangle, CheckCircle2, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { useAuthStore } from "../store";
 import { supabase, isValidSupabaseId } from "../lib/supabase";
@@ -334,27 +334,27 @@ export default function Browse() {
                       <span className="font-medium text-foreground/80">{item.quantity}</span>
                     </div>
 
-                    {/* Freshness & Quality */}
+                    {/* Freshness & Quality (Advisory Estimates) */}
                     {(item.freshnessScore != null || item.qualityStatus) && (
                       <div className="flex flex-wrap gap-y-2 gap-x-4">
                         {item.freshnessScore != null && (
-                          <div className="flex items-center text-sm">
-                            <ShieldCheck className="h-4 w-4 mr-1.5 text-emerald-500" />
-                            <span className="text-emerald-600 dark:text-emerald-400 font-medium">
-                              Freshness: {item.freshnessScore}/100
+                          <div className="flex items-center text-sm" title="Advisory AI/donor estimate — not a certified food inspection">
+                            <Sparkles className="h-4 w-4 mr-1.5 text-amber-500" />
+                            <span className="text-muted-foreground font-medium">
+                              Est. Freshness: <span className="text-foreground">{item.freshnessScore}/100</span>
                             </span>
                           </div>
                         )}
                         {item.qualityStatus && (
-                          <div className="flex items-center text-sm">
+                          <div className="flex items-center text-sm" title="Advisory AI/donor estimate — not a certified food inspection">
                             <Leaf className="h-4 w-4 mr-1.5 text-blue-500" />
-                            <span className={`font-medium capitalize ${
-                              item.qualityStatus === 'excellent' ? 'text-emerald-600 dark:text-emerald-400' :
-                              item.qualityStatus === 'good' ? 'text-blue-600 dark:text-blue-400' :
-                              item.qualityStatus === 'usable' ? 'text-amber-600 dark:text-amber-400' :
-                              'text-red-600 dark:text-red-400'
-                            }`}>
-                              Quality: {item.qualityStatus}
+                            <span className="text-muted-foreground font-medium">
+                              Est. Quality: <span className={`capitalize ${
+                                item.qualityStatus === 'excellent' ? 'text-emerald-600 dark:text-emerald-400' :
+                                item.qualityStatus === 'good' ? 'text-blue-600 dark:text-blue-400' :
+                                item.qualityStatus === 'usable' ? 'text-amber-600 dark:text-amber-400' :
+                                'text-red-600 dark:text-red-400'
+                              }`}>{item.qualityStatus}</span>
                             </span>
                           </div>
                         )}

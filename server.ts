@@ -137,6 +137,16 @@ const PORT = parseInt(process.env.PORT || '3000', 10);
     message: { error: 'Too many AI requests. Please wait 60 seconds.' },
   });
 
+  // Account-level AI rate limiter: 10 requests / min per authenticated user ID
+  const aiAccountLimiter = rateLimit({
+    windowMs: 60 * 1000,
+    max: 10,
+    standardHeaders: true,
+    legacyHeaders: false,
+    keyGenerator: (req: express.Request) => (req as AuthenticatedRequest).user?.id || req.ip || 'anonymous',
+    message: { error: 'Too many AI requests from this user account. Please wait 60 seconds.' },
+  });
+
   const kycLimiter = rateLimit({
     windowMs: 60 * 1000,
     max: 3,
@@ -363,8 +373,8 @@ const PORT = parseInt(process.env.PORT || '3000', 10);
   // Initialize Gemini safely
   const ai = process.env.GEMINI_API_KEY ? new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY }) : null;
 
-  // 11. Food Image Classifier
-  app.post("/api/classify", aiLimiter, async (req, res) => {
+  // 11. Food Image Classifier (Authenticated with both IP & Account rate limiting)
+  app.post("/api/classify", requireAuth, aiLimiter, aiAccountLimiter, async (req: AuthenticatedRequest, res) => {
     try {
       const { imageBase64 } = req.body;
       if (!imageBase64) return res.status(400).json({ error: "imageBase64 is required" });
