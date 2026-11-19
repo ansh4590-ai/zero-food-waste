@@ -250,7 +250,7 @@ REVOKE UPDATE ON TABLE public.food_listings FROM PUBLIC, anon, authenticated;
 GRANT UPDATE (
   title, quantity_description, food_category, location_name,
   image_url, pickup_window, pickup_window_start, pickup_window_end,
-  expiry_time, estimated_safe_hours, spoilage_risk, notes, updated_at
+  expiry_time, estimated_safe_hours, spoilage_risk, updated_at
 ) ON TABLE public.food_listings TO authenticated;
 GRANT ALL PRIVILEGES ON TABLE public.food_listings TO service_role;
 
