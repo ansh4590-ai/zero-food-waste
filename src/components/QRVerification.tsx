@@ -2,11 +2,10 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { Dialog, DialogContent } from "./ui/dialog";
 import { Button } from "./ui/button";
 import {
-  QrCode, Camera, Keyboard, Loader2, CheckCircle2, XCircle,
-  ShieldCheck, AlertTriangle, Copy, RefreshCw
+  QrCode, Camera, Loader2, CheckCircle2, XCircle,
+  ShieldCheck, AlertTriangle, RefreshCw
 } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
-import { toast } from "sonner";
 import { supabase } from "../lib/supabase";
 
 /** Returns the current user's JWT or null if not logged in */
@@ -53,7 +52,10 @@ export function QRCodeCard({
   const [error, setError] = useState<string | null>(null);
   const [hasAttempted, setHasAttempted] = useState(false);
   const [secondsLeft, setSecondsLeft] = useState<number>(600);
-  const [copied, setCopied] = useState(false);
+
+  // Stale request protection: request ID & abort controller refs
+  const abortControllerRef = useRef<AbortController | null>(null);
+  const requestIdRef = useRef<number>(0);
 
   // Sync external token
   useEffect(() => {
@@ -64,22 +66,44 @@ export function QRCodeCard({
     if (externalExpiry) setExpiresAt(externalExpiry);
   }, [externalToken, externalExpiry]);
 
-  // Reset attempt state if taskId or type changes
+  // Reset attempt state and abort any active in-flight request if taskId or type changes
   useEffect(() => {
     if (!externalToken) {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
       setToken(null);
       setExpiresAt(null);
       setError(null);
       setHasAttempted(false);
+      setIsGenerating(false);
     }
   }, [taskId, type, externalToken]);
 
+  // Cleanup abort controller on unmount
+  useEffect(() => {
+    return () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+    };
+  }, []);
+
   // Generate token if not provided
   const generateToken = useCallback(async () => {
+    // Abort prior in-flight request
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+    const currentRequestId = ++requestIdRef.current;
+
     setIsGenerating(true);
     setError(null);
     try {
       const authToken = await getAuthToken();
+      if (controller.signal.aborted || currentRequestId !== requestIdRef.current) return;
       if (!authToken) {
         setError("Sign in required to view QR code.");
         return;
@@ -91,8 +115,11 @@ export function QRCodeCard({
           "Authorization": `Bearer ${authToken}`,
         },
         body: JSON.stringify({ type }),
+        signal: controller.signal,
       });
       const data = await res.json().catch(() => null);
+      if (controller.signal.aborted || currentRequestId !== requestIdRef.current) return;
+
       if (res.ok && data?.success) {
         setToken(data.qrValue);
         setExpiresAt(data.expiresAt);
@@ -100,11 +127,18 @@ export function QRCodeCard({
       } else {
         setError(data?.error || `Failed to generate ${type} QR code.`);
       }
-    } catch {
-      setError("Network error while generating QR code.");
+    } catch (err: unknown) {
+      if ((err as Error)?.name === "AbortError" || controller.signal.aborted) {
+        return; // Stale or cancelled request
+      }
+      if (currentRequestId === requestIdRef.current) {
+        setError("Network error while generating QR code.");
+      }
     } finally {
-      setIsGenerating(false);
-      setHasAttempted(true);
+      if (currentRequestId === requestIdRef.current && !controller.signal.aborted) {
+        setIsGenerating(false);
+        setHasAttempted(true);
+      }
     }
   }, [taskId, type]);
 
@@ -131,14 +165,6 @@ export function QRCodeCard({
   const seconds = secondsLeft % 60;
   const progress = Math.min(secondsLeft / 600, 1);
 
-  const handleCopy = () => {
-    if (token) {
-      navigator.clipboard.writeText(token);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    }
-  };
-
   const handleRegenerate = () => {
     setToken(null);
     setExpiresAt(null);
@@ -149,7 +175,6 @@ export function QRCodeCard({
     generateToken();
   };
 
-  const accentColor = type === "pickup" ? "amber" : "emerald";
   const label = type === "pickup" ? "Pickup" : "Delivery";
 
   if (compact) {
@@ -193,10 +218,9 @@ export function QRCodeCard({
             <div className="bg-white p-3 rounded-xl shadow-md border">
               <QRCodeSVG value={token} size={150} level="M" />
             </div>
-            <Button size="sm" variant="ghost" onClick={handleCopy} className="text-[10px] text-muted-foreground">
-              {copied ? <CheckCircle2 className="w-3 h-3 mr-1 text-emerald-500" /> : <Copy className="w-3 h-3 mr-1" />}
-              {copied ? "Copied!" : "Copy backup code"}
-            </Button>
+            <p className="text-[10px] text-muted-foreground text-center">
+              Scan with volunteer camera to verify {label.toLowerCase()}
+            </p>
           </div>
         ) : null}
       </div>
@@ -276,23 +300,14 @@ export function QRCodeCard({
               />
             </div>
 
-            <div className="flex items-center gap-2 w-full">
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={handleCopy}
-                className="flex-1 border-white/10 text-white/60 hover:bg-white/5 text-xs"
-              >
-                {copied ? <CheckCircle2 className="w-3.5 h-3.5 mr-1.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5 mr-1.5" />}
-                {copied ? "Copied!" : "Copy Backup Code"}
-              </Button>
+            <div className="flex justify-center w-full">
               <Button
                 size="sm"
                 variant="outline"
                 onClick={handleRegenerate}
                 className="border-white/10 text-white/60 hover:bg-white/5 text-xs"
               >
-                <RefreshCw className="w-3.5 h-3.5" />
+                <RefreshCw className="w-3.5 h-3.5 mr-1.5" /> Regenerate QR
               </Button>
             </div>
 
@@ -302,7 +317,7 @@ export function QRCodeCard({
                 : "text-emerald-400/70 bg-emerald-500/5 border-emerald-500/10"
             }`}>
               <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
-              <span>Show this QR code <strong>only when the volunteer arrives</strong>. Do not share it in advance.</span>
+              <span>Show this QR code <strong>only when the volunteer arrives</strong> to scan with their camera.</span>
             </div>
           </>
         ) : null}
@@ -327,13 +342,11 @@ interface QRScannerModalProps {
 export function QRScannerModal({
   open, onOpenChange, scanType, volunteerId, onVerified,
 }: QRScannerModalProps) {
-  const [mode, setMode] = useState<"camera" | "manual">("camera");
-  const [manualCode, setManualCode] = useState("");
   const [isVerifying, setIsVerifying] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [verified, setVerified] = useState(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
-  const scannerRef = useRef<HTMLDivElement>(null);
+  const [cameraRetryCount, setCameraRetryCount] = useState(0);
   const html5QrRef = useRef<Html5QrcodeScanner | null>(null);
   const hasScannedRef = useRef(false);
   const lastScannedRef = useRef("");
@@ -343,19 +356,75 @@ export function QRScannerModal({
   // Reset on open
   useEffect(() => {
     if (open) {
-      setMode("camera");
-      setManualCode("");
       setError(null);
       setVerified(false);
       setCameraError(null);
+      setCameraRetryCount(0);
       hasScannedRef.current = false;
       lastScannedRef.current = "";
     }
   }, [open]);
 
+  const verifyToken = useCallback(async (token: string) => {
+    if (isVerifying) return;
+    setIsVerifying(true);
+    setError(null);
+    try {
+      if (html5QrRef.current) {
+        html5QrRef.current.pause(true); // Stop scanning while verifying
+      }
+
+      const authToken = await getAuthToken();
+      if (!authToken) {
+        setError("Not authenticated. Please log in again.");
+        return;
+      }
+      const res = await fetch("/api/tasks/verify-qr", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${authToken}`,
+        },
+        body: JSON.stringify({ token, volunteerId }),
+      });
+      const data = await res.json().catch(() => null);
+
+      if (res.ok && data?.success) {
+        setVerified(true);
+        if (typeof navigator !== "undefined" && navigator.vibrate) {
+          navigator.vibrate([100, 50, 100]);
+        }
+        // Server returns new_status (snake_case) — support both for safety
+        onVerified(data.new_status ?? data.newStatus);
+        // Auto-close modal after brief success display
+        setTimeout(() => {
+          onOpenChange(false);
+        }, 1500);
+      } else {
+        setError(data?.error || "Verification failed. Please scan again.");
+        hasScannedRef.current = false; // Allow retry
+        if (html5QrRef.current) {
+          setTimeout(() => {
+            if (html5QrRef.current) html5QrRef.current.resume();
+          }, 2000); // Wait 2s before scanning again to prevent spam
+        }
+      }
+    } catch {
+      setError("Network error. Please scan again.");
+      hasScannedRef.current = false;
+      if (html5QrRef.current) {
+        setTimeout(() => {
+          if (html5QrRef.current) html5QrRef.current.resume();
+        }, 2000);
+      }
+    } finally {
+      setIsVerifying(false);
+    }
+  }, [isVerifying, volunteerId, onVerified, onOpenChange]);
+
   // Initialize camera scanner
   useEffect(() => {
-    if (!open || mode !== "camera" || verified) return;
+    if (!open || verified) return;
 
     let scanner: Html5QrcodeScanner | null = null;
     let isMounted = true;
@@ -363,22 +432,23 @@ export function QRScannerModal({
     const initScanner = async () => {
       try {
         const { Html5Qrcode } = await import("html5-qrcode");
-        
+
         // Wait for DOM element
-        await new Promise(r => setTimeout(r, 500));
+        await new Promise(r => setTimeout(r, 400));
         if (!isMounted) return;
-        
+
         const el = document.getElementById("qr-reader");
         if (!el) {
-          setCameraError("Scanner element not found.");
-          setMode("manual");
+          if (isMounted) {
+            setCameraError("Camera scanner viewport not found. Please click Retry.");
+          }
           return;
         }
 
         scanner = new Html5Qrcode("qr-reader");
         html5QrRef.current = scanner;
 
-        await scanner?.start(
+        await scanner.start(
           { facingMode: "environment" },
           {
             fps: 10,
@@ -390,18 +460,18 @@ export function QRScannerModal({
             if (decodedText === lastScannedRef.current) return;
             lastScannedRef.current = decodedText;
             hasScannedRef.current = true;
-            
+
             if (typeof navigator !== "undefined" && navigator.vibrate) {
               navigator.vibrate(200);
             }
-            
+
             await verifyToken(decodedText);
             try { await scanner?.stop(); } catch {}
           },
-          () => { /* ignore scan failures */ }
+          () => { /* ignore scan frame failures */ }
         );
 
-        // Torch support for dark rooms
+        // Torch support for low-light environments if supported
         try {
           const track = (scanner as unknown as { getRunningTrack?: () => MediaStreamTrack | null })?.getRunningTrack?.();
           if (track) {
@@ -410,10 +480,17 @@ export function QRScannerModal({
         } catch {}
       } catch (err: unknown) {
         if (import.meta.env.DEV) console.warn("Camera init error:", err);
-        // Gracefully fall back to manual mode — don't crash
         if (isMounted) {
-          setCameraError((err as Error)?.message || "Camera not available. Use manual entry.");
-          setMode("manual");
+          const rawMsg = (err as Error)?.message || "";
+          let userMsg = "Camera not available. Physical camera scanning is required.";
+          if (rawMsg.includes("Permission") || rawMsg.includes("NotAllowedError") || rawMsg.includes("PermissionDeniedError")) {
+            userMsg = "Camera permission denied. Please allow camera access in your browser to scan the physical QR code.";
+          } else if (rawMsg.includes("NotFoundError") || rawMsg.includes("DevicesNotFoundError")) {
+            userMsg = "No camera found on this device. A camera is required for physical QR verification.";
+          } else if (rawMsg) {
+            userMsg = rawMsg;
+          }
+          setCameraError(userMsg);
         }
       }
     };
@@ -428,69 +505,14 @@ export function QRScannerModal({
       }
       html5QrRef.current = null;
     };
-  }, [open, mode, verified]);
+  }, [open, verified, cameraRetryCount, verifyToken]);
 
-  const verifyToken = async (token: string) => {
-    if (isVerifying) return;
-    setIsVerifying(true);
+  const handleRetryCamera = () => {
+    setCameraError(null);
     setError(null);
-    try {
-      if (html5QrRef.current && mode === "camera") {
-        html5QrRef.current.pause(true); // Stop scanning while verifying
-      }
-      
-      const authToken = await getAuthToken();
-      if (!authToken) {
-        setError("Not authenticated. Please log in again.");
-        return;
-      }
-      const res = await fetch("/api/tasks/verify-qr", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${authToken}`,
-        },
-        body: JSON.stringify({ token, volunteerId }),
-      });
-      const data = await res.json();
-
-      if (data.success) {
-        setVerified(true);
-        if (typeof navigator !== "undefined" && navigator.vibrate) {
-          navigator.vibrate([100, 50, 100]);
-        }
-        // Server returns new_status (snake_case) — support both for safety
-        onVerified(data.new_status ?? data.newStatus);
-        // Auto-close modal after brief success display
-        setTimeout(() => {
-          onOpenChange(false);
-        }, 1500);
-      } else {
-        setError(data.error || "Verification failed. Please try again.");
-        hasScannedRef.current = false; // Allow retry
-        if (html5QrRef.current && mode === "camera") {
-          setTimeout(() => {
-            if (html5QrRef.current) html5QrRef.current.resume();
-          }, 2000); // Wait 2s before scanning again to prevent spam
-        }
-      }
-    } catch {
-      setError("Network error. Please try again.");
-      hasScannedRef.current = false;
-      if (html5QrRef.current && mode === "camera") {
-        setTimeout(() => {
-          if (html5QrRef.current) html5QrRef.current.resume();
-        }, 2000);
-      }
-    } finally {
-      setIsVerifying(false);
-    }
-  };
-
-  const handleManualSubmit = () => {
-    const trimmed = manualCode.trim();
-    if (!trimmed) { setError("Please enter the backup code."); return; }
-    verifyToken(trimmed.toUpperCase());
+    hasScannedRef.current = false;
+    lastScannedRef.current = "";
+    setCameraRetryCount(prev => prev + 1);
   };
 
   return (
@@ -505,7 +527,7 @@ export function QRScannerModal({
               <QrCode className="w-5 h-5 text-white" />
             </div>
             <div>
-              <p className="text-[10px] uppercase tracking-widest text-white/70 font-semibold">QR Verification</p>
+              <p className="text-[10px] uppercase tracking-widest text-white/70 font-semibold">Physical QR Scanner</p>
               <h3 className="text-lg font-bold text-white">Scan {label} QR</h3>
             </div>
           </div>
@@ -523,7 +545,7 @@ export function QRScannerModal({
               <p className={`font-bold text-lg ${scanType === "pickup" ? "text-amber-400" : "text-emerald-400"}`}>
                 {label} Verified ✓
               </p>
-              <p className="text-sm text-white/40">
+              <p className="text-sm text-white/40 text-center">
                 {scanType === "pickup" ? "Food picked up. Heading to delivery." : "Delivery confirmed. Route complete!"}
               </p>
               <Button
@@ -537,8 +559,25 @@ export function QRScannerModal({
                 Continue
               </Button>
             </div>
-          ) : mode === "camera" ? (
-            /* ─── Camera Scanner ─── */
+          ) : cameraError ? (
+            /* ─── Camera Error State (No manual entry fallback) ─── */
+            <div className="flex flex-col items-center gap-3 py-6 text-center">
+              <div className="w-16 h-16 rounded-full bg-red-500/20 flex items-center justify-center">
+                <Camera className="w-8 h-8 text-red-400" />
+              </div>
+              <p className="font-bold text-lg text-red-400">Camera Access Required</p>
+              <p className="text-sm text-white/60 max-w-xs">
+                {cameraError}
+              </p>
+              <Button
+                onClick={handleRetryCamera}
+                className="mt-2 font-bold px-6 bg-white/10 hover:bg-white/20 text-white border border-white/20"
+              >
+                <RefreshCw className="w-4 h-4 mr-2" /> Retry Camera
+              </Button>
+            </div>
+          ) : (
+            /* ─── Camera Scanner (Physical QR Only) ─── */
             <>
               <div className="relative rounded-xl overflow-hidden bg-black aspect-square max-h-[300px]">
                 <div id="qr-reader" className="w-full h-full" />
@@ -563,7 +602,7 @@ export function QRScannerModal({
               </div>
 
               <p className="text-xs text-white/40 text-center">
-                Point your camera at the {scanType === "pickup" ? "donor's" : "receiver's"} QR code
+                Point your camera directly at the physical QR code shown by the {scanType === "pickup" ? "donor" : "receiver"}.
               </p>
 
               {error && (
@@ -572,63 +611,6 @@ export function QRScannerModal({
                   <span>{error}</span>
                 </div>
               )}
-
-              <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setMode("manual")}
-                  className="flex-1 border-white/10 text-white/60 hover:bg-white/5 text-xs"
-                >
-                  <Keyboard className="w-3.5 h-3.5 mr-1.5" /> Enter Code Manually
-                </Button>
-              </div>
-            </>
-          ) : (
-            /* ─── Manual Code Entry ─── */
-            <>
-              <p className="text-sm text-white/50 text-center">
-                Enter the backup code shown on the {scanType === "pickup" ? "donor's" : "receiver's"} screen.
-              </p>
-
-              <input
-                type="text"
-                value={manualCode}
-                onChange={e => { setManualCode(e.target.value); setError(null); }}
-                placeholder="Paste backup code here…"
-                className="w-full h-12 bg-white/5 border border-white/15 rounded-xl px-4 text-sm text-white placeholder:text-white/30 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 font-mono"
-                onKeyDown={e => e.key === "Enter" && handleManualSubmit()}
-              />
-
-              {error && (
-                <div className="flex items-center gap-2 text-red-400 text-sm">
-                  <AlertTriangle className="w-4 h-4 shrink-0" />
-                  <span>{error}</span>
-                </div>
-              )}
-
-              <Button
-                onClick={handleManualSubmit}
-                disabled={isVerifying || !manualCode.trim()}
-                className={`w-full h-12 font-bold ${
-                  scanType === "pickup"
-                    ? "bg-amber-500 hover:bg-amber-400 text-black"
-                    : "bg-emerald-500 hover:bg-emerald-400 text-black"
-                }`}
-              >
-                {isVerifying ? <Loader2 className="w-5 h-5 animate-spin" /> : `Verify ${label}`}
-              </Button>
-
-              <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => { setMode("camera"); setError(null); }}
-                  className="flex-1 border-white/10 text-white/60 hover:bg-white/5 text-xs"
-                >
-                  <Camera className="w-3.5 h-3.5 mr-1.5" /> Back to Camera
-                </Button>
-              </div>
             </>
           )}
         </div>
