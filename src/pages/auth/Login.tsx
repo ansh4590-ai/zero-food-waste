@@ -6,8 +6,6 @@ import { Mail, Lock } from "lucide-react";
 import { useLoadingStore } from "../../store";
 import { supabase } from "../../lib/supabase";
 import { toast } from "sonner";
-import { auth } from "../../firebase";
-import { GoogleAuthProvider, signInWithPopup, getAdditionalUserInfo } from "firebase/auth";
 import { AuthLayout } from "../../components/auth/AuthLayout";
 
 export default function Login() {
@@ -65,21 +63,20 @@ export default function Login() {
 
   const handleGoogleSignIn = async () => {
     setIsGoogleLoading(true);
-    const provider = new GoogleAuthProvider();
     try {
-      const result = await signInWithPopup(auth, provider);
-      const details = getAdditionalUserInfo(result);
-      
-      if (details?.isNewUser) {
-        toast.info("Please complete your registration");
-        navigate("/register");
-      } else {
-        toast.success("Logged in with Google successfully");
-        navigate("/dashboard");
-      }
+      // Use Supabase OAuth so users get a real Supabase session that the
+      // backend can verify. The browser is redirected to Google and then
+      // back to /auth/callback where useAuthStore picks up the session.
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${window.location.origin}/dashboard`,
+        },
+      });
+      if (error) throw error;
+      // Browser will navigate away; nothing more to do here.
     } catch (err: unknown) {
       toast.error((err as Error).message || "Failed to sign in with Google");
-    } finally {
       setIsGoogleLoading(false);
     }
   };

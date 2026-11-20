@@ -3,6 +3,7 @@ import { GoogleGenAI } from "@google/genai";
 import { createClient } from "@supabase/supabase-js";
 import path from "path";
 import dotenv from "dotenv";
+import crypto from "crypto";
 import { RekognitionClient, CompareFacesCommand } from "@aws-sdk/client-rekognition";
 import vision from "@google-cloud/vision";
 import cors from "cors";
@@ -456,7 +457,7 @@ Return ONLY valid JSON with no markdown or extra text:
 }`;
 
       const response = await ai.models.generateContent({
-        model: "gemini-2.5-flash",
+        model: process.env.GEMINI_MODEL || "gemini-2.5-flash",
         contents: [
           {
             role: "user",
@@ -1122,11 +1123,16 @@ Return ONLY valid JSON with no markdown or extra text:
   //  - POST stays available for manual/admin triggering, passing the same
   //    secret as `?key=`.
   const cleanupStaleHandler = async (req: express.Request, res: express.Response) => {
-    const provided =
-      req.headers.authorization?.replace(/^Bearer\s+/i, "") ||
-      (req.query?.key as string | undefined);
+    // Accept secret via Authorization: Bearer header ONLY.
+    // Using query params risks leaking the secret in server access logs.
+    const provided = req.headers.authorization?.replace(/^Bearer\s+/i, "");
     const expected = process.env.CRON_SECRET;
-    if (!expected || provided !== expected) {
+    if (
+      !expected ||
+      !provided ||
+      provided.length !== expected.length ||
+      !crypto.timingSafeEqual(Buffer.from(provided), Buffer.from(expected))
+    ) {
       return res.status(403).json({ error: "Forbidden" });
     }
     try {
@@ -1322,7 +1328,7 @@ Return ONLY valid JSON with no markdown or extra text:
       }
 
       const response = await ai.models.generateContent({
-        model: "gemini-2.5-flash",
+        model: process.env.GEMINI_MODEL || "gemini-2.5-flash",
         contents,
         config: {
           temperature: temperature ?? 0.7,
