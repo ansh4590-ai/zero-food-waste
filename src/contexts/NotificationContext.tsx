@@ -66,7 +66,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
       setNotifications([]);
       return;
     }
-    // Guard: Firebase UIDs are not valid Supabase UUIDs — skip to avoid 400 errors
+    // Guard: validate Supabase UUID before making database queries
     if (!isValidSupabaseId(user.id)) {
       setNotifications([]);
       return;
@@ -104,7 +104,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
       channelRef.current = null;
     }
 
-    // Guard: don't subscribe with a non-UUID id (Firebase users have no Supabase notifications)
+    // Guard: validate UUID before subscribing
     if (!user || !isValidSupabaseId(user.id)) return;
 
     try {

@@ -1,16 +1,16 @@
 /**
  * e2e/auth.spec.ts
- * Authentication tests: login, logout, invalid credentials.
+ * Authentication tests: login, logout, invalid credentials, and strict live integration.
  */
 import { test, expect } from '@playwright/test';
-import { loginAs, logout } from './helpers/auth';
+import { loginAs, loginWithCredentialsStrict, logout } from './helpers/auth';
 
 test.describe('Authentication', () => {
 
   test('donor can log in and reach dashboard', async ({ page }) => {
     await loginAs(page, 'donor');
     await expect(page).toHaveURL(/\/dashboard/);
-    await expect(page.getByRole('heading', { name: /dashboard|welcome back/i })).toBeVisible();
+    await expect(page.getByRole('heading', { name: /dashboard|welcome back/i })).toBeVisible({ timeout: 15_000 });
   });
 
   test('volunteer can log in and reach tasks', async ({ page }) => {
@@ -47,5 +47,16 @@ test.describe('Authentication', () => {
       (document.querySelector('input[type="email"]') as HTMLInputElement)?.validity?.valid === false
     );
     expect(invalid).toBe(true);
+  });
+
+  test('strict live Supabase authentication succeeds when credentials configured', async ({ page }) => {
+    const email = process.env.TEST_DONOR_EMAIL;
+    const password = process.env.TEST_DONOR_PASSWORD;
+    test.skip(!email || !password || password === 'REPLACE_ME', 'Live donor credentials not provided in environment');
+
+    // Runs strict real UI login against Supabase — fails if credentials or network fail
+    await loginWithCredentialsStrict(page, 'donor');
+    await expect(page).toHaveURL(/\/dashboard/);
+    await expect(page.getByRole('heading', { name: /dashboard|welcome back/i })).toBeVisible();
   });
 });

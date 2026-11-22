@@ -4,42 +4,12 @@
  */
 import { Page } from '@playwright/test';
 
+/**
+ * Injects deterministic mock user session and permissions for UI/feature tests.
+ * This keeps UI test suites (donation, dispatch, verification, navigation)
+ * completely deterministic and fast.
+ */
 export async function loginAs(page: Page, role: 'donor' | 'volunteer' | 'admin' | 'receiver') {
-  const credentials: Record<string, { email?: string; password?: string }> = {
-    donor:     { email: process.env.TEST_DONOR_EMAIL,     password: process.env.TEST_DONOR_PASSWORD },
-    volunteer: { email: process.env.TEST_VOLUNTEER_EMAIL, password: process.env.TEST_VOLUNTEER_PASSWORD },
-    admin:     { email: process.env.TEST_ADMIN_EMAIL,     password: process.env.TEST_ADMIN_PASSWORD },
-    receiver:  { email: process.env.TEST_RECEIVER_EMAIL,  password: process.env.TEST_RECEIVER_PASSWORD },
-  };
-
-  const cred = credentials[role];
-  const hasValidCreds = Boolean(cred?.email && cred?.password && cred.password !== 'REPLACE_ME');
-
-  if (hasValidCreds) {
-    try {
-      if (role === 'admin') {
-        await page.goto('/admin-login');
-        await page.getByLabel(/admin email|email/i).fill(cred!.email!);
-        await page.getByLabel(/password/i).fill(cred!.password!);
-        await page.getByRole('button', { name: /sign in|log in|login/i }).click();
-        await page.waitForURL(url => !url.pathname.includes('/admin-login'), { timeout: 15_000 });
-      } else {
-        await page.goto('/auth/login');
-        await page.getByLabel(/email/i).fill(cred!.email!);
-        await page.getByLabel(/password/i).fill(cred!.password!);
-        await page.getByRole('button', { name: /sign in|log in|login/i }).click();
-        await page.waitForURL(url => !url.pathname.includes('/auth/login'), { timeout: 15_000 });
-      }
-      return;
-    } catch {
-      // Real-credential login failed (wrong password, network error, etc.).
-      // Fall through to the deterministic mock-injection path so CI stays green.
-      console.warn(`[auth] Real login for "${role}" failed — falling back to mock injection.`);
-    }
-  }
-
-  // Fallback when test environment / CI has no live external credentials:
-  // Inject mock user and authentication state so all dashboard and role views can be tested deterministically.
   const roleIds: Record<string, string> = {
     donor:     '00000000-0000-0000-0000-000000000001',
     volunteer: 'fb5bf226-d896-4de1-ab33-a260044e6242',
@@ -94,6 +64,39 @@ export async function loginAs(page: Page, role: 'donor' | 'volunteer' | 'admin' 
   // Navigate to appropriate landing page
   const targetPath = role === 'admin' ? '/admin' : role === 'volunteer' ? '/tasks' : '/dashboard';
   await page.goto(targetPath);
+}
+
+/**
+ * Strict real-credential login via actual UI form submission against live Supabase.
+ * Does NOT catch errors or fall back to mock auth — fails explicitly on invalid credentials,
+ * network errors, or login regressions.
+ */
+export async function loginWithCredentialsStrict(page: Page, role: 'donor' | 'volunteer' | 'admin' | 'receiver') {
+  const credentials: Record<string, { email?: string; password?: string }> = {
+    donor:     { email: process.env.TEST_DONOR_EMAIL,     password: process.env.TEST_DONOR_PASSWORD },
+    volunteer: { email: process.env.TEST_VOLUNTEER_EMAIL, password: process.env.TEST_VOLUNTEER_PASSWORD },
+    admin:     { email: process.env.TEST_ADMIN_EMAIL,     password: process.env.TEST_ADMIN_PASSWORD },
+    receiver:  { email: process.env.TEST_RECEIVER_EMAIL,  password: process.env.TEST_RECEIVER_PASSWORD },
+  };
+
+  const cred = credentials[role];
+  if (!cred?.email || !cred?.password || cred.password === 'REPLACE_ME') {
+    throw new Error(`[auth] Missing required live credentials for role "${role}".`);
+  }
+
+  if (role === 'admin') {
+    await page.goto('/admin-login');
+    await page.getByLabel(/admin email|email/i).fill(cred.email);
+    await page.getByLabel(/password/i).fill(cred.password);
+    await page.getByRole('button', { name: /sign in|log in|login/i }).click();
+    await page.waitForURL(url => !url.pathname.includes('/admin-login'), { timeout: 15_000 });
+  } else {
+    await page.goto('/auth/login');
+    await page.getByLabel(/email/i).fill(cred.email);
+    await page.getByLabel(/password/i).fill(cred.password);
+    await page.getByRole('button', { name: /sign in|log in|login/i }).click();
+    await page.waitForURL(url => !url.pathname.includes('/auth/login'), { timeout: 15_000 });
+  }
 }
 
 export async function logout(page: Page) {

@@ -34,7 +34,7 @@ export function RBACProvider({ children }: { children: React.ReactNode }) {
         return;
       }
 
-      // Guard: Firebase UIDs are not valid Supabase UUIDs — skip to avoid 400 errors
+      // Guard: validate Supabase UUID before querying database
       if (!isValidSupabaseId(user.id)) {
         if (isMounted) {
           setRoles([]);

@@ -1,15 +1,11 @@
 import { create } from 'zustand';
 import { supabase } from '../lib/supabase';
-import { auth } from '../firebase';
-import { onAuthStateChanged, signOut as firebaseSignOut } from 'firebase/auth';
 
 export interface User {
   id: string;
   email: string;
   role: string;
   fullName?: string;
-  /** true when this user was authenticated via Firebase (Google), not Supabase */
-  isFirebaseUser?: boolean;
 }
 
 interface AuthState {
@@ -28,11 +24,6 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
   login: (user) => set({ user, isAuthenticated: true, isInitialized: true }),
   logout: async () => {
     await supabase.auth.signOut();
-    try {
-      await firebaseSignOut(auth);
-    } catch (e) {
-      // ignore if firebase auth is not initialized or logged in
-    }
     set({ user: null, isAuthenticated: false });
   },
   initializeAuth: () => {
@@ -49,7 +40,6 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
                 email: testSession.user.email || "",
                 role: testSession.user.user_metadata?.role || "donor",
                 fullName: testSession.user.user_metadata?.full_name || "",
-                isFirebaseUser: false,
               },
               isAuthenticated: true,
               isInitialized: true,
@@ -59,16 +49,7 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
       } catch {}
     }
 
-    let supabaseResolved = false;
-    let firebaseResolved = false;
-
-    const checkInit = () => {
-      if ((supabaseResolved && firebaseResolved) || (supabaseResolved && get().isAuthenticated)) {
-        set((state) => ({ ...state, isInitialized: true }));
-      }
-    };
-
-    // Safety timeout in case remote Firebase connection hangs or runs in CI/mock environment
+    // Safety timeout in case remote auth lookup hangs
     setTimeout(() => {
       if (!get().isInitialized) {
         set((state) => ({ ...state, isInitialized: true }));
@@ -84,13 +65,11 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
             email: session.user.email || '',
             role: session.user.user_metadata?.role || 'donor',
             fullName: session.user.user_metadata?.full_name || '',
-            isFirebaseUser: false,
           },
           isAuthenticated: true,
         });
       }
-      supabaseResolved = true;
-      checkInit();
+      set((state) => ({ ...state, isInitialized: true }));
     });
 
     // ── Supabase: listen for session changes (login / logout / token refresh) ─
@@ -102,62 +81,23 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
           return;
         }
 
-        // Supabase session always wins – overwrite any Firebase state
         set({
           user: {
             id: session.user.id,
             email: session.user.email || '',
             role: session.user.user_metadata?.role || 'donor',
             fullName: session.user.user_metadata?.full_name || '',
-            isFirebaseUser: false,
           },
           isAuthenticated: true,
         });
       } else {
-        // Supabase session ended; only clear state if the current user is a
-        // Supabase user (don't evict a Firebase-only user or a DEV test session)
+        // Supabase session ended; only clear state if not in DEV test session
         const isDevTestSession = import.meta.env.DEV && typeof window !== "undefined" &&
           Boolean(window.localStorage.getItem("sb-test-auth-token") || window.localStorage.getItem("test_session"));
-        const current = get().user;
-        if (current && !current.isFirebaseUser && !isDevTestSession) {
+        if (!isDevTestSession) {
           set({ user: null, isAuthenticated: false });
         }
       }
-    });
-
-    // ── Firebase: only used when there is NO Supabase session ─────────────────
-    // (e.g. Google Sign-In that hasn't been linked to Supabase yet)
-    onAuthStateChanged(auth, (firebaseUser) => {
-      if (firebaseUser) {
-        // Only apply Firebase user if Supabase has no session
-        supabase.auth.getSession().then(({ data: { session } }) => {
-          if (!session?.user) {
-            set({
-              user: {
-                id: firebaseUser.uid,
-                email: firebaseUser.email || '',
-                role: 'donor',
-                fullName: firebaseUser.displayName || '',
-                isFirebaseUser: true,
-              },
-              isAuthenticated: true,
-            });
-          }
-          // else: Supabase session already set — Firebase state is ignored
-        });
-      } else {
-        // Firebase signed out — if the current user is a Firebase-only user, clear state
-        supabase.auth.getSession().then(({ data: { session } }) => {
-          if (!session?.user) {
-            const current = get().user;
-            if (current?.isFirebaseUser || !current) {
-              set({ user: null, isAuthenticated: false });
-            }
-          }
-        });
-      }
-      firebaseResolved = true;
-      checkInit();
     });
   },
 }));

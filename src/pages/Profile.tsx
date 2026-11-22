@@ -59,12 +59,6 @@ export default function Profile() {
   const fetchProfile = useCallback(async () => {
     if (!user) return;
 
-    // Firebase-only users don't have a Supabase profile row yet
-    if ((user as any).isFirebaseUser) {
-      setIsLoading(false);
-      return;
-    }
-
     setIsLoading(true);
     try {
       const { data, error } = await supabase
@@ -219,34 +213,6 @@ export default function Profile() {
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
           <span className="text-sm text-muted-foreground">Loading profile…</span>
         </div>
-      </div>
-    );
-  }
-
-  // Firebase-only users: show a friendly message
-  if ((user as any)?.isFirebaseUser) {
-    return (
-      <div className="max-w-2xl mx-auto px-4 sm:px-6 py-10">
-        <div className="mb-8">
-          <h1 className="text-2xl font-bold text-foreground sm:text-3xl">My Profile</h1>
-        </div>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex flex-col items-center gap-4 py-8 text-center">
-              <AlertTriangle className="h-10 w-10 text-amber-500" />
-              <div>
-                <p className="font-semibold text-foreground">Google Sign-In detected</p>
-                <p className="text-sm text-muted-foreground mt-1">
-                  Your Google account is connected but not yet linked to a platform profile.<br />
-                  Please sign up with email &amp; password to create a full profile.
-                </p>
-              </div>
-              <Button asChild className="mt-2">
-                <Link to="/register">Go to Sign Up</Link>
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
       </div>
     );
   }

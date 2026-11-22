@@ -101,11 +101,6 @@ const PORT = parseInt(process.env.PORT || '3000', 10);
             // Google APIs (Vision, Gemini)
             "https://*.googleapis.com",
             "https://generativelanguage.googleapis.com",
-            // Firebase
-            "https://*.firebaseapp.com",
-            "https://*.firebase.com",
-            "https://*.firebaseio.com",
-            "wss://*.firebaseio.com",
             // Google Places REST API
             "https://places.googleapis.com",
             // Open Source Routing Machine (OSRM)
@@ -1117,21 +1112,21 @@ Return ONLY valid JSON with no markdown or extra text:
 
   // ─── 21. STALE TASK CLEANUP (cron-only — not for public/browser use) ─────────
   // Registered on both GET and POST:
-  //  - Vercel Cron always invokes via GET, with `Authorization: Bearer
-  //    <CRON_SECRET>` attached automatically once CRON_SECRET is set in your
-  //    Vercel env vars — see the "crons" entry in vercel.json.
-  //  - POST stays available for manual/admin triggering, passing the same
-  //    secret as `?key=`.
+  //  - Invoked via external scheduler (e.g. GitHub Actions cleanup workflow)
+  //    with `Authorization: Bearer <CRON_SECRET>` header.
   const cleanupStaleHandler = async (req: express.Request, res: express.Response) => {
     // Accept secret via Authorization: Bearer header ONLY.
-    // Using query params risks leaking the secret in server access logs.
+    // Query parameters are rejected to avoid leaking secrets in access logs.
     const provided = req.headers.authorization?.replace(/^Bearer\s+/i, "");
     const expected = process.env.CRON_SECRET;
+    if (!provided || !expected) {
+      return res.status(403).json({ error: "Forbidden" });
+    }
+    const providedBuf = Buffer.from(provided, "utf8");
+    const expectedBuf = Buffer.from(expected, "utf8");
     if (
-      !expected ||
-      !provided ||
-      provided.length !== expected.length ||
-      !crypto.timingSafeEqual(Buffer.from(provided), Buffer.from(expected))
+      providedBuf.byteLength !== expectedBuf.byteLength ||
+      !crypto.timingSafeEqual(providedBuf, expectedBuf)
     ) {
       return res.status(403).json({ error: "Forbidden" });
     }

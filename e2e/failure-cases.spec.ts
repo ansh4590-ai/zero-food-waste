@@ -24,9 +24,8 @@ test.describe('Failure Cases', () => {
 
   test('404 / unknown route shows error or redirects gracefully', async ({ page }) => {
     await page.goto('/this-page-does-not-exist-xyz');
-    // Should either show a 404 message or redirect to home — not crash
-    await page.waitForLoadState('domcontentloaded');
-    await expect(page.locator('body')).not.toBeEmpty();
+    // Catch-all route redirects gracefully to home — not crash or 500
+    await expect(page).toHaveURL('/');
     await expect(page).not.toHaveURL(/error.*500/);
   });
 

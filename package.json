@@ -43,7 +43,6 @@
     "dotenv": "^17.2.3",
     "express": "^4.21.2",
     "express-rate-limit": "^8.5.2",
-    "firebase": "^12.12.1",
     "framer-motion": "^12.38.0",
     "helmet": "^8.3.0",
     "html5-qrcode": "^2.3.8",

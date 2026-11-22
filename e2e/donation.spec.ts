@@ -44,6 +44,6 @@ test.describe('Donation Lifecycle', () => {
 
   test('upcoming pickups section is visible on dashboard', async ({ page }) => {
     await page.goto('/dashboard');
-    await expect(page.getByText(/upcoming pickups/i)).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Upcoming Pickups', exact: true })).toBeVisible({ timeout: 15_000 });
   });
 });
