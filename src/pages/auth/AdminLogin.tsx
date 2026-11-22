@@ -35,11 +35,20 @@ export default function AdminLogin() {
         throw new Error((error as Error).message);
       }
 
-      // Admin-only routing validation
-      const role = data.user?.user_metadata?.role || "donor";
-      if (role !== "admin") {
-         await supabase.auth.signOut();
-         throw new Error("Unauthorized Portal. Administrative credentials required.");
+      if (!data.user) {
+        throw new Error("Login failed: no user returned.");
+      }
+
+      // Authoritative database-backed role verification (user_metadata is user-editable and untrusted)
+      const { data: profile, error: profileErr } = await supabase
+        .from("profiles")
+        .select("role")
+        .eq("id", data.user.id)
+        .single();
+
+      if (profileErr || profile?.role !== "admin") {
+        await supabase.auth.signOut();
+        throw new Error("Unauthorized Portal. Administrative credentials required.");
       }
 
       toast.success("Logged in successfully");

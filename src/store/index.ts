@@ -57,14 +57,21 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
     }, 1500);
 
     // ── Supabase: check existing session on load ──────────────────────────────
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (session?.user) {
+        // Query authoritative profiles table for role instead of trusting client user_metadata
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("role, full_name")
+          .eq("id", session.user.id)
+          .maybeSingle();
+
         set({
           user: {
             id: session.user.id,
             email: session.user.email || '',
-            role: session.user.user_metadata?.role || 'donor',
-            fullName: session.user.user_metadata?.full_name || '',
+            role: profile?.role || 'donor',
+            fullName: profile?.full_name || session.user.user_metadata?.full_name || '',
           },
           isAuthenticated: true,
         });
@@ -73,11 +80,20 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
     });
 
     // ── Supabase: listen for session changes (login / logout / token refresh) ─
-    supabase.auth.onAuthStateChange((_event, session) => {
+    supabase.auth.onAuthStateChange(async (_event, session) => {
       if (session?.user) {
+        // Query authoritative profiles table for role instead of trusting client user_metadata
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("role, full_name")
+          .eq("id", session.user.id)
+          .maybeSingle();
+
+        const role = profile?.role || 'donor';
+
         // Prevent unnecessary state updates on tab focus/token refresh if it's the same user
         const current = get().user;
-        if (current && current.id === session.user.id && current.role === session.user.user_metadata?.role) {
+        if (current && current.id === session.user.id && current.role === role) {
           return;
         }
 
@@ -85,8 +101,8 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
           user: {
             id: session.user.id,
             email: session.user.email || '',
-            role: session.user.user_metadata?.role || 'donor',
-            fullName: session.user.user_metadata?.full_name || '',
+            role,
+            fullName: profile?.full_name || session.user.user_metadata?.full_name || '',
           },
           isAuthenticated: true,
         });
