@@ -34,6 +34,7 @@ import { toast } from "sonner";
 import { useLoadingStore, useAuthStore } from "../store";
 import { supabase, isValidSupabaseId } from "../lib/supabase";
 import { FOOD_CATEGORIES, OSM_TILE_URL, OSM_TILE_ATTRIBUTION } from "../lib/constants";
+import { compressImage } from "../lib/imageCompression";
 import { MapContainer, TileLayer, Marker, useMap } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
@@ -163,70 +164,81 @@ export default function Donate() {
       return;
     }
 
-    // Client-side size validation (5MB)
-    const MAX_SIZE = 5 * 1024 * 1024;
-    if (file.size > MAX_SIZE) {
-      toast.error("Image too large. Please upload an image under 5MB.");
+    // Client-side raw file limit (15MB max before in-browser downscaling)
+    const MAX_INPUT_SIZE = 15 * 1024 * 1024;
+    if (file.size > MAX_INPUT_SIZE) {
+      toast.error("Image too large. Please upload an image under 15MB.");
       if (fileInputRef.current) fileInputRef.current.value = "";
       return;
     }
 
-    setSelectedFile(file);
+    setIsClassifying(true);
+    let compressedFile: File;
+    let base64String: string;
 
-    const reader = new FileReader();
-    reader.onloadend = async () => {
-      const base64String = reader.result as string;
+    try {
+      // Downscale to max 1600px width/height and compress to 0.8 quality JPEG.
+      // This shrinks 3-10MB mobile phone photos down to ~150-400KB, staying safely
+      // under Vercel's 4.5MB request-body cap and the 3MB /api/classify limit.
+      const result = await compressImage(file, 1600, 0.8);
+      compressedFile = result.file;
+      base64String = result.dataUrl;
+
+      setSelectedFile(compressedFile);
       setImagePreview(base64String);
+    } catch (compressionErr: unknown) {
+      console.error("[Donate] Image compression failed:", compressionErr);
+      toast.error("Failed to process image. Please try another photo.");
+      setIsClassifying(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+      return;
+    }
 
-      setIsClassifying(true);
-      try {
-        const { data: sessionData } = await supabase.auth.getSession();
-        const authToken = sessionData.session?.access_token || (import.meta.env.DEV ? (window.localStorage.getItem("test_access_token") || "") : "");
-        const response = await fetch("/api/classify", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            ...(authToken ? { "Authorization": `Bearer ${authToken}` } : {}),
-          },
-          body: JSON.stringify({ imageBase64: base64String }),
-        });
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const authToken = sessionData.session?.access_token || (import.meta.env.DEV ? (window.localStorage.getItem("test_access_token") || "") : "");
+      const response = await fetch("/api/classify", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(authToken ? { "Authorization": `Bearer ${authToken}` } : {}),
+        },
+        body: JSON.stringify({ imageBase64: base64String }),
+      });
 
-        if (response.ok) {
-          const data = await response.json();
+      if (response.ok) {
+        const data = await response.json();
 
-          if (data.is_food === false) {
-            toast.error(data.reason || "Image does not appear to contain edible food.");
-            setImagePreview(null);
-            setSelectedFile(null);
-            setIsClassifying(false);
-            if (fileInputRef.current) fileInputRef.current.value = "";
-            return;
-          }
-
-          setClassificationResult(data);
-
-          if (data.predicted_category) {
-            const valid = FOOD_CATEGORIES.find(
-              x => x.value === data.predicted_category
-            );
-            setFoodType(valid ? valid.value : "cooked_meal");
-          }
-          if (data.title) setTitle(data.title);
-          if (data.quantity_description) setQuantity(data.quantity_description);
-
-          toast.success("AI food extraction complete");
-        } else {
-          const errData = await response.json().catch(() => ({}));
-          throw new Error(errData.error || "Classification failed");
+        if (data.is_food === false) {
+          toast.error(data.reason || "Image does not appear to contain edible food.");
+          setImagePreview(null);
+          setSelectedFile(null);
+          setIsClassifying(false);
+          if (fileInputRef.current) fileInputRef.current.value = "";
+          return;
         }
-      } catch (error: unknown) {
-        toast.error((error as Error).message || "Failed to classify image");
-      } finally {
-        setIsClassifying(false);
-      }
-    };
 
-    reader.readAsDataURL(file);
+        setClassificationResult(data);
+
+        if (data.predicted_category) {
+          const valid = FOOD_CATEGORIES.find(
+            x => x.value === data.predicted_category
+          );
+          setFoodType(valid ? valid.value : "cooked_meal");
+        }
+        if (data.title) setTitle(data.title);
+        if (data.quantity_description) setQuantity(data.quantity_description);
+
+        toast.success("AI food extraction complete");
+      } else {
+        const errData = await response.json().catch(() => ({}));
+        throw new Error(errData.error || "Classification failed");
+      }
+    } catch (error: unknown) {
+      toast.error((error as Error).message || "Failed to classify image");
+    } finally {
+      setIsClassifying(false);
+    }
   };
 
   // ─── AI SUGGEST HANDLER (3s cooldown) ───────────────────────────────────────
