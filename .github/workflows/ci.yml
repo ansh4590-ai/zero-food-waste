@@ -30,15 +30,14 @@ jobs:
       - name: Build application
         run: npm run build
         env:
-          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
-          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
-          VITE_GOOGLE_MAPS_API_KEY: ${{ secrets.VITE_GOOGLE_MAPS_API_KEY }}
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL || 'http://127.0.0.1:56432' }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY || 'ci-publishable-placeholder' }}
 
       - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium
 
       - name: Run E2E tests
-        run: npm run test:e2e -- --project=chromium --reporter=html
+        run: npm run test:e2e -- --reporter=html
         env:
           CI: true
           PLAYWRIGHT_BASE_URL: http://localhost:3000
@@ -50,12 +49,9 @@ jobs:
           TEST_ADMIN_PASSWORD: ${{ secrets.TEST_ADMIN_PASSWORD }}
           TEST_RECEIVER_EMAIL: ${{ secrets.TEST_RECEIVER_EMAIL }}
           TEST_RECEIVER_PASSWORD: ${{ secrets.TEST_RECEIVER_PASSWORD }}
-          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
-          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
-          VITE_GOOGLE_MAPS_API_KEY: ${{ secrets.VITE_GOOGLE_MAPS_API_KEY }}
-          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-          ADMIN_SECRET_KEY: ${{ secrets.ADMIN_SECRET_KEY }}
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL || 'http://127.0.0.1:56432' }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY || 'ci-publishable-placeholder' }}
+          SUPABASE_SERVICE_ROLE_KEY: ci-service-placeholder
 
       - name: Upload Playwright report
         uses: actions/upload-artifact@v4

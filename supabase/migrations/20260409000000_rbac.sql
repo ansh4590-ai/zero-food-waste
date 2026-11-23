@@ -1,3 +1,24 @@
+-- Fresh projects need the same enum types as existing deployments.
+DO $$ BEGIN
+    CREATE TYPE public.user_role AS ENUM ('admin', 'donor', 'receiver', 'volunteer');
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+
+DO $$ BEGIN
+    CREATE TYPE public.listing_status AS ENUM ('active', 'reserved', 'accepted', 'picked_up', 'completed', 'expired', 'cancelled');
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+
+DO $$ BEGIN
+    CREATE TYPE public.request_status AS ENUM ('pending', 'accepted', 'approved', 'assigned', 'picked_up', 'delivered', 'fulfilled', 'completed', 'rejected', 'cancelled');
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+
+DO $$ BEGIN
+    CREATE TYPE public.volunteer_status AS ENUM ('open', 'pending_acceptance', 'assigned', 'in_progress', 'picked_up', 'delivered', 'completed', 'cancelled');
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+
 -- Adapted RBAC Schema for existing 'user_role' enum on public.profiles
 
 -- Create permissions table

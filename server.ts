@@ -8,15 +8,17 @@ import { RekognitionClient, CompareFacesCommand } from "@aws-sdk/client-rekognit
 import vision from "@google-cloud/vision";
 import cors from "cors";
 import compression from "compression";
-import rateLimit, { ipKeyGenerator } from "express-rate-limit";
+import rateLimit from "express-rate-limit";
 import helmet from "helmet";
+import { aiPrompts } from "./server/aiPrompts.js";
+import deployment from "./vercel.json" with { type: "json" };
 // `vite` is intentionally NOT imported here at the top level — it's a
 // dev-only tool, imported dynamically further down inside the
 // `!process.env.VERCEL` branch instead. A static top-level import here
 // would get bundled into the Vercel Function even though it's never used
 // there, which at best bloats the function and at worst fails to bundle.
 
-dotenv.config();
+dotenv.config({ path: [".env.local", ".env"] });
 
 // ─── PROCESS CRASH HANDLERS ──────────────────────────────────────────────────
 // Prevent the entire server from dying on unhandled errors.
@@ -49,80 +51,32 @@ const PORT = parseInt(process.env.PORT || '3000', 10);
 
   // ─── SECURITY & PERFORMANCE MIDDLEWARE ─────────────────────────────────────
   // CORS: restrict to known origins in production
-  const allowedOrigins = process.env.APP_URL
-    ? [process.env.APP_URL, `http://localhost:${PORT}`]
-    : [`http://localhost:${PORT}`];
+  const allowedOrigins = new Set([
+    process.env.APP_URL?.replace(/\/$/, ""),
+    process.env.VERCEL_URL && `https://${process.env.VERCEL_URL}`,
+    process.env.VERCEL_PROJECT_PRODUCTION_URL && `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`,
+    ...(process.env.NODE_ENV === "production" ? [] : [`http://localhost:${PORT}`, `http://127.0.0.1:${PORT}`]),
+  ].filter(Boolean));
   app.use(cors({
-    origin: (origin, callback) => {
-      // Allow requests with no origin (server-to-server, curl, mobile apps)
-      const isVercelPreview = origin && /^https:\/\/zero-food-waste[a-zA-Z0-9-]*\.vercel\.app$/.test(origin);
-      if (!origin || allowedOrigins.includes(origin) || isVercelPreview) {
-        callback(null, true);
-      } else {
-        callback(new Error('Not allowed by CORS'));
-      }
-    },
+    origin: (origin, callback) => callback(null, !origin || allowedOrigins.has(origin)),
     credentials: true,
   }));
 
-  // Standard security headers
-  // In development, CSP is set permissively to allow Vite HMR, Supabase,
-  // Firebase, Google APIs, and any other external services the frontend uses.
-  // In production, Helmet's defaults are overridden to allow Supabase + Firebase.
-  const supabaseHost = (process.env.VITE_SUPABASE_URL || "").replace(/\/$/, "");
-  app.use(
-    helmet({
-      contentSecurityPolicy: {
-        directives: {
-          defaultSrc: ["'self'"],
-          scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'", "https://maps.googleapis.com"],
-          styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com", "https://maps.googleapis.com"],
-          fontSrc: ["'self'", "https://fonts.gstatic.com"],
-          imgSrc: [
-            "'self'",
-            "data:",
-            "blob:",
-            "https:",
-            "https://maps.gstatic.com",
-            // Official OpenStreetMap tile servers
-            "https://tile.openstreetmap.org",
-            "https://*.tile.openstreetmap.org",
-          ],
-          connectSrc: [
-            "'self'",
-            // Vite HMR (dev only)
-            "http://localhost:*",
-            "ws://localhost:*",
-            // Supabase
-            supabaseHost,
-            `${supabaseHost}/`,
-            "https://*.supabase.co",
-            "wss://*.supabase.co",
-            // Google APIs (Vision, Gemini)
-            "https://*.googleapis.com",
-            "https://generativelanguage.googleapis.com",
-            // Google Places REST API
-            "https://places.googleapis.com",
-            // Open Source Routing Machine (OSRM)
-            "https://router.project-osrm.org",
-            // Photon OpenStreetMap Geocoding
-            "https://photon.komoot.io",
-            // OSM Nominatim (reverse geocoding)
-            "https://nominatim.openstreetmap.org",
-          ],
-          frameSrc: ["'none'"],
-          objectSrc: ["'none'"],
-        },
-      },
-    })
-  );
+  app.use(helmet({ contentSecurityPolicy: false }));
+  const productionHeaders = deployment.headers[0].headers;
+  app.use((_req, res, next) => {
+    if (process.env.NODE_ENV === "production") {
+      for (const { key, value } of productionHeaders) res.setHeader(key, value);
+    }
+    next();
+  });
 
   // Gzip/Brotli compression for all responses
   app.use(compression());
 
-  // Increase payload limit for base64 images.
-  // 5MB images become ~6.6MB when base64 encoded.
-  app.use(express.json({ limit: '10mb' }));
+  // Only image endpoints need space for 3 MiB of base64-encoded image data.
+  app.use(["/api/classify", "/api/tasks/:taskId/upload-proof"], express.json({ limit: "4200kb" }));
+  app.use(express.json({ limit: "64kb" }));
 
   // ─── RATE LIMITERS ─────────────────────────────────────────────────────────
   const aiLimiter = rateLimit({
@@ -133,19 +87,20 @@ const PORT = parseInt(process.env.PORT || '3000', 10);
     message: { error: 'Too many AI requests. Please wait 60 seconds.' },
   });
 
-  // Account-level AI rate limiter: 10 requests / min per authenticated user ID
-  const aiAccountLimiter = rateLimit({
-    windowMs: 60 * 1000,
-    max: 10,
-    standardHeaders: true,
-    legacyHeaders: false,
-    keyGenerator: (req: express.Request) => {
-      const user = (req as AuthenticatedRequest).user;
-      if (user?.id) return user.id;
-      return ipKeyGenerator(req.ip || '127.0.0.1');
-    },
-    message: { error: 'Too many AI requests from this user account. Please wait 60 seconds.' },
-  });
+  // Database-backed quota shared by chat and classification across function instances.
+  const aiAccountLimiter = async (req: AuthenticatedRequest, res: express.Response, next: express.NextFunction) => {
+    try {
+      const { data, error } = await supabaseAdmin.rpc("consume_ai_quota", { p_user_id: req.user!.id });
+      if (error) throw error;
+      if (data !== true) {
+        res.setHeader("Retry-After", "60");
+        return res.status(429).json({ error: "AI request limit reached. Try again in a minute." });
+      }
+      next();
+    } catch {
+      return res.status(503).json({ error: "AI service temporarily unavailable." });
+    }
+  };
 
   const kycLimiter = rateLimit({
     windowMs: 60 * 1000,
@@ -226,11 +181,15 @@ const PORT = parseInt(process.env.PORT || '3000', 10);
     return TILE_FALLBACK_TTL_MS;
   }
 
-  app.get('/api/tiles/osm/:z/:x/:y.png', async (req, res) => {
+  const tileLimiter = rateLimit({ windowMs: 60_000, limit: 240, standardHeaders: true, legacyHeaders: false });
+  const tileAppUrl = process.env.APP_URL || "https://github.com/ansh4590-ai/zero-food-waste";
+  const tileContact = process.env.OSM_CONTACT || "https://github.com/ansh4590-ai/zero-food-waste/issues";
+  app.get('/api/tiles/osm/:z/:x/:y.png', tileLimiter, async (req, res) => {
     const { z, x, y } = req.params;
 
     // Basic input validation — z/x/y must be numeric
-    if (!/^\d+$/.test(z) || !/^\d+$/.test(x) || !/^\d+$/.test(y)) {
+    if (![z, x, y].every(value => /^(0|[1-9]\d{0,6})$/.test(value)) ||
+        Number(z) > 19 || Number(x) >= 2 ** Number(z) || Number(y) >= 2 ** Number(z)) {
       return res.status(400).send('Invalid tile coordinates');
     }
 
@@ -251,9 +210,10 @@ const PORT = parseInt(process.env.PORT || '3000', 10);
     try {
       const osmUrl = `https://tile.openstreetmap.org/${z}/${x}/${y}.png`;
       const response = await fetch(osmUrl, {
+        signal: AbortSignal.timeout(8000),
         headers: {
-          'User-Agent': 'ZeroFoodWastePlatform/1.0 (https://zerofoodwaste.vercel.app; contact: admin@zerofoodwaste.org)',
-          'Referer': 'https://zerofoodwaste.vercel.app/',
+          'User-Agent': `ZeroFoodWastePlatform/1.0 (${tileAppUrl}; contact: ${tileContact})`,
+          'Referer': tileAppUrl,
         },
       });
 
@@ -377,7 +337,7 @@ const PORT = parseInt(process.env.PORT || '3000', 10);
   app.post("/api/classify", requireAuth, aiLimiter, aiAccountLimiter, async (req: AuthenticatedRequest, res) => {
     try {
       const { imageBase64 } = req.body;
-      if (!imageBase64) return res.status(400).json({ error: "imageBase64 is required" });
+      if (typeof imageBase64 !== "string" || !imageBase64) return res.status(400).json({ error: "imageBase64 is required" });
 
       // ─── MIME + SIZE VALIDATION ────────────────────────────────────────
       if (!imageBase64.startsWith('data:')) {
@@ -475,6 +435,8 @@ Return ONLY valid JSON with no markdown or extra text:
         return res.json({ is_food: false, reason: rawResult.reason || "No food detected in the image" });
       }
       
+      if (rawResult.is_food !== true) throw new Error("Missing classification");
+
       const categoryMap: Record<string, string> = {
         "Cooked Meals": "cooked_meal",
         "Fresh Produce": "raw_produce",
@@ -493,34 +455,20 @@ Return ONLY valid JSON with no markdown or extra text:
         is_food: true,
         title: rawResult.food_name || "Food Item",
         quantity_description: rawResult.quantity || "1 serving",
-        estimated_safe_hours: rawResult.safe_hours || 12,
-        confidence_score: rawResult.confidence || 80,
-        freshness_score: rawResult.freshness_score || 85,
+        estimated_safe_hours: rawResult.safe_hours ?? null,
+        confidence_score: rawResult.confidence ?? null,
+        freshness_score: rawResult.freshness_score ?? null,
         predicted_category: mappedCategory,   // overwrites raw
-        spoilage_risk: rawResult.spoilage_risk || "low",
-        priority_score: rawResult.priority_score || 50,
-        quality_status: rawResult.quality_status || "good",
+        spoilage_risk: rawResult.spoilage_risk ?? null,
+        priority_score: rawResult.priority_score ?? null,
+        quality_status: rawResult.quality_status ?? null,
         is_veg: rawResult["veg/nonveg"] === "veg",
       };
 
       res.json(finalResult);
     } catch (error: unknown) {
-      const errMsg = error instanceof Error ? error.message : String(error);
-      console.error("[classify] Gemini API error:", errMsg);
-      console.error("[classify] Full error:", error);
-      return res.status(503).json({
-        error: `AI classification failed: ${errMsg}`,
-        is_food: true,
-        title: "",
-        quantity_description: "",
-        freshness_score: null,
-        estimated_safe_hours: null,
-        confidence_score: 0,
-        predicted_category: "cooked_meal",
-        spoilage_risk: "medium",
-        priority_score: 50,
-        quality_status: "usable",
-      });
+      console.error("[classify] Food classification unavailable.");
+      return res.status(503).json({ error: "Food classification unavailable. Enter the details manually or try again." });
     }
   });
 
@@ -678,19 +626,19 @@ Return ONLY valid JSON with no markdown or extra text:
     },
   });
   
-  // On Vercel there's no local file to point GOOGLE_APPLICATION_CREDENTIALS at
-  // (it's currently an absolute path on your Windows machine, which won't
-  // exist there). Set GOOGLE_CREDENTIALS_JSON to the base64 of your whole
-  // google-cloud-key.json instead and this decodes it directly — no temp
-  // file needed. Locally, GOOGLE_APPLICATION_CREDENTIALS (a real file path)
-  // still works exactly as before if you leave GOOGLE_CREDENTIALS_JSON unset.
-  const visionClient = process.env.GOOGLE_CREDENTIALS_JSON
-    ? new vision.ImageAnnotatorClient({
-        credentials: JSON.parse(
-          Buffer.from(process.env.GOOGLE_CREDENTIALS_JSON, "base64").toString("utf-8")
-        ),
-      })
-    : new vision.ImageAnnotatorClient();
+  function createVisionClient() {
+    try {
+      const encoded = process.env.GOOGLE_CREDENTIALS_JSON;
+      if (!encoded) return new vision.ImageAnnotatorClient();
+      const credentials = JSON.parse(Buffer.from(encoded, "base64").toString("utf8"));
+      if (!credentials?.client_email || !credentials.private_key) throw new Error();
+      return new vision.ImageAnnotatorClient({ credentials });
+    } catch {
+      console.error("Vision credentials could not be loaded. KYC submissions require manual review.");
+      return null;
+    }
+  }
+  const visionClient = createVisionClient();
 
   const compareFaces = async (
     sourceImage: Buffer,
@@ -715,6 +663,7 @@ Return ONLY valid JSON with no markdown or extra text:
     imageBuffer: Buffer
   ): Promise<{ text: string; error?: string }> => {
     try {
+      if (!visionClient) return { text: "", error: "OCR unavailable" };
       const [result] = await visionClient.textDetection(imageBuffer);
       return { text: result.fullTextAnnotation?.text || "" };
     } catch (e: unknown) {
@@ -730,9 +679,6 @@ Return ONLY valid JSON with no markdown or extra text:
     const extractedAadhaar = aadhaarNumber?.[0]?.replace(/\s/g, " ") || null;
     const extractedName = nameMatch?.[1]?.trim() || null;
 
-    if (!extractedAadhaar && !extractedName && text.trim().length > 0) {
-      console.warn("Failed to extract Aadhaar or Name from text. Text preview:", text.substring(0, 100).replace(/\n/g, "\\n"));
-    }
     
     return {
       aadhaar: extractedAadhaar,
@@ -741,13 +687,13 @@ Return ONLY valid JSON with no markdown or extra text:
   };
 
   const runRealKyc = async (aadhaarBuffer: Buffer, selfieBuffer: Buffer) => {
-    if (aadhaarBuffer.length === 0 || selfieBuffer.length === 0) {
+    if (aadhaarBuffer.length === 0 || selfieBuffer.length === 0 || aadhaarBuffer.equals(selfieBuffer)) {
       return {
         kyc_score: null,
         face_match_score: null,
         extracted_data: { aadhaar: null, name: null },
         auto_status: "manual_review",
-        note: "Empty document data provided.",
+        note: "Separate, readable identity and selfie photos are required.",
       };
     }
 
@@ -779,7 +725,7 @@ Return ONLY valid JSON with no markdown or extra text:
         face_match_score: null,
         extracted_data: parsed,
         auto_status: "manual_review",
-        note: `Verification provider issue (${faceResult.error || ocrResult.error}); flagged for manual review.`,
+        note: "A verification provider was unavailable. Queued for manual review.",
       };
     }
 
@@ -804,15 +750,11 @@ Return ONLY valid JSON with no markdown or extra text:
     if (faceScore > 70) kycScore += 40;
     else if (faceScore > 50) kycScore += 20;
 
-    let status = "manual_review";
-    if (kycScore >= 80 && faceScore > 75) status = "approved";
-    else if (faceScore < 40) status = "rejected";
-
     return {
       kyc_score: Math.min(kycScore, 100),
       face_match_score: faceScore,
       extracted_data: parsed,
-      auto_status: status,
+      auto_status: "manual_review",
     };
   };
 
@@ -871,7 +813,7 @@ Return ONLY valid JSON with no markdown or extra text:
       // Securely persist verified/reviewed score to DB using service-role credentials.
       // If DB write fails, return a controlled error — never return success: true without
       // confirmed persistence to prevent scores being lost silently.
-      const { error: dbError } = await supabaseAdmin
+      const { data: saved, error: dbError } = await supabaseAdmin
         .from("profiles")
         .update({
           kyc_score: result.kyc_score,
@@ -880,7 +822,12 @@ Return ONLY valid JSON with no markdown or extra text:
           extracted_data: result.extracted_data,
           updated_at: new Date().toISOString(),
         })
-        .eq("id", userId);
+        .eq("id", userId)
+        .eq("verification_status", "pending")
+        .eq("documents->>aadhaar", aadhaar_path)
+        .eq("documents->>selfie", selfie_path)
+        .select("id")
+        .maybeSingle();
 
       if (dbError) {
         console.error("[kyc-verify] Failed to persist KYC result:", dbError);
@@ -889,6 +836,7 @@ Return ONLY valid JSON with no markdown or extra text:
         });
       }
 
+      if (!saved) return res.status(409).json({ error: "This submission has changed or was already reviewed." });
       res.json({ success: true, ...result });
     } catch (err: unknown) {
       console.error("KYC Processing error:", err);
@@ -1022,7 +970,7 @@ Return ONLY valid JSON with no markdown or extra text:
         return res.status(400).json({ error: "Invalid taskId format." });
       }
 
-      if (!imageBase64 || !proof_type) {
+      if (typeof imageBase64 !== "string" || !imageBase64 || !proof_type) {
         return res.status(400).json({ error: "imageBase64 and proof_type are required." });
       }
 
@@ -1057,9 +1005,9 @@ Return ONLY valid JSON with no markdown or extra text:
       const raw = imageBase64.replace(/^data:image\/\w+;base64,/, "");
       const buffer = Buffer.from(raw, 'base64');
 
-      // Enforce 5MB limit
-      if (buffer.length > 5 * 1024 * 1024) {
-        return res.status(400).json({ error: "Proof image exceeds 5MB size limit." });
+      // Keep the encoded request below the default host payload limit.
+      if (buffer.length > 3 * 1024 * 1024) {
+        return res.status(400).json({ error: "Proof image exceeds 3 MiB size limit." });
       }
 
       // Validate image magic bytes (JPEG, PNG, WebP)
@@ -1286,35 +1234,30 @@ Return ONLY valid JSON with no markdown or extra text:
   // ─── 25. GOOGLE GEMINI PROXY ────────────────────────────────────────────────
   // Replaces the local mock LLM with the production Gemini API key already in the project.
   // Adapts OpenAI's format from the frontend to Gemini's native format.
-  app.post("/api/llm/chat/completions", requireAuth, aiLimiter, async (req: AuthenticatedRequest, res) => {
+  app.post("/api/llm/chat/completions", requireAuth, aiLimiter, aiAccountLimiter, async (req: AuthenticatedRequest, res) => {
     if (!ai) {
       return res.status(503).json({ error: "Gemini API key not configured on server" });
     }
 
     try {
-      const { messages, temperature } = req.body;
-      
-      if (!Array.isArray(messages) || messages.length === 0) {
-        return res.json({ choices: [{ message: { content: "pong" } }] });
+      const { messages, feature = "assistant", temperature = 0.7 } = req.body;
+      if (typeof feature !== "string" || !Object.hasOwn(aiPrompts, feature) ||
+          !Array.isArray(messages) || !messages.length || messages.length > 9 ||
+          !Number.isFinite(temperature) || temperature < 0 || temperature > 1) {
+        return res.status(400).json({ error: "Invalid chat request." });
       }
-
-      let systemContext = "";
+      let totalLength = 0;
       const contents = [];
-      
-      for (const msg of messages) {
-        if (msg.role === "system") {
-          systemContext += msg.content + "\n\n";
-        } else {
-          contents.push({
-            role: msg.role === "assistant" ? "model" : "user",
-            parts: [{ text: msg.content }]
-          });
+      for (const message of messages) {
+        if (!message || !["assistant", "user"].includes(message.role) ||
+            typeof message.content !== "string" || !message.content.trim() || message.content.length > 4000) {
+          return res.status(400).json({ error: "Invalid chat message." });
         }
+        totalLength += message.content.length;
+        contents.push({ role: message.role === "user" ? "user" : "model", parts: [{ text: message.content }] });
       }
-
-      // Prepend system prompt to the first user message
-      if (systemContext && contents.length > 0 && contents[0].role === "user") {
-        contents[0].parts[0].text = `System Instructions:\n${systemContext}\n\nUser Request:\n${contents[0].parts[0].text}`;
+      if (totalLength > 20_000 || contents.at(-1)?.role !== "user") {
+        return res.status(400).json({ error: "Invalid conversation history." });
       }
 
       // Quick ping bypass for health checks
@@ -1326,7 +1269,9 @@ Return ONLY valid JSON with no markdown or extra text:
         model: process.env.GEMINI_MODEL || "gemini-2.5-flash",
         contents,
         config: {
-          temperature: temperature ?? 0.7,
+          temperature,
+          systemInstruction: aiPrompts[feature as keyof typeof aiPrompts],
+          maxOutputTokens: 1024,
         }
       });
 

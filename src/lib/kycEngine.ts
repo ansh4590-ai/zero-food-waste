@@ -21,8 +21,8 @@ export interface KycResult {
  */
 export const getAutoStatusLabel = (status: string): string => {
   switch (status) {
-    case 'approved':      return '🤖 Auto Approved';
-    case 'rejected':      return '❌ Auto Rejected';
+    case 'approved':      return 'Historical automated match';
+    case 'rejected':      return 'Historical automated flag';
     case 'manual_review': return '⏳ Manual Review';
     default:              return '⏳ Pending';
   }

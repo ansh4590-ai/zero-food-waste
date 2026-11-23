@@ -147,6 +147,9 @@ export default function MainLayout() {
               <Button
                 variant="ghost"
                 size="icon"
+                aria-label={isMobileMenuOpen ? "Close menu" : "Open menu"}
+                aria-expanded={isMobileMenuOpen}
+                aria-controls="mobile-main-menu"
                 onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
                 className="text-gray-500 dark:text-gray-400"
               >
@@ -162,7 +165,7 @@ export default function MainLayout() {
 
         {/* Mobile menu */}
         {isMobileMenuOpen && (
-          <div className="sm:hidden bg-background border-b border-border">
+          <div id="mobile-main-menu" className="sm:hidden bg-background border-b border-border">
             <div className="pt-2 pb-3 space-y-1">
               {navigation.map((item) => (
                 <Link
@@ -317,7 +320,7 @@ export default function MainLayout() {
       </button>
 
       {/* Mobile Sticky Navigation CTA */}
-      <div 
+      <nav aria-label="Mobile quick actions"
         className="sm:hidden fixed bottom-0 left-0 right-0 p-4 bg-background/95 backdrop-blur-md border-t border-border z-50 flex items-center justify-between gap-3 shadow-[0_-10px_40px_rgba(0,0,0,0.1)] dark:shadow-[0_-10px_40px_rgba(0,0,0,0.5)]"
         style={{ paddingBottom: 'calc(1rem + env(safe-area-inset-bottom))' }}
       >
@@ -327,7 +330,7 @@ export default function MainLayout() {
         <Button asChild className="w-full flex-1 h-12 text-base font-bold shadow-lg bg-[#2f6f57] hover:bg-[#235844] text-white dark:bg-white dark:text-black dark:hover:bg-gray-200 border-none">
           <Link to="/browse">Find Food</Link>
         </Button>
-      </div>
+      </nav>
     </div>
   );
 }

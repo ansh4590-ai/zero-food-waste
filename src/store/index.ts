@@ -14,7 +14,7 @@ interface AuthState {
   isInitialized: boolean;
   login: (user: User) => void;
   logout: () => Promise<void>;
-  initializeAuth: () => void;
+  initializeAuth: () => void | (() => void);
 }
 
 export const useAuthStore = create<AuthState>()((set, get) => ({
@@ -44,77 +44,49 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
               isAuthenticated: true,
               isInitialized: true,
             });
+            return;
           }
         }
       } catch {}
     }
 
-    // Safety timeout in case remote auth lookup hangs
-    setTimeout(() => {
-      if (!get().isInitialized) {
-        set((state) => ({ ...state, isInitialized: true }));
+    // Supabase emits INITIAL_SESSION and subsequent sign-in / sign-out events.
+    // Query profiles after releasing the auth callback's session lock.
+    let revision = 0;
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      const currentRevision = ++revision;
+      if (!session?.user) {
+        set({ user: null, isAuthenticated: false, isInitialized: true });
+        return;
       }
-    }, 1500);
-
-    // ── Supabase: check existing session on load ──────────────────────────────
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      if (session?.user) {
-        // Query authoritative profiles table for role instead of trusting client user_metadata
-        const { data: profile } = await supabase
-          .from("profiles")
+      const identity = session.user;
+      if (get().user && get().user?.id !== identity.id) {
+        set({ user: null, isAuthenticated: false, isInitialized: false });
+      }
+      setTimeout(async () => {
+        if (currentRevision !== revision) return;
+        const { data: profile } = await supabase.from("profiles")
           .select("role, full_name")
-          .eq("id", session.user.id)
+          .eq("id", identity.id)
+          .abortSignal(AbortSignal.timeout(8000))
           .maybeSingle();
-
+        if (currentRevision !== revision) return;
         set({
           user: {
-            id: session.user.id,
-            email: session.user.email || '',
-            role: profile?.role || 'donor',
-            fullName: profile?.full_name || session.user.user_metadata?.full_name || '',
+            id: identity.id,
+            email: identity.email || "",
+            role: profile?.role || "donor",
+            fullName: profile?.full_name || identity.user_metadata?.full_name || "",
           },
           isAuthenticated: true,
+          isInitialized: true,
         });
-      }
-      set((state) => ({ ...state, isInitialized: true }));
+      }, 0);
     });
-
-    // ── Supabase: listen for session changes (login / logout / token refresh) ─
-    supabase.auth.onAuthStateChange(async (_event, session) => {
-      if (session?.user) {
-        // Query authoritative profiles table for role instead of trusting client user_metadata
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("role, full_name")
-          .eq("id", session.user.id)
-          .maybeSingle();
-
-        const role = profile?.role || 'donor';
-
-        // Prevent unnecessary state updates on tab focus/token refresh if it's the same user
-        const current = get().user;
-        if (current && current.id === session.user.id && current.role === role) {
-          return;
-        }
-
-        set({
-          user: {
-            id: session.user.id,
-            email: session.user.email || '',
-            role,
-            fullName: profile?.full_name || session.user.user_metadata?.full_name || '',
-          },
-          isAuthenticated: true,
-        });
-      } else {
-        // Supabase session ended; only clear state if not in DEV test session
-        const isDevTestSession = import.meta.env.DEV && typeof window !== "undefined" &&
-          Boolean(window.localStorage.getItem("sb-test-auth-token") || window.localStorage.getItem("test_session"));
-        if (!isDevTestSession) {
-          set({ user: null, isAuthenticated: false });
-        }
-      }
-    });
+    return () => {
+      revision++;
+      subscription.unsubscribe();
+    };
   },
 }));
 

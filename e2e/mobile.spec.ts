@@ -76,7 +76,8 @@ test.describe('Mobile Responsiveness', () => {
     const viewport = page.viewportSize();
     if (viewport && viewport.width < 640) {
       // The sticky mobile footer CTA buttons
-      const donateBtn = page.getByRole('link', { name: /donate food|dashboard/i });
+      const footer = page.getByRole('navigation', { name: 'Mobile quick actions' });
+      const donateBtn = footer.getByRole('link', { name: /donate food|dashboard/i });
       await expect(donateBtn).toBeVisible();
     }
   });

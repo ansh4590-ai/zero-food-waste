@@ -42,7 +42,7 @@ const KycStatsCards: React.FC<KycStatsCardsProps> = React.memo(function KycStats
         <CardContent className="p-4 text-center">
           <Brain className="h-5 w-5 text-violet-500 mx-auto mb-1" />
           <span className="block text-2xl font-bold text-violet-600">{stats.autoApproved}</span>
-          <span className="text-[10px] text-muted-foreground uppercase tracking-wider">Auto Approved</span>
+          <span className="text-[10px] text-muted-foreground uppercase tracking-wider">Historical AI matches</span>
         </CardContent>
       </Card>
       <Card className="bg-card border-border">

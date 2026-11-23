@@ -28,7 +28,8 @@ ALTER TABLE public.food_listings ADD COLUMN IF NOT EXISTS expiry_time TIMESTAMPT
 -- Replaces the unsafe two-step update with a single locked transaction.
 -- Prevents race conditions where two volunteers claim the same task.
 
-CREATE OR REPLACE FUNCTION public.claim_volunteer_task(
+DROP FUNCTION IF EXISTS public.claim_volunteer_task(UUID, UUID);
+CREATE FUNCTION public.claim_volunteer_task(
     p_request_id  UUID,
     p_volunteer_id UUID
 )

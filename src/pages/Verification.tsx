@@ -190,11 +190,11 @@ export default function Verification() {
         </div>
         <h1 className="text-3xl font-extrabold text-foreground tracking-tight">Smart Identity Verification</h1>
         <p className="mt-3 text-lg text-gray-500">
-          Our AI-powered KYC engine verifies your identity in seconds. High-confidence submissions are approved instantly.
+          An administrator reviews your identity document and selfie before approving your account.
         </p>
       </div>
 
-      {/* ──── AUTO-APPROVED BANNER ──── */}
+      {/* ──── APPROVED BANNER ──── */}
       {status === 'approved' && (
         <Card className="border-emerald-200 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-950/30 shadow-sm mb-8 overflow-hidden relative">
           <div className="absolute top-0 left-0 w-1 h-full bg-emerald-500" />
@@ -235,7 +235,7 @@ export default function Verification() {
               <div>
                 <h3 className="text-xl font-bold text-amber-900 dark:text-amber-200 mb-1">Under AI + Human Review</h3>
                 <p className="text-amber-700 dark:text-amber-400 leading-relaxed max-w-lg">
-                  Your documents have been scored by our AI engine and are queued for final human verification. 
+                  Your documents are waiting for an administrator to review them.
                   This typically takes less than 24 hours.
                 </p>
                 {kycResult && (
@@ -354,8 +354,7 @@ export default function Verification() {
                   <div>
                     <h4 className="text-sm font-semibold text-violet-900 dark:text-violet-200">Smart KYC Engine</h4>
                     <p className="text-xs text-violet-700 dark:text-violet-400 mt-1 leading-relaxed">
-                      Your documents will be automatically scored by our AI engine. High-confidence submissions 
-                      (score ≥ 80, face match &gt; 70%) are approved instantly without manual review.
+                      Automated checks can help the reviewer compare your photos. An administrator makes the final decision.
                     </p>
                   </div>
                 </div>

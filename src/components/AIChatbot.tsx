@@ -205,6 +205,7 @@ export function AIChatbot() {
                 <input
                   ref={inputRef}
                   value={input}
+                  maxLength={2000}
                   onChange={(e) => setInput(e.target.value)}
                   onKeyDown={handleKeyDown}
                   placeholder="Ask me anything..."
