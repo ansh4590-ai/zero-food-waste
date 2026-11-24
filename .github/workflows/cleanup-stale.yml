@@ -17,6 +17,10 @@ jobs:
         run: |
           : "${APP_URL:?Set the APP_URL repository secret}"
           : "${CRON_SECRET:?Set the CRON_SECRET repository secret}"
-          curl --silent --show-error --fail --max-time 60 \
+          status=$(curl --silent --show-error --max-time 60 --write-out "%{http_code}" \
             --request POST "${APP_URL%/}/api/tasks/cleanup-stale" \
-            --header "Authorization: Bearer ${CRON_SECRET}" --output /dev/null
+            --header "Authorization: Bearer ${CRON_SECRET}" --output /dev/null)
+          if [ "$status" != 200 ]; then
+            echo "Cleanup endpoint returned HTTP $status. Expected HTTP 200." >&2
+            exit 1
+          fi

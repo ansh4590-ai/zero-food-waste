@@ -29,7 +29,7 @@ On Windows PowerShell, use `Copy-Item .env.example .env.local`. Fill in the Supa
 | `PORT` | Standalone server port. Defaults to 3000. |
 | `VITE_API_BASE_URL` | Optional API prefix for routes that use it. Keep the default `/api` for this same-origin deployment. |
 
-Only publishable settings belong in variables beginning with `VITE_`. The production Content Security Policy permits standard `*.supabase.co` endpoints. If using a custom Supabase domain, add its HTTPS and WSS origins to `connect-src` in `vercel.json`.
+Only publishable settings belong in variables beginning with `VITE_`. Set `VITE_SUPABASE_URL` for each deployment. Vercel adds its HTTP(S) and WebSocket origins to the production Content Security Policy at build time, and the standalone Express server uses the same policy with its runtime setting.
 
 ## Supabase setup
 

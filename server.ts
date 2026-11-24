@@ -11,7 +11,7 @@ import compression from "compression";
 import rateLimit from "express-rate-limit";
 import helmet from "helmet";
 import { aiPrompts } from "./server/aiPrompts.js";
-import deployment from "./vercel.json" with { type: "json" };
+import { productionHeaders } from "./server/productionHeaders.ts";
 // `vite` is intentionally NOT imported here at the top level — it's a
 // dev-only tool, imported dynamically further down inside the
 // `!process.env.VERCEL` branch instead. A static top-level import here
@@ -63,10 +63,10 @@ const PORT = parseInt(process.env.PORT || '3000', 10);
   }));
 
   app.use(helmet({ contentSecurityPolicy: false }));
-  const productionHeaders = deployment.headers[0].headers;
+  const headers = productionHeaders(process.env.VITE_SUPABASE_URL);
   app.use((_req, res, next) => {
     if (process.env.NODE_ENV === "production") {
-      for (const { key, value } of productionHeaders) res.setHeader(key, value);
+      for (const { key, value } of headers) res.setHeader(key, value);
     }
     next();
   });
@@ -1265,22 +1265,29 @@ Return ONLY valid JSON with no markdown or extra text:
         return res.json({ choices: [{ message: { content: "pong" } }] });
       }
 
+      const model = process.env.GEMINI_MODEL || "gemini-2.5-flash";
       const response = await ai.models.generateContent({
-        model: process.env.GEMINI_MODEL || "gemini-2.5-flash",
+        model,
         contents,
         config: {
           temperature,
           systemInstruction: aiPrompts[feature as keyof typeof aiPrompts],
-          maxOutputTokens: 1024,
+          maxOutputTokens: 4096,
+          ...(model === "gemini-2.5-flash" && { thinkingConfig: { thinkingBudget: 512 } }),
         }
       });
+
+      const answer = response.text?.trim();
+      if (!answer) {
+        return res.status(502).json({ error: "The AI service returned no answer. Please try again." });
+      }
 
       // Return in OpenAI format for the frontend aiService
       res.json({
         choices: [
           {
             message: {
-              content: response.text || ""
+              content: answer
             }
           }
         ]
@@ -1304,7 +1311,7 @@ Return ONLY valid JSON with no markdown or extra text:
   // automatically by Vercel, so none of this runs there — and it would be
   // dead weight if it did, since Vercel ignores express.static() entirely
   // and serves the built frontend through its own static hosting instead
-  // (configured via vercel.json's outputDirectory).
+  // (configured via vercel.ts's outputDirectory).
   if (!process.env.VERCEL) {
     (async () => {
       if (process.env.NODE_ENV !== "production") {
