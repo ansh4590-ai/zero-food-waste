@@ -37,18 +37,10 @@ jobs:
         run: npx playwright install --with-deps chromium
 
       - name: Run E2E tests
-        run: npm run test:e2e -- --reporter=html
+        run: npm run test:e2e -- --grep-invert "strict live Supabase authentication" --reporter=html
         env:
           CI: true
           PLAYWRIGHT_BASE_URL: http://localhost:3000
-          TEST_DONOR_EMAIL: ${{ secrets.TEST_DONOR_EMAIL }}
-          TEST_DONOR_PASSWORD: ${{ secrets.TEST_DONOR_PASSWORD }}
-          TEST_VOLUNTEER_EMAIL: ${{ secrets.TEST_VOLUNTEER_EMAIL }}
-          TEST_VOLUNTEER_PASSWORD: ${{ secrets.TEST_VOLUNTEER_PASSWORD }}
-          TEST_ADMIN_EMAIL: ${{ secrets.TEST_ADMIN_EMAIL }}
-          TEST_ADMIN_PASSWORD: ${{ secrets.TEST_ADMIN_PASSWORD }}
-          TEST_RECEIVER_EMAIL: ${{ secrets.TEST_RECEIVER_EMAIL }}
-          TEST_RECEIVER_PASSWORD: ${{ secrets.TEST_RECEIVER_PASSWORD }}
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL || 'http://127.0.0.1:56432' }}
           VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY || 'ci-publishable-placeholder' }}
           SUPABASE_SERVICE_ROLE_KEY: ci-service-placeholder
@@ -68,3 +60,15 @@ jobs:
           name: test-results
           path: test-results/
           retention-days: 7
+
+      # Run after artifact uploads so live credentials stay out of downloadable reports.
+      - name: Verify live donor login
+        run: npm run test:e2e -- --grep "strict live Supabase authentication" --reporter=dot --trace=off --output=live-test-results
+        env:
+          CI: true
+          PLAYWRIGHT_BASE_URL: http://localhost:3000
+          TEST_DONOR_EMAIL: ${{ secrets.TEST_DONOR_EMAIL }}
+          TEST_DONOR_PASSWORD: ${{ secrets.TEST_DONOR_PASSWORD }}
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL || 'http://127.0.0.1:56432' }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY || 'ci-publishable-placeholder' }}
+          SUPABASE_SERVICE_ROLE_KEY: ci-service-placeholder
