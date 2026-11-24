@@ -155,7 +155,7 @@ CREATE POLICY "listings_select_authorized" ON public.food_listings
     -- Reserved/completed: receiver of the linked request
     OR EXISTS (
       SELECT 1 FROM public.food_requests fr
-      WHERE fr.listing_id = id
+      WHERE fr.listing_id = food_listings.id
         AND fr.receiver_id = auth.uid()
         AND fr.status IN ('pending', 'assigned', 'picked_up', 'delivered', 'completed')
     )
@@ -165,7 +165,7 @@ CREATE POLICY "listings_select_authorized" ON public.food_listings
       AND EXISTS (
         SELECT 1 FROM public.food_requests fr
         JOIN public.volunteer_tasks vt ON vt.request_id = fr.id
-        WHERE fr.listing_id = id
+        WHERE fr.listing_id = food_listings.id
           AND vt.volunteer_id = auth.uid()
       )
     )

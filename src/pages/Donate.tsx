@@ -181,9 +181,16 @@ export default function Donate() {
       // This shrinks 3-10MB mobile phone photos down to ~150-400KB, staying safely
       // under Vercel's 4.5MB request-body cap and the 3MB /api/classify limit.
       const result = await compressImage(file, 1600, 0.8);
+      if (result.file.size > 3 * 1024 * 1024) {
+        toast.error("This photo is still too large after compression. Choose a smaller photo.");
+        setIsClassifying(false);
+        if (fileInputRef.current) fileInputRef.current.value = "";
+        return;
+      }
       compressedFile = result.file;
       base64String = result.dataUrl;
 
+      setClassificationResult(null);
       setSelectedFile(compressedFile);
       setImagePreview(base64String);
     } catch (compressionErr: unknown) {
@@ -432,12 +439,12 @@ export default function Donate() {
         pickup_lat: reviewData.mapCenter[0],
         pickup_lng: reviewData.mapCenter[1],
         status: "active",
-        estimated_safe_hours: classificationResult?.estimated_safe_hours || null,
+        estimated_safe_hours: classificationResult?.estimated_safe_hours ?? null,
         spoilage_risk: classificationResult?.spoilage_risk || null,
-        ai_confidence_score: classificationResult?.confidence_score || null,
-        priority_score: classificationResult?.priority_score || null,
+        ai_confidence_score: classificationResult?.confidence_score ?? null,
+        priority_score: classificationResult?.priority_score ?? null,
         detected_items: classificationResult?.detected_items || null,
-        freshness_score: classificationResult?.freshness_score || null,
+        freshness_score: classificationResult?.freshness_score ?? null,
         quality_status: classificationResult?.quality_status || null,
       });
       if (error) throw error;
@@ -633,11 +640,11 @@ export default function Donate() {
                           <p className={`font-bold ${
                             (classificationResult.priority_score ?? 0) >= 80 ? 'text-red-600' :
                             (classificationResult.priority_score ?? 0) >= 50 ? 'text-amber-600' : 'text-blue-600'
-                          }`}>{classificationResult.priority_score ? `${classificationResult.priority_score}/100` : 'N/A'}</p>
+                          }`}>{classificationResult.priority_score != null ? `${classificationResult.priority_score}/100` : 'N/A'}</p>
                         </div>
                         <div className="bg-background rounded p-2 text-center shadow-sm">
                           <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold">Freshness</p>
-                          <p className="font-bold text-green-600">{classificationResult.freshness_score ? `${classificationResult.freshness_score}/100` : 'N/A'}</p>
+                          <p className="font-bold text-green-600">{classificationResult.freshness_score != null ? `${classificationResult.freshness_score}/100` : 'N/A'}</p>
                         </div>
                         <div className="bg-background rounded p-2 text-center shadow-sm">
                           <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold">Quality</p>
@@ -650,7 +657,7 @@ export default function Donate() {
                         </div>
                         <div className="bg-background rounded p-2 text-center shadow-sm">
                           <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold">Confidence</p>
-                          <p className="font-bold text-purple-600">{classificationResult.confidence_score ? `${classificationResult.confidence_score}%` : 'N/A'}</p>
+                          <p className="font-bold text-purple-600">{classificationResult.confidence_score != null ? `${classificationResult.confidence_score}%` : 'N/A'}</p>
                         </div>
                       </div>
 
@@ -660,7 +667,7 @@ export default function Donate() {
                           <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold">Shelf Life</p>
                           <p className="font-bold text-foreground flex items-center justify-center gap-1">
                             <Clock className="h-3.5 w-3.5 text-muted-foreground" />
-                            {classificationResult.estimated_safe_hours ? `~${classificationResult.estimated_safe_hours}h` : 'N/A'}
+                            {classificationResult.estimated_safe_hours != null ? `~${classificationResult.estimated_safe_hours}h` : 'N/A'}
                           </p>
                         </div>
                         <div className="bg-background rounded p-2 text-center shadow-sm">
@@ -1022,7 +1029,7 @@ export default function Donate() {
                         <div className="text-center"><p className="text-xs text-muted-foreground">Priority</p><p className="font-bold text-sm text-foreground">{classificationResult.priority_score ?? 'N/A'}/100</p></div>
                         <div className="text-center"><p className="text-xs text-muted-foreground">Freshness</p><p className="font-bold text-sm text-emerald-600">{classificationResult.freshness_score ?? 'N/A'}/100</p></div>
                         <div className="text-center"><p className="text-xs text-muted-foreground">Quality</p><p className="font-bold text-sm text-foreground capitalize">{classificationResult.quality_status ?? 'N/A'}</p></div>
-                        <div className="text-center"><p className="text-xs text-muted-foreground">Shelf Life</p><p className="font-bold text-sm text-foreground">{classificationResult.estimated_safe_hours ? `~${classificationResult.estimated_safe_hours}h` : 'N/A'}</p></div>
+                        <div className="text-center"><p className="text-xs text-muted-foreground">Shelf Life</p><p className="font-bold text-sm text-foreground">{classificationResult.estimated_safe_hours != null ? `~${classificationResult.estimated_safe_hours}h` : 'N/A'}</p></div>
                       </div>
                     </div>
                   )}

@@ -115,7 +115,7 @@ export default function AppLayout() {
       />
 
       {/* ─── Sidebar ─── */}
-      <aside 
+      <aside id="app-sidebar"
         className={`app-sidebar ${isSidebarCollapsed ? 'app-sidebar-collapsed' : ''} ${isMobileMenuOpen ? 'app-sidebar-mobile-open' : ''}`}
       >
         {/* Sidebar Header */}
@@ -130,6 +130,7 @@ export default function AppLayout() {
           {/* Mobile close button inside sidebar */}
           <button 
             className="md:hidden p-2 -mr-2 text-sidebar-foreground/70 hover:text-sidebar-foreground"
+            aria-label="Close navigation menu"
             onClick={() => setIsMobileMenuOpen(false)}
           >
             <X className="h-5 w-5" />
@@ -229,6 +230,9 @@ export default function AppLayout() {
           {/* Mobile menu toggle */}
           <button 
             className="md:hidden p-2 -ml-2 text-muted-foreground hover:text-foreground"
+            aria-label="Open navigation menu"
+            aria-expanded={isMobileMenuOpen}
+            aria-controls="app-sidebar"
             onClick={() => setIsMobileMenuOpen(true)}
           >
             <Menu className="h-6 w-6" />

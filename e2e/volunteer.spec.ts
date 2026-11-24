@@ -13,6 +13,8 @@ test.describe('Volunteer Workflow', () => {
 
   test('volunteer can navigate to tasks page', async ({ page }) => {
     await page.goto('/dashboard');
+    const menu = page.getByRole('button', { name: 'Open navigation menu' });
+    if ((page.viewportSize()?.width ?? 1280) < 768) await menu.click();
     await page.getByRole('link', { name: /my tasks/i }).click();
     await expect(page).toHaveURL(/\/tasks/);
   });

@@ -11,6 +11,7 @@ CREATE TABLE IF NOT EXISTS public.profiles (
     full_name TEXT,
     role public.user_role DEFAULT 'donor'::public.user_role,
     phone TEXT,
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -25,9 +26,11 @@ CREATE TABLE IF NOT EXISTS public.food_listings (
     expiry_time TIMESTAMPTZ,
     pickup_window TEXT,
     location_name TEXT,
+    pickup_lat FLOAT8,
+    pickup_lng FLOAT8,
     latitude FLOAT8,
     longitude FLOAT8,
-    status TEXT DEFAULT 'active',  -- active | accepted | picked_up | completed | expired
+    status public.listing_status DEFAULT 'active',  -- active | accepted | picked_up | completed | expired
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -42,7 +45,7 @@ CREATE TABLE IF NOT EXISTS public.food_requests (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     listing_id UUID REFERENCES public.food_listings(id) ON DELETE CASCADE,
     receiver_id UUID REFERENCES public.profiles(id) NOT NULL,
-    status TEXT DEFAULT 'pending',  -- pending | approved | fulfilled | rejected
+    status public.request_status DEFAULT 'pending',  -- pending | approved | fulfilled | rejected
     receiver_rating INTEGER,
     receiver_feedback TEXT,
     created_at TIMESTAMPTZ DEFAULT NOW(),
@@ -63,7 +66,7 @@ CREATE TABLE IF NOT EXISTS public.volunteer_tasks (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     request_id UUID REFERENCES public.food_requests(id) ON DELETE CASCADE,
     volunteer_id UUID REFERENCES public.profiles(id),
-    status TEXT DEFAULT 'open',  -- open | assigned | picked_up | delivered | completed
+    status public.volunteer_status DEFAULT 'open',  -- open | assigned | picked_up | delivered | completed
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW(),
     completed_at TIMESTAMPTZ,
