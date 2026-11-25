@@ -6,12 +6,17 @@ import { test, expect } from '@playwright/test';
 import { loginAs } from './helpers/auth';
 
 async function pickFutureDateTime(page: import('@playwright/test').Page, triggerText: RegExp, hourStr: string) {
-  await page.getByRole('button', { name: triggerText }).click();
+  const trigger = page.getByRole('button', { name: triggerText });
+  await trigger.evaluate((el) => el.scrollIntoView({ block: 'center' }));
+  await trigger.click();
+  const confirmBtn = page.getByRole('button', { name: 'Confirm', exact: true });
+  await confirmBtn.waitFor({ state: 'visible', timeout: 5_000 });
+  const portal = page.locator('body > div').filter({ has: confirmBtn }).last();
   // Advance one month so day 15 is always in the future
-  await page.locator('div.fixed button:has(svg.lucide-chevron-right)').click();
-  await page.locator('div.fixed button:not([disabled])', { hasText: /^15$/ }).first().click();
-  await page.locator('div.fixed div:has(> div:text-is("Hr")) button', { hasText: new RegExp(`^${hourStr}$`) }).first().click();
-  await page.getByRole('button', { name: 'Confirm', exact: true }).click();
+  await portal.locator('button:has(svg.lucide-chevron-right)').click({ force: true });
+  await portal.locator('button:not([disabled])', { hasText: /^15$/ }).first().click({ force: true });
+  await portal.locator('div:has(> div:text-is("Hr")) button', { hasText: new RegExp(`^${hourStr}$`) }).first().click({ force: true });
+  await confirmBtn.click({ force: true });
 }
 
 test.describe('Donation Lifecycle', () => {
@@ -343,6 +348,118 @@ test.describe('Donation Lifecycle', () => {
     await page.getByRole('button', { name: /confirm & publish/i }).click();
     await expect(page.getByText(/listing published!/i)).toBeVisible({ timeout: 10_000 });
     expect(uploadCalls).toBe(1);
+    expect(deleteCalls).toBe(0);
+  });
+
+  test('editing quantity after timeout retries original listingId and does not publish a second listing when original commits late', async ({ page }) => {
+    await page.route('**/api/classify', route => route.fulfill({
+      json: { is_food: true, title: 'Curry Trays', predicted_category: 'cooked_meal' },
+    }));
+    await page.route('https://photon.komoot.io/api/*', route => route.fulfill({
+      json: {
+        features: [{
+          geometry: { coordinates: [77.209, 28.6139] },
+          properties: { osm_id: 4, name: 'Connaught Place', city: 'Delhi', state: 'DL', country: 'India' },
+        }],
+      },
+    }));
+
+    const postedIds: string[] = [];
+    const postedQuantities: string[] = [];
+    let deleteCalls = 0;
+    let postAttempt = 0;
+    let getAttempt = 0;
+    let savedImageUrl = '';
+
+    await page.route('**/storage/v1/object/food_images/**', async (route) => {
+      if (route.request().method() === 'DELETE') {
+        deleteCalls += 1;
+        return route.fulfill({ status: 200, json: [] });
+      }
+      return route.fulfill({ status: 200, json: { Key: 'food_images/test.png' } });
+    });
+
+    await page.route('**/rest/v1/food_listings*', async (route) => {
+      if (route.request().method() === 'POST') {
+        postAttempt += 1;
+        const body = route.request().postDataJSON();
+        postedIds.push(body.id);
+        postedQuantities.push(body.quantity_description);
+        savedImageUrl = body.image_url;
+        if (postAttempt === 1) {
+          return route.abort('timedout');
+        }
+        return route.fulfill({
+          status: 409,
+          contentType: 'application/json',
+          json: { code: '23505', message: 'duplicate key value violates unique constraint' },
+        });
+      }
+      if (route.request().method() === 'GET') {
+        getAttempt += 1;
+        if (getAttempt === 1) {
+          return route.fulfill({ status: 200, contentType: 'application/json', json: null });
+        }
+        return route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          json: { id: postedIds[0], image_url: savedImageUrl },
+        });
+      }
+      return route.continue();
+    });
+
+    await page.goto('/donate');
+
+    const upload = page.locator('input[type="file"]');
+    await upload.waitFor({ state: 'attached' });
+    await upload.evaluate(async (el: HTMLInputElement) => {
+      const canvas = document.createElement('canvas');
+      canvas.width = 40;
+      canvas.height = 40;
+      const ctx = canvas.getContext('2d')!;
+      ctx.fillStyle = '#22c55e';
+      ctx.fillRect(0, 0, 40, 40);
+      const blob = await new Promise<Blob>(r => canvas.toBlob(b => r(b!), 'image/png'));
+      const dt = new DataTransfer();
+      dt.items.add(new File([blob], 'food.png', { type: 'image/png' }));
+      el.files = dt.files;
+      el.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+
+    await page.locator('#title').fill('Curry Trays');
+    await page.locator('#quantity').fill('10 trays');
+
+    await pickFutureDateTime(page, /pick expiry date & time/i, '14');
+    await pickFutureDateTime(page, /start time/i, '10');
+    await pickFutureDateTime(page, /end time/i, '12');
+
+    const addressInput = page.locator('#address');
+    await addressInput.fill('Connaught Place');
+    const suggestion = page.locator('ul li', { hasText: 'Connaught Place' }).first();
+    await suggestion.waitFor({ state: 'visible', timeout: 10_000 });
+    await suggestion.click();
+
+    await page.getByRole('button', { name: /next: review/i }).click();
+    await expect(page.getByRole('heading', { name: /review your donation/i })).toBeVisible({ timeout: 5_000 });
+
+    // First attempt times out
+    await page.getByRole('button', { name: /confirm & publish/i }).click();
+    await expect(page.getByRole('button', { name: /confirm & publish/i })).toBeEnabled({ timeout: 10_000 });
+
+    // Donor goes Back to Edit and changes quantity from 10 trays to 20 trays
+    await page.getByRole('button', { name: /back to edit/i }).click();
+    await page.locator('#quantity').fill('20 trays');
+    await page.getByRole('button', { name: /next: review/i }).click();
+    await expect(page.getByRole('heading', { name: /review your donation/i })).toBeVisible({ timeout: 5_000 });
+
+    // Retry: lookup sees no row, so it MUST retry original listingId & 10 trays (not 20 trays)
+    await page.getByRole('button', { name: /confirm & publish/i }).click();
+    await expect(page.getByText(/previous donation was already published before your edits/i)).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByText(/listing published!/i)).toHaveCount(0);
+    expect(postedIds).toHaveLength(2);
+    expect(postedIds[1]).toBe(postedIds[0]);
+    expect(postedQuantities).toEqual(['10 trays', '10 trays']);
     expect(deleteCalls).toBe(0);
   });
 

@@ -31,8 +31,14 @@ export function evaluateSpoilageRisk(rawBody: unknown, nowMs: number = Date.now(
     return { status: 400, body: { error: "Request body must be a JSON object." } };
   }
 
-  const { food_type, preparation_time, current_temperature_celsius, travel_distance_km, storage_type } =
-    rawBody as Record<string, unknown>;
+  const {
+    food_type,
+    preparation_time,
+    current_temperature_celsius,
+    travel_distance_km,
+    storage_type,
+    continuous_refrigeration_verified,
+  } = rawBody as Record<string, unknown>;
 
   if (
     typeof food_type !== "string" ||
@@ -72,6 +78,12 @@ export function evaluateSpoilageRisk(rawBody: unknown, nowMs: number = Date.now(
   if (travel_distance_km !== undefined && travel_distance_km !== null) {
     if (typeof travel_distance_km !== "number" || !Number.isFinite(travel_distance_km) || travel_distance_km < 0) {
       return { status: 400, body: { error: "travel_distance_km must be a non-negative finite number." } };
+    }
+  }
+
+  if (continuous_refrigeration_verified !== undefined && continuous_refrigeration_verified !== null) {
+    if (typeof continuous_refrigeration_verified !== "boolean") {
+      return { status: 400, body: { error: "continuous_refrigeration_verified must be a boolean." } };
     }
   }
 
@@ -135,7 +147,8 @@ export function evaluateSpoilageRisk(rawBody: unknown, nowMs: number = Date.now(
     };
   }
 
-  // Refrigerated rule: requires verified temperature <= 4°C (FDA refrigeration threshold) + preparation_time.
+  // Refrigerated rule: requires BOTH verified temperature <= 4°C (FDA refrigeration threshold)
+  // AND continuous_refrigeration_verified === true + preparation_time.
   if (current_temperature_celsius > 4) {
     return {
       status: 200,
@@ -143,6 +156,18 @@ export function evaluateSpoilageRisk(rawBody: unknown, nowMs: number = Date.now(
         spoilage_risk: "unknown",
         estimated_safe_hours: null,
         recommendation: "Refrigerated storage requires a verified temperature at or below 4°C.",
+        method: "heuristic_rule_based",
+      },
+    };
+  }
+
+  if (continuous_refrigeration_verified !== true) {
+    return {
+      status: 200,
+      body: {
+        spoilage_risk: "unknown",
+        estimated_safe_hours: null,
+        recommendation: "Continuous refrigeration history cannot be verified from a single cold temperature reading.",
         method: "heuristic_rule_based",
       },
     };

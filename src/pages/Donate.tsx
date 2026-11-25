@@ -125,6 +125,7 @@ export default function Donate() {
     draftKey: string;
     fileName: string | null;
     imageUrl: string | null;
+    payload: Record<string, unknown> | null;
     hadInFlightAttempt: boolean;
   } | null>(null);
 
@@ -513,13 +514,52 @@ export default function Donate() {
           return;
         }
 
-        // Lookup returned no row; if the donor edited the draft, only delete old upload if no attempt was ever in flight.
+        // Lookup returned no row; if the donor edited the draft:
         if (existingPending.draftKey !== draftKey) {
-          if (!existingPending.hadInFlightAttempt && existingPending.fileName) {
-            const { error: rmErr } = await supabase.storage.from("food_images").remove([existingPending.fileName]);
-            if (rmErr) console.warn("Failed to remove superseded upload:", rmErr);
+          if (!existingPending.hadInFlightAttempt) {
+            if (existingPending.fileName) {
+              const { error: rmErr } = await supabase.storage.from("food_images").remove([existingPending.fileName]);
+              if (rmErr) console.warn("Failed to remove superseded upload:", rmErr);
+            }
+            pendingSubmissionRef.current = null;
+          } else if (existingPending.payload) {
+            // An earlier insert may still be in flight: retry the ORIGINAL listingId and payload
+            // rather than generating a second listing ID and risking two published donations.
+            const { error: retryErr } = await supabase.from("food_listings").insert(existingPending.payload);
+            if (!retryErr) {
+              pendingSubmissionRef.current = null;
+              toast.error("Your previous donation was already published before your edits. Use 'Donate More' to submit a new listing.");
+              return;
+            }
+            if (retryErr.code === "23505") {
+              const { data: confirmedRow, error: confirmErr } = await supabase
+                .from("food_listings")
+                .select("id, image_url")
+                .eq("id", existingPending.listingId)
+                .maybeSingle();
+
+              if (confirmErr || !confirmedRow) {
+                toast.error("Could not confirm your previous listing status. Please retry.");
+                return;
+              }
+              if (
+                confirmedRow.image_url &&
+                existingPending.imageUrl &&
+                confirmedRow.image_url !== existingPending.imageUrl &&
+                existingPending.fileName
+              ) {
+                const { error: rmErr } = await supabase.storage.from("food_images").remove([existingPending.fileName]);
+                if (rmErr) console.warn("Failed to remove redundant upload:", rmErr);
+              }
+              pendingSubmissionRef.current = null;
+              toast.error("Your previous donation was already published before your edits. Use 'Donate More' to submit a new listing.");
+              return;
+            }
+            throw retryErr;
+          } else {
+            toast.error("Your previous submission outcome is still unresolved. Please retry.");
+            return;
           }
-          pendingSubmissionRef.current = null;
         }
       }
 
@@ -538,6 +578,7 @@ export default function Donate() {
           draftKey,
           fileName: null,
           imageUrl: null,
+          payload: null,
           hadInFlightAttempt: false,
         };
         pendingSubmissionRef.current = pending;
@@ -550,12 +591,9 @@ export default function Donate() {
       }
 
       const { listingId, fileName, imageUrl } = pending;
-      const hadPriorInFlight = pending.hadInFlightAttempt;
-      pending.hadInFlightAttempt = true;
-
       const startD = new Date(reviewData.pickupStart);
       const endD = new Date(reviewData.pickupEnd);
-      const { error } = await supabase.from("food_listings").insert({
+      const insertPayload = {
         id: listingId,
         donor_id: user.id,
         title: reviewData.title || `${reviewData.quantity} of ${reviewData.foodType} food`,
@@ -577,7 +615,12 @@ export default function Donate() {
         detected_items: classificationResult?.detected_items || null,
         freshness_score: classificationResult?.freshness_score ?? null,
         quality_status: classificationResult?.quality_status || null,
-      });
+      };
+      pending.payload = insertPayload;
+      const hadPriorInFlight = pending.hadInFlightAttempt;
+      pending.hadInFlightAttempt = true;
+
+      const { error } = await supabase.from("food_listings").insert(insertPayload);
 
       if (error) {
         if (error.code === "23505") {

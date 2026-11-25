@@ -50,7 +50,7 @@ test("spoilage: refrigerated submission with inconsistent temperature (>4C) retu
   }
 });
 
-test("spoilage: refrigerated submission with verified <=4C temperature returns remaining safe hours", () => {
+test("spoilage: single cold reading without continuous refrigeration history returns unknown and null", () => {
   const now = Date.UTC(2026, 10, 25, 12, 0, 0);
   const twoHoursAgo = new Date(now - 2 * 60 * 60 * 1000).toISOString();
 
@@ -59,6 +59,28 @@ test("spoilage: refrigerated submission with verified <=4C temperature returns r
       food_type: "cooked_meal",
       storage_type: "refrigerated",
       current_temperature_celsius: 3,
+      preparation_time: twoHoursAgo,
+    },
+    now
+  );
+
+  assert.equal(res.status, 200);
+  if (res.status === 200) {
+    assert.equal(res.body.spoilage_risk, "unknown");
+    assert.equal(res.body.estimated_safe_hours, null);
+  }
+});
+
+test("spoilage: refrigerated submission with verified <=4C temperature and continuous refrigeration returns remaining safe hours", () => {
+  const now = Date.UTC(2026, 10, 25, 12, 0, 0);
+  const twoHoursAgo = new Date(now - 2 * 60 * 60 * 1000).toISOString();
+
+  const res = evaluateSpoilageRisk(
+    {
+      food_type: "cooked_meal",
+      storage_type: "refrigerated",
+      current_temperature_celsius: 3,
+      continuous_refrigeration_verified: true,
       preparation_time: twoHoursAgo,
     },
     now
