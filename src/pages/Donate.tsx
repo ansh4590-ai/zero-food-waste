@@ -396,9 +396,7 @@ export default function Donate() {
     if (endD.getTime() - startD.getTime() < 15 * 60000) {
       return "Pickup window must be at least 15 minutes long.";
     }
-    if (startD.getTime() < Date.now() - 5 * 60000) {
-      return "Pickup start time cannot be significantly in the past.";
-    }
+    // Only block if the entire pickup window has already closed (end is in the past).
     if (endD.getTime() <= Date.now()) {
       return "Pickup window has already closed.";
     }
@@ -421,11 +419,12 @@ export default function Donate() {
       return;
     }
 
-    const form = e.currentTarget as HTMLFormElement;
     const address = addressInput.trim();
-    const expiryStr = (form.elements.namedItem("expiry") as HTMLInputElement).value;
-    const pickupStart = (form.elements.namedItem("pickupStart") as HTMLInputElement).value;
-    const pickupEnd = (form.elements.namedItem("pickupEnd") as HTMLInputElement).value;
+    // Use React state directly — hidden inputs inside DateTimePicker may not be
+    // surfaced reliably via form.elements in all browsers.
+    const expiryStr = expiry;
+    const pickupStartVal = pickupStart;
+    const pickupEndVal = pickupEnd;
 
     if (!title.trim() || title.trim().length < 3) {
       toast.error("Please provide a descriptive title (at least 3 characters).");
@@ -445,7 +444,7 @@ export default function Donate() {
       return;
     }
 
-    const scheduleError = validateScheduleWindow(expiryStr, pickupStart, pickupEnd);
+    const scheduleError = validateScheduleWindow(expiryStr, pickupStartVal, pickupEndVal);
     if (scheduleError) {
       toast.error(scheduleError);
       return;
@@ -456,7 +455,7 @@ export default function Donate() {
       confirmedLocationRef.current.lng,
     ];
 
-    setReviewData({ title, quantity, foodType, expiry: expiryStr, pickupStart, pickupEnd, address, imagePreview, mapCenter: confirmedCoords });
+    setReviewData({ title, quantity, foodType, expiry: expiryStr, pickupStart: pickupStartVal, pickupEnd: pickupEndVal, address, imagePreview, mapCenter: confirmedCoords });
     setCurrentStep(2);
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
