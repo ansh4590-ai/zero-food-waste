@@ -160,7 +160,7 @@ export default function Analytics() {
         <Card>
           <CardContent className="p-6">
             <div className="flex items-center gap-4">
-              <div className="p-3 bg-blue-500/10 rounded-lg text-blue-500">
+              <div className="p-3 bg-blue-500/10 rounded-lg text-info">
                 <Clock className="w-6 h-6" />
               </div>
               <div>
@@ -175,12 +175,12 @@ export default function Analytics() {
         <Card>
           <CardContent className="p-6">
             <div className="flex items-center gap-4">
-              <div className={`p-3 rounded-lg ${stats.monthOverMonth >= 0 ? 'bg-emerald-500/10 text-emerald-500' : 'bg-red-500/10 text-red-500'}`}>
+              <div className={`p-3 rounded-lg ${stats.monthOverMonth >= 0 ? 'bg-emerald-500/10 text-success' : 'bg-red-500/10 text-destructive'}`}>
                 {stats.monthOverMonth >= 0 ? <TrendingUp className="w-6 h-6" /> : <TrendingDown className="w-6 h-6" />}
               </div>
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Month over Month</p>
-                <h3 className={`text-2xl font-bold ${stats.monthOverMonth >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
+                <h3 className={`text-2xl font-bold ${stats.monthOverMonth >= 0 ? 'text-success' : 'text-destructive'}`}>
                   {isLoading ? "-" : `${stats.monthOverMonth >= 0 ? '+' : ''}${stats.monthOverMonth}%`}
                 </h3>
               </div>
@@ -203,13 +203,13 @@ export default function Analytics() {
             ) : (
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={stats.weeklyData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                  <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#64748b', fontSize: 12}} dy={10} />
-                  <YAxis axisLine={false} tickLine={false} tick={{fill: '#64748b', fontSize: 12}} />
+                  <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: 'var(--muted-foreground)', fontSize: 12}} dy={10} />
+                  <YAxis axisLine={false} tickLine={false} tick={{fill: 'var(--muted-foreground)', fontSize: 12}} />
                   <Tooltip 
                     cursor={{fill: 'rgba(255,255,255,0.05)'}}
-                    contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '8px' }}
+                    contentStyle={{ backgroundColor: 'var(--card)', border: '1px solid var(--border)', borderRadius: '8px' }}
                   />
-                  <Bar dataKey="meals" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} maxBarSize={50} />
+                  <Bar dataKey="meals" fill="var(--primary)" radius={[4, 4, 0, 0]} maxBarSize={50} />
                 </BarChart>
               </ResponsiveContainer>
             )}
@@ -247,7 +247,7 @@ export default function Analytics() {
                     ))}
                   </Pie>
                   <Tooltip 
-                    contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '8px' }}
+                    contentStyle={{ backgroundColor: 'var(--card)', border: '1px solid var(--border)', borderRadius: '8px' }}
                   />
                   <Legend verticalAlign="bottom" height={36} iconType="circle" />
                 </PieChart>

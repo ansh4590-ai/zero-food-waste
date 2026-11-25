@@ -187,9 +187,9 @@ interface JoinedTaskRow {
 function getRiskColor(risk: string | null | undefined) {
   if (!risk) return "bg-gray-500/20 text-gray-400 border-gray-500/30";
   const str = risk.toLowerCase();
-  if (str === "high" || str === "critical") return "bg-red-500/20 text-red-500 border-red-500/30";
-  if (str === "medium") return "bg-amber-500/20 text-amber-500 border-amber-500/30";
-  return "bg-emerald-500/20 text-emerald-500 border-emerald-500/30";
+  if (str === "high" || str === "critical") return "bg-red-500/20 text-destructive border-red-500/30";
+  if (str === "medium") return "bg-amber-500/20 text-warning border-amber-500/30";
+  return "bg-emerald-500/20 text-success border-emerald-500/30";
 }
 
 function getSafeExpirationInfo(expiryTime: string | null) {
@@ -715,7 +715,7 @@ export default function Volunteer() {
     calculateRoutes(true);
     toast.success('Navigation started', {
       description: 'Route displayed on map with turn-by-turn directions.',
-      style: { background: '#171a1a', color: '#f5f3ef', border: '1px solid #3b82f6' },
+      style: { borderColor: 'var(--info)' },
       duration: 3000,
     });
   }, [calculateRoutes]);
@@ -782,7 +782,7 @@ export default function Volunteer() {
 
       toast.success("Route Dispatched!", {
         description: "OSRM is calculating your optimal path. Proceed to pickup location.",
-        style: { background: "#171a1a", color: "#f5f3ef", border: "1px solid #10b981" },
+        style: { borderColor: 'var(--success)' },
       });
       await fetchTasks();
     } catch (err: unknown) {
@@ -821,12 +821,12 @@ export default function Volunteer() {
     if (newStatus === 'picked_up') {
       toast.success("Pickup Confirmed via QR! 📱", {
         description: "Rerouting to delivery address. Scan receiver's QR code on arrival.",
-        style: { background: "#171a1a", color: "#f5f3ef", border: "1px solid #3b82f6" },
+        style: { borderColor: 'var(--info)' },
       });
     } else if (newStatus === 'delivered') {
       toast.success("Delivery Verified via QR! ✅", {
         description: "Thank you for making a difference today.",
-        style: { background: "#171a1a", color: "#f5f3ef", border: "1px solid #10b981" },
+        style: { borderColor: 'var(--success)' },
       });
       setActiveTaskId(null);
       setTaskToComplete(null);
@@ -882,7 +882,7 @@ export default function Volunteer() {
 
       toast.success("Task aborted successfully", {
         description: "The food request is returned to the pool.",
-        style: { background: "#171a1a", color: "#f5f3ef", border: "1px solid #ef4444" }
+        style: { borderColor: 'var(--destructive)' }
       });
 
       setMyTasks(prev => prev.filter(t => t.id !== abortModal.taskId));
@@ -922,7 +922,7 @@ export default function Volunteer() {
 
 
   return (
-    <div className="flex flex-col h-[calc(100vh-64px)] bg-[#0f1111] font-sans overflow-hidden text-white">
+    <div className="flex flex-col h-[calc(100vh-64px)] bg-background font-sans overflow-hidden text-foreground">
       <style>{`
           .custom-popup .leaflet-popup-content-wrapper { background: transparent !important; padding: 0 !important; box-shadow: none !important; border-radius: 12px; overflow: hidden; }
           .custom-popup .leaflet-popup-tip-container { display: none !important; }
@@ -933,10 +933,10 @@ export default function Volunteer() {
       {verificationStatus !== "approved" && verificationStatus !== "loading" && (
         <div className="neon-card neon-border-red mx-0 rounded-none border-x-0 border-t-0 px-6 py-3 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-3">
-            <ShieldCheck className="w-5 h-5 text-red-400 shrink-0" />
-            <p className="text-sm font-medium text-white/90">Aadhaar KYC required to access live dispatches.</p>
+            <ShieldCheck className="w-5 h-5 text-destructive shrink-0" />
+            <p className="text-sm font-medium text-foreground">Aadhaar KYC required to access live dispatches.</p>
           </div>
-          <Button asChild size="sm" className="bg-red-500/20 text-red-400 border border-red-500/40 hover:bg-red-500/30 h-8">
+          <Button asChild size="sm" className="bg-red-500/20 text-destructive border border-red-500/40 hover:bg-red-500/30 h-8">
             <Link to="/verify">Complete KYC</Link>
           </Button>
         </div>
@@ -944,7 +944,7 @@ export default function Volunteer() {
 
       {/* Offline Banner */}
       {isOffline && (
-        <div className="bg-amber-500/10 border-b border-amber-500/25 px-6 py-2 flex justify-center text-sm font-semibold text-amber-400 items-center gap-2 glow-pulse">
+        <div className="bg-amber-500/10 border-b border-amber-500/25 px-6 py-2 flex justify-center text-sm font-semibold text-warning items-center gap-2 glow-pulse">
           <WifiOff className="w-4 h-4" /> Offline — Live dispatch suspended.
         </div>
       )}
@@ -953,13 +953,13 @@ export default function Volunteer() {
       <div className={`flex-1 grid grid-cols-1 grid-rows-[1fr_45vw] sm:grid-rows-[1fr_40vh] lg:grid-rows-1 lg:grid-cols-[460px_1fr] overflow-hidden ${verificationStatus !== "approved" ? "opacity-40 grayscale-[80%] pointer-events-none" : ""}`}>
 
         {/* ── LEFT PANEL ── */}
-        <div className="flex flex-col h-full overflow-hidden bg-[#0a0c0c] border-r border-white/5 z-10 shadow-2xl">
+        <div className="flex flex-col h-full overflow-hidden bg-background border-r border-border z-10 shadow-2xl">
 
           {/* Header */}
-          <div className="p-5 shrink-0 flex items-center justify-between border-b border-white/5">
+          <div className="p-5 shrink-0 flex items-center justify-between border-b border-border">
             <div>
-              <h2 className="text-xl font-bold tracking-tight text-white">Dispatch Hub</h2>
-              <p className="text-[10px] text-white/40 uppercase tracking-widest flex items-center gap-1.5 mt-0.5">
+              <h2 className="text-xl font-bold tracking-tight text-foreground">Dispatch Hub</h2>
+              <p className="text-[10px] text-muted-foreground uppercase tracking-widest flex items-center gap-1.5 mt-0.5">
                 <span className={`w-1.5 h-1.5 rounded-full ${useHardwareGPS ? "bg-blue-400" : import.meta.env.DEV ? "bg-emerald-400" : "bg-red-400"} animate-pulse`} />
                 {useHardwareGPS
                   ? "Hardware GPS Active"
@@ -968,7 +968,7 @@ export default function Volunteer() {
                     : "GPS Unavailable"}
               </p>
             </div>
-            <Button aria-label="Refresh tasks" variant="ghost" size="icon" onClick={() => fetchTasks()} className="text-white/40 hover:text-white hover:bg-white/5">
+            <Button aria-label="Refresh tasks" variant="ghost" size="icon" onClick={() => fetchTasks()} className="text-muted-foreground hover:text-foreground hover:bg-muted">
               <RefreshCw className="w-4 h-4" />
             </Button>
           </div>
@@ -979,17 +979,17 @@ export default function Volunteer() {
             {/* Active Routes */}
             <section>
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-xs font-bold text-white/60 uppercase tracking-widest">My Active Routes</h3>
+                <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-widest">My Active Routes</h3>
                 <NeonBadge variant="blue" dot pulse>
                   {myTasks.length} Active
                 </NeonBadge>
               </div>
 
               {myTasks.length === 0 ? (
-                <div className="p-8 border border-white/8 border-dashed rounded-2xl text-center">
-                  <Route className="w-8 h-8 text-white/20 mx-auto mb-3" />
-                  <p className="text-sm text-white/50">No assignments yet</p>
-                  <p className="text-xs text-white/30 mt-1">Claim a broadcast below to begin routing.</p>
+                <div className="p-8 border border-border border-dashed rounded-2xl text-center">
+                  <Route className="w-8 h-8 text-muted-foreground mx-auto mb-3" />
+                  <p className="text-sm text-muted-foreground">No assignments yet</p>
+                  <p className="text-xs text-muted-foreground mt-1">Claim a broadcast below to begin routing.</p>
                 </div>
               ) : (
                 <div className="space-y-3">
@@ -1022,8 +1022,8 @@ export default function Volunteer() {
                         <div
                           onClick={() => setActiveTaskId(task.id)}
                           className={`relative overflow-hidden rounded-2xl border cursor-pointer transition-all duration-300 ${isActive
-                              ? "bg-[#1c2020] border-blue-500/60 shadow-[0_0_20px_rgba(59,130,246,0.15)] z-10"
-                              : "bg-[#171a1a] border-white/8 hover:border-[rgba(59,130,246,0.3)] hover:shadow-[0_0_12px_rgba(59,130,246,0.08)]"
+                              ? "bg-card border-blue-500/60 shadow-[0_0_20px_rgba(59,130,246,0.15)] z-10"
+                              : "bg-card border-border hover:border-[rgba(59,130,246,0.3)] hover:shadow-[0_0_12px_rgba(59,130,246,0.08)]"
                             }`}
                         >
                           {isActive && <div className="absolute top-0 left-0 w-1 h-full bg-blue-500" />}
@@ -1037,13 +1037,13 @@ export default function Volunteer() {
                                 </span>
                               </div>
                               {isActive && dynamicETA && (
-                                <Badge className="text-blue-400 border-blue-500/30 bg-blue-500/10 text-[10px] flex gap-1">
+                                <Badge className="text-info border-blue-500/30 bg-blue-500/10 text-[10px] flex gap-1">
                                   <Clock className="w-3 h-3" /> ETA {dynamicETA}
                                   {routeOne?.isFallback || routeTwo?.isFallback ? " *" : ""}
                                 </Badge>
                               )}
                               {isActive && isRouteFetching && !dynamicETA && (
-                                <span className="text-[10px] text-white/30 flex items-center gap-1">
+                                <span className="text-[10px] text-muted-foreground flex items-center gap-1">
                                   <Loader2 className="w-3 h-3 animate-spin" /> Routing…
                                 </span>
                               )}
@@ -1051,7 +1051,7 @@ export default function Volunteer() {
 
                             {/* Task name */}
                             <div className="flex items-center justify-between gap-2 mb-2.5">
-                              <h4 className="text-base font-semibold text-white truncate pr-2">{task.name}</h4>
+                              <h4 className="text-base font-semibold text-foreground truncate pr-2">{task.name}</h4>
                               {task.spoilageRisk && (
                                 <Badge variant="outline" className={`shrink-0 text-[10px] border ${getRiskColor(task.spoilageRisk)}`}>
                                   Risk: {task.spoilageRisk}
@@ -1063,22 +1063,22 @@ export default function Volunteer() {
                             <div className="space-y-1 mb-3">
                               {task.pickupWindowStart && task.pickupWindowEnd && (
                                 <div className="flex items-start gap-2">
-                                  <Clock className="w-3.5 h-3.5 shrink-0 mt-0.5 text-blue-400" />
-                                  <p className={`text-xs leading-snug font-medium ${getPickupWindowStatus(task.pickupWindowStart, task.pickupWindowEnd) === 'expired' ? 'text-red-400' : 'text-blue-400'
+                                  <Clock className="w-3.5 h-3.5 shrink-0 mt-0.5 text-info" />
+                                  <p className={`text-xs leading-snug font-medium ${getPickupWindowStatus(task.pickupWindowStart, task.pickupWindowEnd) === 'expired' ? 'text-destructive' : 'text-info'
                                     }`}>
                                     {formatPickupCountdown(task.pickupWindowStart, task.pickupWindowEnd)}
                                   </p>
                                 </div>
                               )}
                               <div className="flex items-start gap-2">
-                                <MapPin className={`w-3.5 h-3.5 shrink-0 mt-0.5 ${task.status !== "picked_up" ? "text-amber-400" : "text-white/20"}`} />
-                                <p className={`text-xs leading-snug ${task.status !== "picked_up" ? "text-white/80" : "text-white/25 line-through"}`}>
+                                <MapPin className={`w-3.5 h-3.5 shrink-0 mt-0.5 ${task.status !== "picked_up" ? "text-warning" : "text-muted-foreground"}`} />
+                                <p className={`text-xs leading-snug ${task.status !== "picked_up" ? "text-foreground" : "text-muted-foreground line-through"}`}>
                                   <span className="font-semibold">Pickup:</span> {task.pickupAddress}
                                 </p>
                               </div>
                               <div className="flex items-start gap-2">
-                                <MapPin className={`w-3.5 h-3.5 shrink-0 mt-0.5 ${task.status === "picked_up" ? "text-emerald-400" : "text-white/20"}`} />
-                                <p className={`text-xs leading-snug ${task.status === "picked_up" ? "text-white/80" : "text-white/40"}`}>
+                                <MapPin className={`w-3.5 h-3.5 shrink-0 mt-0.5 ${task.status === "picked_up" ? "text-success" : "text-muted-foreground"}`} />
+                                <p className={`text-xs leading-snug ${task.status === "picked_up" ? "text-foreground" : "text-muted-foreground"}`}>
                                   <span className="font-semibold">Drop:</span> {task.dropoffAddress}
                                 </p>
                               </div>
@@ -1097,7 +1097,7 @@ export default function Volunteer() {
 
                             {/* Progress bar (compact when not active) */}
                             {!isActive && (
-                              <div className="h-1 bg-white/8 rounded-full overflow-hidden mb-3">
+                              <div className="h-1 bg-muted rounded-full overflow-hidden mb-3">
                                 <div
                                   className="h-full rounded-full transition-all duration-500"
                                   style={{ width: `${progress}%`, background: stage.color }}
@@ -1110,9 +1110,9 @@ export default function Volunteer() {
                               const expInfo = getSafeExpirationInfo(task.expiryTime);
                               if (!expInfo) return null;
                               return (
-                                <div className={`text-[10px] font-semibold flex items-center gap-1.5 mb-3 px-2 py-1 rounded-lg border ${expInfo.expired ? 'bg-red-500/10 border-red-500/20 text-red-400' :
-                                  (expInfo.diffH ?? 99) < 2 ? 'bg-amber-500/10 border-amber-500/20 text-amber-400' :
-                                    'bg-emerald-500/10 border-emerald-500/20 text-emerald-400'
+                                <div className={`text-[10px] font-semibold flex items-center gap-1.5 mb-3 px-2 py-1 rounded-lg border ${expInfo.expired ? 'bg-red-500/10 border-red-500/20 text-destructive' :
+                                  (expInfo.diffH ?? 99) < 2 ? 'bg-amber-500/10 border-amber-500/20 text-warning' :
+                                    'bg-emerald-500/10 border-emerald-500/20 text-success'
                                   }`}>
                                   <Clock className="w-3 h-3" />
                                   {expInfo.expired ? '⚠ Food safety window expired' : `Safe for: ${expInfo.text}`}
@@ -1128,7 +1128,7 @@ export default function Volunteer() {
                                     variant="outline"
                                     size="sm"
                                     onClick={e => { e.stopPropagation(); handleAssignment(task, "decline"); }}
-                                    className="h-8 flex-1 text-xs border-red-500/20 text-red-500 hover:text-red-400 hover:bg-red-500/10"
+                                    className="h-8 flex-1 text-xs border-red-500/20 text-destructive hover:text-red-400 hover:bg-red-500/10"
                                     disabled={isWorking}
                                   >
                                     Decline
@@ -1149,7 +1149,7 @@ export default function Volunteer() {
                                     variant="outline"
                                     size="sm"
                                     onClick={e => { e.stopPropagation(); handleNavigateInMap(task); }}
-                                    className={`h-8 px-3 text-xs border-blue-500/30 text-blue-400 hover:text-blue-300 hover:bg-blue-500/10 bg-transparent flex items-center justify-center gap-1.5 ${isNavigating && activeTaskId === task.id ? 'bg-blue-500/15 border-blue-500/50' : ''}`}
+                                    className={`h-8 px-3 text-xs border-blue-500/30 text-info hover:text-blue-300 hover:bg-blue-500/10 bg-transparent flex items-center justify-center gap-1.5 ${isNavigating && activeTaskId === task.id ? 'bg-blue-500/15 border-blue-500/50' : ''}`}
                                     disabled={isWorking}
                                     title="Navigate to Pickup"
                                   >
@@ -1171,7 +1171,7 @@ export default function Volunteer() {
                                     variant="outline"
                                     size="sm"
                                     onClick={e => { e.stopPropagation(); handleNavigateInMap(task); }}
-                                    className={`h-8 px-3 text-xs border-blue-500/30 text-blue-400 hover:text-blue-300 hover:bg-blue-500/10 bg-transparent flex items-center justify-center gap-1.5 ${isNavigating && activeTaskId === task.id ? 'bg-blue-500/15 border-blue-500/50' : ''}`}
+                                    className={`h-8 px-3 text-xs border-blue-500/30 text-info hover:text-blue-300 hover:bg-blue-500/10 bg-transparent flex items-center justify-center gap-1.5 ${isNavigating && activeTaskId === task.id ? 'bg-blue-500/15 border-blue-500/50' : ''}`}
                                     disabled={isWorking}
                                     title="Navigate to Dropoff"
                                   >
@@ -1195,7 +1195,7 @@ export default function Volunteer() {
                                     variant="ghost"
                                     size="sm"
                                     onClick={e => { e.stopPropagation(); setAbortModal({ open: true, taskId: task.id }); setAbortReason(''); }}
-                                    className="w-full h-7 text-[10px] uppercase tracking-wider text-red-500 hover:text-red-400 hover:bg-red-500/10"
+                                    className="w-full h-7 text-[10px] uppercase tracking-wider text-destructive hover:text-red-400 hover:bg-red-500/10"
                                     disabled={isWorking || isOffline}
                                   >
                                     Abort Task
@@ -1204,7 +1204,7 @@ export default function Volunteer() {
                               )}
 
                               {task.status === "delivered" && (
-                                <span className="text-xs text-emerald-400 flex items-center gap-1.5 w-full justify-center font-semibold">
+                                <span className="text-xs text-success flex items-center gap-1.5 w-full justify-center font-semibold">
                                   <CheckCircle2 className="w-3.5 h-3.5" /> Delivery Completed
                                 </span>
                               )}
@@ -1221,14 +1221,14 @@ export default function Volunteer() {
             {/* Priority Broadcast Pool */}
             <section>
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-xs font-bold text-white/60 uppercase tracking-widest">Priority Broadcasts</h3>
+                <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Priority Broadcasts</h3>
                 <NeonBadge variant="gray">
                   {liveOpenTasks.length} Open
                 </NeonBadge>
               </div>
 
               {liveOpenTasks.length === 0 ? (
-                <p className="text-sm text-white/25 text-center py-8">No active dispatches. Check back soon.</p>
+                <p className="text-sm text-muted-foreground text-center py-8">No active dispatches. Check back soon.</p>
               ) : (
                 <div className="space-y-3">
                   {liveOpenTasks.map((task, i) => {
@@ -1242,8 +1242,8 @@ export default function Volunteer() {
                         key={task.id}
                         onClick={() => { if (!isSelected) setActiveTaskId(task.id); }}
                         className={`relative overflow-hidden rounded-xl border p-4 transition-all duration-300 ${isSelected
-                            ? "bg-[#1a1d1d] border-white/20 shadow-[0_0_16px_rgba(0,229,153,0.08)]"
-                            : "bg-[#141616] border-white/5 hover:border-white/12"
+                            ? "bg-card border-border shadow-[0_0_16px_rgba(0,229,153,0.08)]"
+                            : "bg-card border-border hover:border-border"
                           } ${isUrgent && !isSelected
                             ? "border-red-500/50 animate-pulse bg-red-500/[0.03] shadow-[0_0_12px_rgba(239,68,68,0.1)]"
                             : ""
@@ -1253,41 +1253,41 @@ export default function Volunteer() {
                           <div className="absolute top-0 right-0 w-2 h-2 m-2 rounded-full bg-red-500 animate-ping"></div>
                         )}
                         <div className="flex justify-between items-start mb-2">
-                          <h4 className="text-sm font-semibold text-white flex gap-2 items-center">
+                          <h4 className="text-sm font-semibold text-foreground flex gap-2 items-center">
                             {task.name}
                           </h4>
                           <div className="flex gap-1 shrink-0">
                             {task.dbPriorityScore != null && (
-                              <Badge className={`text-[10px] bg-white/5 text-white/50 border-white/10`}>
+                              <Badge className={`text-[10px] bg-muted text-muted-foreground border-border`}>
                                 Score: {task.dbPriorityScore}
                               </Badge>
                             )}
                             {task.spoilageRisk === 'high' && (
-                              <Badge className={`text-[10px] bg-red-500/10 text-red-500 border-red-500/20 shadow-sm shadow-red-500/10`}>
+                              <Badge className={`text-[10px] bg-red-500/10 text-destructive border-red-500/20 shadow-sm shadow-red-500/10`}>
                                 High Risk
                               </Badge>
                             )}
                           </div>
                         </div>
 
-                        <div className="text-xs text-white/50 space-y-1 mb-3">
+                        <div className="text-xs text-muted-foreground space-y-1 mb-3">
                           {task.pickupWindowStart && task.pickupWindowEnd && (
-                            <p className={`flex items-center gap-1.5 font-medium ${getPickupWindowStatus(task.pickupWindowStart, task.pickupWindowEnd) === 'expired' ? 'text-red-400' : 'text-blue-400'
+                            <p className={`flex items-center gap-1.5 font-medium ${getPickupWindowStatus(task.pickupWindowStart, task.pickupWindowEnd) === 'expired' ? 'text-destructive' : 'text-info'
                               }`}>
                               <Clock className="w-3.5 h-3.5" />
                               {formatPickupCountdown(task.pickupWindowStart, task.pickupWindowEnd)}
                             </p>
                           )}
-                          <p className="flex items-center gap-1.5"><MapPin className="w-3.5 h-3.5 text-orange-400" /> {task.pickupAddress}</p>
-                          <p className="flex items-center gap-1.5"><MapPin className="w-3.5 h-3.5 text-blue-400" /> {task.dropoffAddress}</p>
-                          <div className="flex items-center justify-between mt-2 pt-1 border-t border-white/5">
+                          <p className="flex items-center gap-1.5"><MapPin className="w-3.5 h-3.5 text-warning" /> {task.pickupAddress}</p>
+                          <p className="flex items-center gap-1.5"><MapPin className="w-3.5 h-3.5 text-info" /> {task.dropoffAddress}</p>
+                          <div className="flex items-center justify-between mt-2 pt-1 border-t border-border">
                             {expInfo ? (
-                              <p className={`flex items-center gap-1.5 ${isUrgent ? 'text-red-400 font-medium' : ''}`}>
+                              <p className={`flex items-center gap-1.5 ${isUrgent ? 'text-destructive font-medium' : ''}`}>
                                 <Clock className="w-3.5 h-3.5" />
                                 {expInfo.text}
                               </p>
                             ) : <span />}
-                            <p className="flex items-center gap-1.5 font-bold text-blue-400 bg-blue-500/10 px-2 py-1 rounded border border-blue-500/20">
+                            <p className="flex items-center gap-1.5 font-bold text-info bg-blue-500/10 px-2 py-1 rounded border border-blue-500/20">
                               <Navigation className="w-3 h-3" />
                               {(task.distanceKm || calculateHaversineDistance(livePos.lat, livePos.lng, task.pickupLat, task.pickupLng)).toFixed(1)} km away
                             </p>
@@ -1312,23 +1312,23 @@ export default function Volunteer() {
         </div>
 
         {/* ── RIGHT MAP ── */}
-        <div className="relative h-full w-full bg-[#0a0c0c] z-0 pb-[88px] sm:pb-0">
+        <div className="relative h-full w-full bg-background z-0 pb-[88px] sm:pb-0">
           {/* ETA / Live Status HUD overlay */}
           <div className="absolute top-4 left-1/2 -translate-x-1/2 z-[400] pointer-events-auto px-4 w-full max-w-sm">
-            <div className="bg-[#121517]/95 backdrop-blur-xl px-5 py-3 shadow-2xl border border-white/15 rounded-2xl">
+            <div className="bg-card/95 backdrop-blur-xl px-5 py-3 shadow-2xl border border-border rounded-2xl">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2.5">
                   <div className={`w-8 h-8 rounded-full flex items-center justify-center border ${isNavigating
                       ? 'bg-blue-500/20 border-blue-500/50'
                       : activeTask
                         ? 'bg-blue-500/15 border-blue-500/30'
-                        : 'bg-white/5 border-white/10'
+                        : 'bg-muted border-border'
                     }`}>
-                    <Route className={`w-4 h-4 ${isNavigating ? 'text-blue-400 animate-pulse' : activeTask ? 'text-blue-400' : 'text-white/40'
+                    <Route className={`w-4 h-4 ${isNavigating ? 'text-info animate-pulse' : activeTask ? 'text-info' : 'text-muted-foreground'
                       }`} />
                   </div>
                   <div>
-                    <p className="text-[10px] uppercase text-emerald-400 font-bold tracking-widest flex items-center gap-1.5">
+                    <p className="text-[10px] uppercase text-success font-bold tracking-widest flex items-center gap-1.5">
                       <span className={`w-1.5 h-1.5 rounded-full ${isNavigating ? 'bg-blue-400 animate-ping' : useHardwareGPS ? 'bg-emerald-400 animate-pulse' : import.meta.env.DEV ? 'bg-yellow-400 animate-pulse' : 'bg-red-400'}`} />
                       {isNavigating
                         ? 'NAVIGATING'
@@ -1340,7 +1340,7 @@ export default function Volunteer() {
                               ? 'GPS Unavailable'
                               : 'Idle'}
                     </p>
-                    <p className="text-sm font-semibold text-white leading-tight mt-0.5">
+                    <p className="text-sm font-semibold text-foreground leading-tight mt-0.5">
                       {isRouteFetching
                         ? 'Routing...'
                         : activeTask
@@ -1351,14 +1351,14 @@ export default function Volunteer() {
                 </div>
                 <div className="flex items-center gap-2">
                   {(routeOne?.isFallback || routeTwo?.isFallback) && (
-                    <span className="text-[8px] text-amber-400/60 font-bold">~EST</span>
+                    <span className="text-[8px] text-warning font-bold">~EST</span>
                   )}
                   {isNavigating && (
                     <Button
                       variant="ghost"
                       size="sm"
                       onClick={() => setIsNavigating(false)}
-                      className="h-6 px-2 text-[10px] text-white/40 hover:text-white hover:bg-white/10"
+                      className="h-6 px-2 text-[10px] text-muted-foreground hover:text-foreground hover:bg-muted"
                     >
                       Exit Nav
                     </Button>
@@ -1368,15 +1368,15 @@ export default function Volunteer() {
 
               {/* Current instruction - always visible when navigating */}
               {currentInstruction && (
-                <div className="mt-2.5 pt-2.5 border-t border-white/8">
+                <div className="mt-2.5 pt-2.5 border-t border-border">
                   <div className="flex items-center gap-2.5">
                     <div className="w-8 h-8 rounded-lg bg-emerald-500/15 border border-emerald-500/25 flex items-center justify-center shrink-0">
-                      <Navigation className="w-4 h-4 text-emerald-400" />
+                      <Navigation className="w-4 h-4 text-success" />
                     </div>
                     <div className="min-w-0">
-                      <p className="text-sm text-white font-semibold truncate">{currentInstruction}</p>
+                      <p className="text-sm text-foreground font-semibold truncate">{currentInstruction}</p>
                       {navSteps[currentStepIdx + 1] && (
-                        <p className="text-[10px] text-white/30 truncate mt-0.5">
+                        <p className="text-[10px] text-muted-foreground truncate mt-0.5">
                           Then: {navSteps[currentStepIdx + 1].instruction}
                         </p>
                       )}
@@ -1388,26 +1388,26 @@ export default function Volunteer() {
 
             {/* Expanded step list when navigating */}
             {isNavigating && navSteps.length > 0 && (
-              <div className="mt-2 glass-panel border-white/10 rounded-xl shadow-2xl max-h-48 overflow-y-auto">
+              <div className="mt-2 glass-panel border-border rounded-xl shadow-2xl max-h-48 overflow-y-auto">
                 {navSteps.map((step, i) => (
                   <div
                     key={i}
-                    className={`flex items-center gap-3 px-4 py-2.5 border-b border-white/5 last:border-b-0 ${i === currentStepIdx ? 'bg-blue-500/10' : ''
+                    className={`flex items-center gap-3 px-4 py-2.5 border-b border-border last:border-b-0 ${i === currentStepIdx ? 'bg-blue-500/10' : ''
                       }`}
                   >
-                    <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0 ${i < currentStepIdx ? 'bg-emerald-500/20 text-emerald-400' :
-                      i === currentStepIdx ? 'bg-blue-500/20 text-blue-400 ring-1 ring-blue-500/40' :
-                        'bg-white/5 text-white/25'
+                    <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0 ${i < currentStepIdx ? 'bg-emerald-500/20 text-success' :
+                      i === currentStepIdx ? 'bg-blue-500/20 text-info ring-1 ring-blue-500/40' :
+                        'bg-muted text-muted-foreground'
                       }`}>
                       {i < currentStepIdx ? '✓' : i + 1}
                     </div>
                     <div className="min-w-0 flex-1">
-                      <p className={`text-xs truncate ${i === currentStepIdx ? 'text-white font-medium' : 'text-white/50'}`}>
+                      <p className={`text-xs truncate ${i === currentStepIdx ? 'text-foreground font-medium' : 'text-muted-foreground'}`}>
                         {step.instruction}
                       </p>
                     </div>
                     {step.distance && (
-                      <span className="text-[10px] text-white/30 shrink-0 font-mono">{step.distance}</span>
+                      <span className="text-[10px] text-muted-foreground shrink-0 font-mono">{step.distance}</span>
                     )}
                   </div>
                 ))}
@@ -1457,10 +1457,10 @@ export default function Volunteer() {
                       zIndexOffset={isActive ? 100 : 0}
                     >
                       <Popup className="custom-popup">
-                        <div className="p-4 bg-[#171a1a] text-white border border-white/10 rounded-xl w-max max-w-[240px] md:min-w-[220px]">
-                          <Badge className="bg-amber-500/15 text-amber-400 border-amber-500/25 mb-2 text-[9px]">PICKUP</Badge>
+                        <div className="p-4 bg-card text-foreground border border-border rounded-xl w-max max-w-[240px] md:min-w-[220px]">
+                          <Badge className="bg-amber-500/15 text-warning border-amber-500/25 mb-2 text-[9px]">PICKUP</Badge>
                           <strong className="block text-sm mb-1">{task.name}</strong>
-                          <span className="text-xs text-white/40">{task.pickupAddress}</span>
+                          <span className="text-xs text-muted-foreground">{task.pickupAddress}</span>
                         </div>
                       </Popup>
                     </Marker>
@@ -1475,10 +1475,10 @@ export default function Volunteer() {
                       zIndexOffset={isActive ? 100 : 0}
                     >
                       <Popup className="custom-popup">
-                        <div className="p-4 bg-[#171a1a] text-white border border-white/10 rounded-xl w-max max-w-[240px] md:min-w-[220px]">
-                          <Badge className="bg-emerald-500/15 text-emerald-400 border-emerald-500/25 mb-2 text-[9px]">DROPOFF</Badge>
+                        <div className="p-4 bg-card text-foreground border border-border rounded-xl w-max max-w-[240px] md:min-w-[220px]">
+                          <Badge className="bg-emerald-500/15 text-success border-emerald-500/25 mb-2 text-[9px]">DROPOFF</Badge>
                           <strong className="block text-sm mb-1">{task.name}</strong>
-                          <span className="text-xs text-white/40 flex items-center gap-1" style={{ color: stage.color }}>
+                          <span className="text-xs text-muted-foreground flex items-center gap-1" style={{ color: stage.color }}>
                             {stage.icon} {stage.label}
                           </span>
                         </div>
@@ -1526,20 +1526,20 @@ export default function Volunteer() {
 
       {/* Delivery Confirmation Dialog — now launches QR scan */}
       <Dialog open={!!taskToComplete} onOpenChange={open => !open && setTaskToComplete(null)}>
-        <DialogContent className="sm:max-w-sm bg-[#171a1a] text-white border border-white/10 rounded-2xl shadow-2xl">
+        <DialogContent className="sm:max-w-sm bg-card text-foreground border border-border rounded-2xl shadow-2xl">
           <DialogHeader>
             <DialogTitle className="text-lg font-bold">Confirm Delivery</DialogTitle>
-            <DialogDescription className="text-white/50 text-sm">
+            <DialogDescription className="text-muted-foreground text-sm">
               Scan the receiver's QR code to verify delivery.
             </DialogDescription>
           </DialogHeader>
-          <div className="py-6 flex flex-col items-center gap-4 bg-[#0f1111] rounded-xl border border-white/5">
-            <CheckCircle2 className="w-12 h-12 text-emerald-400" />
-            <p className="text-white/70 text-sm text-center px-4">
+          <div className="py-6 flex flex-col items-center gap-4 bg-background rounded-xl border border-border">
+            <CheckCircle2 className="w-12 h-12 text-success" />
+            <p className="text-muted-foreground text-sm text-center px-4">
               By confirming, the rider manifest will be closed and the receiver will be notified.
             </p>
             <div className="flex gap-3">
-              <Button variant="outline" className="border-white/10 text-white/60 hover:bg-white/5" onClick={() => setTaskToComplete(null)}>
+              <Button variant="outline" className="border-border text-muted-foreground hover:bg-muted" onClick={() => setTaskToComplete(null)}>
                 Cancel
               </Button>
               <Button
@@ -1569,19 +1569,19 @@ export default function Volunteer() {
 
       {/* Abort Confirmation Dialog */}
       <Dialog open={abortModal.open} onOpenChange={open => !open && !isAborting && setAbortModal({ open: false, taskId: '' })}>
-        <DialogContent className="sm:max-w-md bg-[#171a1a] text-white border border-white/10 rounded-2xl shadow-2xl">
+        <DialogContent className="sm:max-w-md bg-card text-foreground border border-border rounded-2xl shadow-2xl">
           <DialogHeader>
             <DialogTitle className="text-lg font-bold flex items-center gap-2">
-              <AlertTriangle className="w-5 h-5 text-red-500" /> Abort Task
+              <AlertTriangle className="w-5 h-5 text-destructive" /> Abort Task
             </DialogTitle>
-            <DialogDescription className="text-white/50 text-sm">
+            <DialogDescription className="text-muted-foreground text-sm">
               Are you sure you want to cancel this dispatch? This will immediately return the food request to the broadcast pool.
             </DialogDescription>
           </DialogHeader>
           <div className="py-4 flex flex-col gap-3">
-            <label className="text-xs font-semibold text-white/70">Reason for Cancellation</label>
+            <label className="text-xs font-semibold text-muted-foreground">Reason for Cancellation</label>
             <textarea
-              className="w-full bg-[#0a0c0c] border border-white/10 rounded-xl p-3 text-sm text-white placeholder-white/20 focus:outline-none focus:border-red-500/50 resize-none"
+              className="w-full bg-background border border-border rounded-xl p-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-red-500/50 resize-none"
               rows={3}
               placeholder="E.g., Vehicle broke down, donor location closed..."
               value={abortReason}
@@ -1590,7 +1590,7 @@ export default function Volunteer() {
             />
           </div>
           <div className="flex gap-3 justify-end mt-2">
-            <Button variant="outline" className="border-white/10 text-white/60 hover:bg-white/5" onClick={() => setAbortModal({ open: false, taskId: '' })} disabled={isAborting}>
+            <Button variant="outline" className="border-border text-muted-foreground hover:bg-muted" onClick={() => setAbortModal({ open: false, taskId: '' })} disabled={isAborting}>
               Keep Task
             </Button>
             <Button
@@ -1606,17 +1606,17 @@ export default function Volunteer() {
 
       {/* Missing Profile Location Modal */}
       <Dialog open={missingLocationModal} onOpenChange={setMissingLocationModal}>
-        <DialogContent className="sm:max-w-md bg-[#171a1a] text-white border border-amber-500/30 rounded-2xl shadow-[0_0_40px_rgba(245,158,11,0.15)]">
+        <DialogContent className="sm:max-w-md bg-card text-foreground border border-amber-500/30 rounded-2xl shadow-[0_0_40px_rgba(245,158,11,0.15)]">
           <DialogHeader>
-            <DialogTitle className="text-lg font-bold flex items-center gap-2 text-amber-500">
+            <DialogTitle className="text-lg font-bold flex items-center gap-2 text-warning">
               <AlertTriangle className="w-5 h-5" /> Location Profile Incomplete
             </DialogTitle>
-            <DialogDescription className="text-white/60 text-sm pt-2">
+            <DialogDescription className="text-muted-foreground text-sm pt-2">
               Your profile is missing location details. We need your location to show you nearby pickup tasks and accurately calculate dispatch routes.
             </DialogDescription>
           </DialogHeader>
           <div className="flex justify-end gap-3 mt-4">
-            <Button variant="outline" className="border-white/10 text-white/60 hover:bg-white/5" onClick={() => setMissingLocationModal(false)}>
+            <Button variant="outline" className="border-border text-muted-foreground hover:bg-muted" onClick={() => setMissingLocationModal(false)}>
               Dismiss
             </Button>
             <Link to="/profile">

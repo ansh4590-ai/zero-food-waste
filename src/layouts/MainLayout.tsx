@@ -13,7 +13,7 @@ export default function MainLayout() {
   const navigate = useNavigate();
   const { user, isAuthenticated, logout } = useAuthStore();
   const { isLoading } = useLoadingStore();
-  const { theme, setTheme } = useTheme();
+  const { resolvedTheme, setTheme } = useTheme();
   const { can } = usePermissions();
 
   const [scrolled, setScrolled] = useState(false);
@@ -111,12 +111,12 @@ export default function MainLayout() {
                 variant="ghost" 
                 size="icon" 
                 onClick={() => {
-                  const isDark = theme === "dark" || (theme === "system" && window.matchMedia("(prefers-color-scheme: dark)").matches);
+                  const isDark = resolvedTheme === "dark";
                   setTheme(isDark ? "light" : "dark");
                 }}
                 className="text-muted-foreground hover:text-foreground"
               >
-                {theme === "dark" || (theme === "system" && typeof window !== "undefined" && window.matchMedia("(prefers-color-scheme: dark)").matches) ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+                {resolvedTheme === "dark" ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
               </Button>
               
               {isAuthenticated ? (
@@ -151,7 +151,7 @@ export default function MainLayout() {
                 aria-expanded={isMobileMenuOpen}
                 aria-controls="mobile-main-menu"
                 onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-                className="text-gray-500 dark:text-gray-400"
+                className="text-muted-foreground"
               >
                 {isMobileMenuOpen ? (
                   <X className="block h-6 w-6" />
@@ -187,10 +187,10 @@ export default function MainLayout() {
                   <Button 
                     variant="ghost" 
                     size="sm" 
-                    onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+                    onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
                     className="text-muted-foreground"
                   >
-                    {theme === "dark" ? <><Sun className="h-4 w-4 mr-2" /> Light Mode</> : <><Moon className="h-4 w-4 mr-2" /> Dark Mode</>}
+                    {resolvedTheme === "dark" ? <><Sun className="h-4 w-4 mr-2" /> Light Mode</> : <><Moon className="h-4 w-4 mr-2" /> Dark Mode</>}
                   </Button>
                 </div>
                 

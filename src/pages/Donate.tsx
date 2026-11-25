@@ -713,7 +713,7 @@ export default function Donate() {
       <div className="flex flex-col md:flex-row md:items-center justify-between mb-6 gap-4">
         <div className="flex items-center gap-4">
           <div className="bg-emerald-500/20 p-3 rounded-full hidden sm:block">
-            <HeartHandshake className="h-8 w-8 text-emerald-500" />
+            <HeartHandshake className="h-8 w-8 text-success" />
           </div>
           <div>
             <h2 data-testid="donate-heading" className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
@@ -727,7 +727,7 @@ export default function Donate() {
 
         {/* Safe & Verified Trust Badge */}
         <div className="flex items-start gap-3 bg-emerald-500/10 border border-emerald-500/20 p-4 rounded-xl max-w-sm">
-          <ShieldCheck className="h-6 w-6 text-emerald-500 shrink-0 mt-0.5" />
+          <ShieldCheck className="h-6 w-6 text-success shrink-0 mt-0.5" />
           <div>
             <h4 className="text-sm font-semibold text-foreground">Safe & Verified</h4>
             <p className="text-xs text-muted-foreground mt-0.5">All donations are verified for safety and quality before delivery.</p>
@@ -738,8 +738,8 @@ export default function Donate() {
       {/* Stepper */}
       <div className="mb-6 bg-card border border-border rounded-xl p-3 sm:px-6 flex items-center justify-between overflow-x-auto gap-4 shadow-sm">
         <div className="flex items-center gap-3 shrink-0">
-          <div className={`flex h-8 w-8 items-center justify-center rounded-full font-bold text-sm ${currentStep > 1 ? 'bg-emerald-500/20 text-emerald-500 border-2 border-emerald-500' :
-            currentStep === 1 ? 'bg-emerald-500 text-white shadow-md shadow-emerald-500/20' :
+          <div className={`flex h-8 w-8 items-center justify-center rounded-full font-bold text-sm ${currentStep > 1 ? 'bg-emerald-500/20 text-success border-2 border-emerald-500' :
+            currentStep === 1 ? 'bg-primary hover:bg-primary/90 text-primary-foreground shadow-md shadow-emerald-500/20' :
               'bg-muted border border-border text-muted-foreground'
             }`}>{currentStep > 1 ? <Check className="h-4 w-4" /> : '1'}</div>
           <div>
@@ -749,8 +749,8 @@ export default function Donate() {
         </div>
         <div className={`h-px flex-grow mx-4 hidden sm:block transition-colors ${currentStep >= 2 ? 'bg-emerald-500/50' : 'bg-border'}`}></div>
         <div className={`flex items-center gap-3 shrink-0 transition-opacity ${currentStep >= 2 ? 'opacity-100' : 'opacity-50'}`}>
-          <div className={`flex h-8 w-8 items-center justify-center rounded-full font-bold text-sm ${currentStep > 2 ? 'bg-emerald-500/20 text-emerald-500 border-2 border-emerald-500' :
-            currentStep === 2 ? 'bg-emerald-500 text-white shadow-md shadow-emerald-500/20' :
+          <div className={`flex h-8 w-8 items-center justify-center rounded-full font-bold text-sm ${currentStep > 2 ? 'bg-emerald-500/20 text-success border-2 border-emerald-500' :
+            currentStep === 2 ? 'bg-primary hover:bg-primary/90 text-primary-foreground shadow-md shadow-emerald-500/20' :
               'bg-muted border border-border text-muted-foreground'
             }`}>{currentStep > 2 ? <Check className="h-4 w-4" /> : '2'}</div>
           <div>
@@ -760,7 +760,7 @@ export default function Donate() {
         </div>
         <div className={`h-px flex-grow mx-4 hidden sm:block transition-colors ${currentStep >= 3 ? 'bg-emerald-500/50' : 'bg-border'}`}></div>
         <div className={`flex items-center gap-3 shrink-0 transition-opacity ${currentStep >= 3 ? 'opacity-100' : 'opacity-50'}`}>
-          <div className={`flex h-8 w-8 items-center justify-center rounded-full font-bold text-sm ${currentStep === 3 ? 'bg-emerald-500 text-white shadow-md shadow-emerald-500/20' :
+          <div className={`flex h-8 w-8 items-center justify-center rounded-full font-bold text-sm ${currentStep === 3 ? 'bg-primary hover:bg-primary/90 text-primary-foreground shadow-md shadow-emerald-500/20' :
             'bg-muted border border-border text-muted-foreground'
             }`}>3</div>
           <div>
@@ -781,7 +781,7 @@ export default function Donate() {
                 <div className="p-5 sm:p-6 flex flex-col space-y-5 bg-muted/10 h-full">
                   <div>
                     <label className="block text-lg font-semibold text-foreground mb-3">
-                      1. Food Photo <span className="text-red-500">*</span>
+                      1. Food Photo <span className="text-destructive">*</span>
                     </label>
 
                     {!imagePreview ? (
@@ -796,7 +796,7 @@ export default function Donate() {
                           Choose File
                         </div>
 
-                        <div className="mt-4 text-xs text-emerald-600/80 flex items-center gap-1.5 bg-emerald-500/10 px-3 py-1.5 rounded-full border border-emerald-500/20">
+                        <div className="mt-4 text-xs text-success flex items-center gap-1.5 bg-emerald-500/10 px-3 py-1.5 rounded-full border border-emerald-500/20">
                           <AlertCircle className="h-3.5 w-3.5" />
                           AI will automatically classify the food
                         </div>
@@ -845,7 +845,7 @@ export default function Donate() {
                           ) : classificationResult ? (
                             <div className="flex flex-col text-sm bg-background p-5 rounded-xl border border-border shadow-sm space-y-4">
                               <div className="flex items-start">
-                                <CheckCircle2 className="h-5 w-5 mr-3 flex-shrink-0 text-emerald-500 mt-0.5" />
+                                <CheckCircle2 className="h-5 w-5 mr-3 flex-shrink-0 text-success mt-0.5" />
                                 <div>
                                   <p className="font-semibold text-foreground">AI Vision Extraction Complete</p>
                                   <p className="text-muted-foreground mt-1 text-xs leading-relaxed">
@@ -866,25 +866,25 @@ export default function Donate() {
                               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-2 pt-3 border-t border-primary/10">
                                 <div className="bg-background rounded p-2 text-center shadow-sm">
                                   <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold">Priority</p>
-                                  <p className={`font-bold ${(classificationResult.priority_score ?? 0) >= 80 ? 'text-red-600' :
-                                    (classificationResult.priority_score ?? 0) >= 50 ? 'text-amber-600' : 'text-blue-600'
+                                  <p className={`font-bold ${(classificationResult.priority_score ?? 0) >= 80 ? 'text-destructive' :
+                                    (classificationResult.priority_score ?? 0) >= 50 ? 'text-warning' : 'text-info'
                                     }`}>{classificationResult.priority_score != null ? `${classificationResult.priority_score}/100` : 'N/A'}</p>
                                 </div>
                                 <div className="bg-background rounded p-2 text-center shadow-sm">
                                   <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold">Freshness</p>
-                                  <p className="font-bold text-green-600">{classificationResult.freshness_score != null ? `${classificationResult.freshness_score}/100` : 'N/A'}</p>
+                                  <p className="font-bold text-success">{classificationResult.freshness_score != null ? `${classificationResult.freshness_score}/100` : 'N/A'}</p>
                                 </div>
                                 <div className="bg-background rounded p-2 text-center shadow-sm">
                                   <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold">Quality</p>
-                                  <p className={`font-bold capitalize ${classificationResult.quality_status === 'excellent' ? 'text-emerald-600' :
-                                    classificationResult.quality_status === 'good' ? 'text-blue-600' :
-                                      classificationResult.quality_status === 'usable' ? 'text-amber-600' :
-                                        classificationResult.quality_status === 'risky' ? 'text-red-600' : 'text-gray-600'
+                                  <p className={`font-bold capitalize ${classificationResult.quality_status === 'excellent' ? 'text-success' :
+                                    classificationResult.quality_status === 'good' ? 'text-info' :
+                                      classificationResult.quality_status === 'usable' ? 'text-warning' :
+                                        classificationResult.quality_status === 'risky' ? 'text-destructive' : 'text-gray-600'
                                     }`}>{classificationResult.quality_status || 'N/A'}</p>
                                 </div>
                                 <div className="bg-background rounded p-2 text-center shadow-sm">
                                   <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold">Confidence</p>
-                                  <p className="font-bold text-purple-600">{classificationResult.confidence_score != null ? `${classificationResult.confidence_score}%` : 'N/A'}</p>
+                                  <p className="font-bold text-violet">{classificationResult.confidence_score != null ? `${classificationResult.confidence_score}%` : 'N/A'}</p>
                                 </div>
                               </div>
 
@@ -899,9 +899,9 @@ export default function Donate() {
                                 </div>
                                 <div className="bg-background rounded p-2 text-center shadow-sm">
                                   <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold">Spoilage Risk</p>
-                                  <p className={`font-bold capitalize ${classificationResult.spoilage_risk === 'critical' ? 'text-red-600' :
-                                    classificationResult.spoilage_risk === 'high' ? 'text-red-500' :
-                                      classificationResult.spoilage_risk === 'medium' ? 'text-amber-600' : 'text-emerald-600'
+                                  <p className={`font-bold capitalize ${classificationResult.spoilage_risk === 'critical' ? 'text-destructive' :
+                                    classificationResult.spoilage_risk === 'high' ? 'text-destructive' :
+                                      classificationResult.spoilage_risk === 'medium' ? 'text-warning' : 'text-success'
                                     }`}>{classificationResult.spoilage_risk || 'N/A'}</p>
                                 </div>
                               </div>
@@ -920,19 +920,19 @@ export default function Donate() {
                   {/* Tips Card */}
                   <div className="bg-background border border-border rounded-xl p-5 mt-auto shadow-sm">
                     <h4 className="flex items-center gap-2 font-semibold text-sm mb-4">
-                      <AlertCircle className="h-4 w-4 text-amber-500" /> Tips for a great photo
+                      <AlertCircle className="h-4 w-4 text-warning" /> Tips for a great photo
                     </h4>
                     <ul className="space-y-3 text-sm text-muted-foreground">
-                      <li className="flex items-start gap-2.5"><Check className="h-4 w-4 text-emerald-500 mt-0.5 shrink-0" /> Use natural lighting</li>
-                      <li className="flex items-start gap-2.5"><Check className="h-4 w-4 text-emerald-500 mt-0.5 shrink-0" /> Show the quantity clearly</li>
-                      <li className="flex items-start gap-2.5"><Check className="h-4 w-4 text-emerald-500 mt-0.5 shrink-0" /> Avoid blurred images</li>
-                      <li className="flex items-start gap-2.5"><Check className="h-4 w-4 text-emerald-500 mt-0.5 shrink-0" /> No people in the photo</li>
+                      <li className="flex items-start gap-2.5"><Check className="h-4 w-4 text-success mt-0.5 shrink-0" /> Use natural lighting</li>
+                      <li className="flex items-start gap-2.5"><Check className="h-4 w-4 text-success mt-0.5 shrink-0" /> Show the quantity clearly</li>
+                      <li className="flex items-start gap-2.5"><Check className="h-4 w-4 text-success mt-0.5 shrink-0" /> Avoid blurred images</li>
+                      <li className="flex items-start gap-2.5"><Check className="h-4 w-4 text-success mt-0.5 shrink-0" /> No people in the photo</li>
                     </ul>
                   </div>
 
                   {/* Prioritize Safety */}
                   <div className="bg-emerald-500/5 border border-emerald-500/20 rounded-xl p-4 mt-4 flex gap-3 shadow-sm">
-                    <ShieldCheck className="h-5 w-5 text-emerald-500 shrink-0" />
+                    <ShieldCheck className="h-5 w-5 text-success shrink-0" />
                     <div>
                       <h5 className="text-sm font-semibold text-foreground">We prioritize food safety</h5>
                       <p className="text-xs text-muted-foreground mt-1">Only fresh and safe food reaches those in need.</p>
@@ -951,7 +951,7 @@ export default function Donate() {
                       {/* Title */}
                       <div>
                         <label htmlFor="title" className="block text-sm font-medium text-foreground mb-1.5">
-                          Post Title <span className="text-red-500">*</span>
+                          Post Title <span className="text-destructive">*</span>
                         </label>
                         <Input
                           id="title"
@@ -968,7 +968,7 @@ export default function Donate() {
                             type="button"
                             onClick={handleAiSuggest}
                             disabled={!title.trim() || aiCooldown || isAiSuggesting}
-                            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-purple-500/10 border border-purple-500/25 text-purple-400 hover:bg-purple-500/20 hover:text-purple-300 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-purple-500/10 border border-purple-500/25 text-violet hover:bg-purple-500/20 hover:text-purple-300 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
                           >
                             {isAiSuggesting ? (
                               <Loader2 className="w-3 h-3 animate-spin" />
@@ -982,7 +982,7 @@ export default function Donate() {
                               type="button"
                               onClick={handleTextClassify}
                               disabled={!title.trim() || isTextClassifying}
-                              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-blue-500/10 border border-blue-500/25 text-blue-400 hover:bg-blue-500/20 hover:text-blue-300 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-blue-500/10 border border-blue-500/25 text-info hover:bg-blue-500/20 hover:text-blue-300 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
                             >
                               {isTextClassifying ? (
                                 <Loader2 className="w-3 h-3 animate-spin" />
@@ -998,7 +998,7 @@ export default function Donate() {
                         {aiSuggestion && (
                           <div className="mt-3 p-3 rounded-xl bg-purple-500/5 border border-purple-500/20 space-y-2 animate-fade-in">
                             <div className="flex items-center justify-between">
-                              <span className="text-xs font-semibold text-purple-400 flex items-center gap-1.5">
+                              <span className="text-xs font-semibold text-violet flex items-center gap-1.5">
                                 <Sparkles className="w-3 h-3" /> AI Suggestions
                               </span>
                               <button
@@ -1016,7 +1016,7 @@ export default function Donate() {
                               <div><span className="text-muted-foreground">Category:</span> <span className="text-foreground font-medium">{aiSuggestion.category}</span></div>
                             </div>
                             {aiSuggestion.allergens?.length > 0 && (
-                              <div className="text-xs text-amber-400 flex items-center gap-1">
+                              <div className="text-xs text-warning flex items-center gap-1">
                                 <AlertTriangle className="w-3 h-3" /> Allergens: {aiSuggestion.allergens.join(", ")}
                               </div>
                             )}
@@ -1026,7 +1026,7 @@ export default function Donate() {
                             <button
                               type="button"
                               onClick={applyAiSuggestion}
-                              className="w-full mt-1 py-1.5 text-xs font-medium rounded-lg bg-purple-500/15 border border-purple-500/30 text-purple-400 hover:bg-purple-500/25 transition-colors"
+                              className="w-full mt-1 py-1.5 text-xs font-medium rounded-lg bg-purple-500/15 border border-purple-500/30 text-violet hover:bg-purple-500/25 transition-colors"
                             >
                               Apply Suggestions
                             </button>
@@ -1036,12 +1036,12 @@ export default function Donate() {
                         {/* Text Classification Result */}
                         {textClassification && (
                           <div className="mt-2 p-2.5 rounded-lg bg-blue-500/5 border border-blue-500/20 text-xs space-y-1 animate-fade-in">
-                            <div className="flex items-center gap-1.5 text-blue-400 font-semibold">
+                            <div className="flex items-center gap-1.5 text-info font-semibold">
                               <Zap className="w-3 h-3" /> AI Text Classification
                             </div>
                             <p className="text-foreground">Category: <span className="font-medium">{textClassification.category}</span> ({textClassification.confidence}% confidence)</p>
                             {textClassification.allergens?.length > 0 && (
-                              <p className="text-amber-400"><AlertTriangle className="w-3 h-3 inline mr-1" />Allergens: {textClassification.allergens.join(", ")}</p>
+                              <p className="text-warning"><AlertTriangle className="w-3 h-3 inline mr-1" />Allergens: {textClassification.allergens.join(", ")}</p>
                             )}
                             {textClassification.notes && <p className="text-muted-foreground">{textClassification.notes}</p>}
                           </div>
@@ -1049,7 +1049,7 @@ export default function Donate() {
 
                         {/* Cross-validation note (after image classification) */}
                         {crossValidation && classificationResult && (
-                          <div className="mt-2 p-2 rounded-lg bg-emerald-500/5 border border-emerald-500/15 text-xs text-emerald-400 flex items-start gap-1.5 animate-fade-in">
+                          <div className="mt-2 p-2 rounded-lg bg-emerald-500/5 border border-emerald-500/15 text-xs text-success flex items-start gap-1.5 animate-fade-in">
                             <CheckCircle2 className="w-3 h-3 shrink-0 mt-0.5" />
                             <span>{crossValidation}</span>
                           </div>
@@ -1060,7 +1060,7 @@ export default function Donate() {
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
                           <label htmlFor="foodType" className="block text-sm font-medium text-foreground mb-1.5">
-                            Food Category <span className="text-red-500">*</span>
+                            Food Category <span className="text-destructive">*</span>
                           </label>
                           <select
                             id="foodType"
@@ -1079,7 +1079,7 @@ export default function Donate() {
 
                         <div>
                           <label htmlFor="quantity" className="block text-sm font-medium text-foreground mb-1.5">
-                            Quantity Estimation <span className="text-red-500">*</span>
+                            Quantity Estimation <span className="text-destructive">*</span>
                           </label>
                           <div className="relative">
                             <Input
@@ -1098,7 +1098,7 @@ export default function Donate() {
                       {/* Expiry */}
                       <div>
                         <label htmlFor="expiry" className="block text-sm font-medium text-foreground mb-1.5">
-                          Expiry / Best Before <span className="text-red-500">*</span>
+                          Expiry / Best Before <span className="text-destructive">*</span>
                         </label>
                         <DateTimePicker
                           id="expiry"
@@ -1115,7 +1115,7 @@ export default function Donate() {
                       <div className="bg-emerald-500/5 border border-emerald-500/30 rounded-xl p-5 relative overflow-hidden shadow-sm">
                         <div className="absolute top-0 left-0 w-1 h-full bg-emerald-500"></div>
                         <label className="block text-sm font-medium text-foreground mb-1">
-                          Available Pickup Window <span className="text-red-500">*</span>
+                          Available Pickup Window <span className="text-destructive">*</span>
                         </label>
                         <p className="text-xs text-muted-foreground mb-4">Choose a time window when the food can be picked up.</p>
 
@@ -1133,7 +1133,7 @@ export default function Donate() {
                             />
                           </div>
 
-                          <ArrowRight className="h-5 w-5 text-emerald-500/50 hidden sm:block shrink-0 mt-5" />
+                          <ArrowRight className="h-5 w-5 text-success hidden sm:block shrink-0 mt-5" />
                           <div className="sm:hidden text-muted-foreground text-xs my-1 w-full text-center">to</div>
 
                           <div className="w-full">
@@ -1153,7 +1153,7 @@ export default function Donate() {
 
                       <div>
                         <label htmlFor="address" className="block text-sm font-medium text-foreground mb-1.5">
-                          Pickup Address (Type Pincode or City) <span className="text-red-500">*</span>
+                          Pickup Address (Type Pincode or City) <span className="text-destructive">*</span>
                         </label>
                         <div className="mb-3">
                           <AddressAutocomplete
@@ -1199,7 +1199,7 @@ export default function Donate() {
             <CardContent className="p-6 lg:p-10">
               <div className="max-w-3xl mx-auto space-y-8">
                 <div className="flex items-center gap-3">
-                  <Eye className="h-6 w-6 text-emerald-500" />
+                  <Eye className="h-6 w-6 text-success" />
                   <h3 className="text-xl font-bold text-foreground">Review Your Donation</h3>
                 </div>
                 <p className="text-sm text-muted-foreground -mt-4">Please confirm the details below before publishing your listing.</p>
@@ -1241,7 +1241,7 @@ export default function Donate() {
 
                   {/* Pickup Window */}
                   <div className="bg-emerald-500/5 border border-emerald-500/20 rounded-xl p-4 md:col-span-2">
-                    <p className="text-xs font-semibold uppercase tracking-wider text-emerald-600 mb-2">Pickup Window</p>
+                    <p className="text-xs font-semibold uppercase tracking-wider text-success mb-2">Pickup Window</p>
                     <div className="flex flex-wrap items-center gap-3 text-sm font-medium text-foreground">
                       <span className="flex items-center gap-1.5"><Clock className="h-4 w-4 text-muted-foreground" />{new Date(reviewData.pickupStart).toLocaleString('en-IN')}</span>
                       <ArrowRight className="h-4 w-4 text-muted-foreground" />
@@ -1252,7 +1252,7 @@ export default function Donate() {
                   {/* Address */}
                   <div className="bg-muted/30 rounded-xl p-4 border border-border md:col-span-2">
                     <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">Pickup Address</p>
-                    <p className="text-sm font-medium text-foreground flex items-center gap-2"><MapPin className="h-4 w-4 text-emerald-500" />{reviewData.address}</p>
+                    <p className="text-sm font-medium text-foreground flex items-center gap-2"><MapPin className="h-4 w-4 text-success" />{reviewData.address}</p>
                   </div>
 
                   {/* AI Scores (if available) */}
@@ -1261,7 +1261,7 @@ export default function Donate() {
                       <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">AI Quality Analysis</p>
                       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                         <div className="text-center"><p className="text-xs text-muted-foreground">Priority</p><p className="font-bold text-sm text-foreground">{classificationResult.priority_score ?? 'N/A'}/100</p></div>
-                        <div className="text-center"><p className="text-xs text-muted-foreground">Freshness</p><p className="font-bold text-sm text-emerald-600">{classificationResult.freshness_score ?? 'N/A'}/100</p></div>
+                        <div className="text-center"><p className="text-xs text-muted-foreground">Freshness</p><p className="font-bold text-sm text-success">{classificationResult.freshness_score ?? 'N/A'}/100</p></div>
                         <div className="text-center"><p className="text-xs text-muted-foreground">Quality</p><p className="font-bold text-sm text-foreground capitalize">{classificationResult.quality_status ?? 'N/A'}</p></div>
                         <div className="text-center"><p className="text-xs text-muted-foreground">Shelf Life</p><p className="font-bold text-sm text-foreground">{classificationResult.estimated_safe_hours != null ? `~${classificationResult.estimated_safe_hours}h` : 'N/A'}</p></div>
                       </div>
@@ -1270,7 +1270,7 @@ export default function Donate() {
                 </div>
 
                 <div className="flex items-center gap-3 p-4 rounded-xl bg-amber-500/5 border border-amber-500/20">
-                  <AlertTriangle className="h-5 w-5 text-amber-500 shrink-0" />
+                  <AlertTriangle className="h-5 w-5 text-warning shrink-0" />
                   <p className="text-sm text-muted-foreground">Please double-check all details. Once published, recipients can immediately see and request this listing.</p>
                 </div>
               </div>
@@ -1283,7 +1283,7 @@ export default function Donate() {
               <div className="relative">
                 <div className="absolute inset-0 bg-emerald-500/20 rounded-full blur-2xl animate-pulse" />
                 <div className="relative bg-emerald-500/10 border-2 border-emerald-500/30 rounded-full p-8">
-                  <PartyPopper className="h-16 w-16 text-emerald-500" />
+                  <PartyPopper className="h-16 w-16 text-success" />
                 </div>
               </div>
               <div>
@@ -1294,7 +1294,7 @@ export default function Donate() {
                 <Button type="button" variant="outline" className="flex-1" onClick={handleStartOver}>
                   Donate More
                 </Button>
-                <Button type="button" className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white" onClick={() => navigate('/dashboard')}>
+                <Button type="button" className="flex-1 bg-primary hover:bg-primary/90 text-primary-foreground" onClick={() => navigate('/dashboard')}>
                   View Dashboard <ArrowRight className="ml-2 h-4 w-4" />
                 </Button>
               </div>
@@ -1317,11 +1317,11 @@ export default function Donate() {
               </div>
               <div className="w-full sm:w-auto">
                 {currentStep === 1 ? (
-                  <Button type="submit" size="lg" className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 text-white font-medium shadow-md shadow-emerald-900/20" disabled={isLoading || !selectedFile}>
+                  <Button type="submit" size="lg" className="w-full sm:w-auto bg-primary hover:bg-primary/90 text-primary-foreground font-medium shadow-md shadow-emerald-900/20" disabled={isLoading || !selectedFile}>
                     Next: Review <Eye className="ml-2 h-4 w-4" />
                   </Button>
                 ) : (
-                  <Button type="button" size="lg" onClick={handleConfirmPublish} className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 text-white font-medium shadow-md shadow-emerald-900/20" disabled={isLoading}>
+                  <Button type="button" size="lg" onClick={handleConfirmPublish} className="w-full sm:w-auto bg-primary hover:bg-primary/90 text-primary-foreground font-medium shadow-md shadow-emerald-900/20" disabled={isLoading}>
                     {isLoading ? (
                       <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Publishing...</>
                     ) : (

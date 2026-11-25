@@ -201,11 +201,11 @@ export function QRCodeCard({
       }`}>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <QrCode className={`w-4 h-4 ${type === "pickup" ? "text-amber-500" : "text-emerald-500"}`} />
+            <QrCode className={`w-4 h-4 ${type === "pickup" ? "text-warning" : "text-success"}`} />
             <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{label} QR</span>
           </div>
           {!isExpired && token && (
-            <span className={`text-xs font-mono font-semibold ${secondsLeft < 120 ? "text-red-400" : "text-muted-foreground"}`}>
+            <span className={`text-xs font-mono font-semibold ${secondsLeft < 120 ? "text-destructive" : "text-muted-foreground"}`}>
               {minutes}:{seconds.toString().padStart(2, "0")}
             </span>
           )}
@@ -216,14 +216,14 @@ export function QRCodeCard({
           </div>
         ) : error ? (
           <div className="text-center space-y-2 py-2">
-            <p className="text-xs text-red-400 font-medium">{error}</p>
+            <p className="text-xs text-destructive font-medium">{error}</p>
             <Button size="sm" variant="outline" onClick={handleRegenerate} className="text-xs">
               <RefreshCw className="w-3 h-3 mr-1" /> Retry
             </Button>
           </div>
         ) : isExpired ? (
           <div className="text-center space-y-2">
-            <p className="text-xs text-red-400">QR expired</p>
+            <p className="text-xs text-destructive">QR expired</p>
             <Button size="sm" variant="outline" onClick={handleRegenerate} className="text-xs">
               <RefreshCw className="w-3 h-3 mr-1" /> Regenerate
             </Button>
@@ -245,16 +245,16 @@ export function QRCodeCard({
   return (
     <div className={`rounded-2xl overflow-hidden border shadow-xl ${
       type === "pickup"
-        ? "bg-gradient-to-b from-amber-950/30 to-[#0f1111] border-amber-500/20"
-        : "bg-gradient-to-b from-emerald-950/30 to-[#0f1111] border-emerald-500/20"
+        ? "bg-gradient-to-b from-amber-950/30 to-card border-amber-500/20"
+        : "bg-gradient-to-b from-emerald-950/30 to-card border-emerald-500/20"
     }`}>
       {/* Header */}
       <div className={`px-5 py-3 flex items-center justify-between ${
         type === "pickup" ? "bg-amber-500/10" : "bg-emerald-500/10"
       }`}>
         <div className="flex items-center gap-2">
-          <ShieldCheck className={`w-4 h-4 ${type === "pickup" ? "text-amber-500" : "text-emerald-500"}`} />
-          <span className="text-xs font-bold uppercase tracking-widest text-white/70">{label} Verification</span>
+          <ShieldCheck className={`w-4 h-4 ${type === "pickup" ? "text-warning" : "text-success"}`} />
+          <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground">{label} Verification</span>
         </div>
         {!isExpired && token && (
           <div className="flex items-center gap-2">
@@ -269,7 +269,7 @@ export function QRCodeCard({
                 strokeLinecap="round"
               />
             </svg>
-            <span className={`text-sm font-mono font-bold ${secondsLeft < 120 ? "text-red-400 animate-pulse" : "text-white/80"}`}>
+            <span className={`text-sm font-mono font-bold ${secondsLeft < 120 ? "text-destructive animate-pulse" : "text-foreground"}`}>
               {minutes}:{seconds.toString().padStart(2, "0")}
             </span>
           </div>
@@ -280,13 +280,13 @@ export function QRCodeCard({
       <div className="p-6 flex flex-col items-center gap-4">
         {isGenerating ? (
           <div className="py-8 flex flex-col items-center gap-3">
-            <Loader2 className="w-8 h-8 animate-spin text-white/40" />
-            <p className="text-sm text-white/40">Generating secure QR code…</p>
+            <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+            <p className="text-sm text-muted-foreground">Generating secure QR code…</p>
           </div>
         ) : error ? (
           <div className="py-8 flex flex-col items-center gap-3">
-            <XCircle className="w-10 h-10 text-red-400" />
-            <p className="text-sm text-red-400 font-semibold text-center max-w-xs">{error}</p>
+            <XCircle className="w-10 h-10 text-destructive" />
+            <p className="text-sm text-destructive font-semibold text-center max-w-xs">{error}</p>
             <Button onClick={handleRegenerate} size="sm" className={`${
               type === "pickup" ? "bg-amber-500 hover:bg-amber-400" : "bg-emerald-500 hover:bg-emerald-400"
             } text-black font-bold`}>
@@ -295,8 +295,8 @@ export function QRCodeCard({
           </div>
         ) : isExpired ? (
           <div className="py-8 flex flex-col items-center gap-3">
-            <XCircle className="w-10 h-10 text-red-400" />
-            <p className="text-sm text-red-400 font-semibold">QR code expired</p>
+            <XCircle className="w-10 h-10 text-destructive" />
+            <p className="text-sm text-destructive font-semibold">QR code expired</p>
             <Button onClick={handleRegenerate} size="sm" className={`${
               type === "pickup" ? "bg-amber-500 hover:bg-amber-400" : "bg-emerald-500 hover:bg-emerald-400"
             } text-black font-bold`}>
@@ -320,7 +320,7 @@ export function QRCodeCard({
                 size="sm"
                 variant="outline"
                 onClick={handleRegenerate}
-                className="border-white/10 text-white/60 hover:bg-white/5 text-xs"
+                className="border-border text-muted-foreground hover:bg-muted text-xs"
               >
                 <RefreshCw className="w-3.5 h-3.5 mr-1.5" /> Regenerate QR
               </Button>
@@ -328,8 +328,8 @@ export function QRCodeCard({
 
             <div className={`flex items-start gap-2 text-[11px] px-3 py-2 rounded-lg border ${
               type === "pickup"
-                ? "text-amber-400/70 bg-amber-500/5 border-amber-500/10"
-                : "text-emerald-400/70 bg-emerald-500/5 border-emerald-500/10"
+                ? "text-warning bg-amber-500/5 border-amber-500/10"
+                : "text-success bg-emerald-500/5 border-emerald-500/10"
             }`}>
               <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
               <span>Show this QR code <strong>only when the volunteer arrives</strong> to scan with their camera.</span>
@@ -589,18 +589,18 @@ export function QRScannerModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-full sm:max-w-md bg-[#0f1111] text-white border border-white/10 rounded-2xl shadow-2xl p-0 overflow-hidden">
+      <DialogContent className="w-full sm:max-w-md bg-background text-foreground border border-border rounded-2xl shadow-2xl p-0 overflow-hidden">
         {/* Header */}
         <div className={`bg-gradient-to-r ${
-          scanType === "pickup" ? "from-amber-600 to-amber-500" : "from-emerald-600 to-emerald-500"
+          scanType === "pickup" ? "from-amber-500/20 to-amber-500/5" : "from-emerald-500/20 to-emerald-500/5"
         } px-6 py-4`}>
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center">
-              <QrCode className="w-5 h-5 text-white" />
+            <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center">
+              <QrCode className="w-5 h-5 text-foreground" />
             </div>
             <div>
-              <p className="text-[10px] uppercase tracking-widest text-white/70 font-semibold">Physical QR Scanner</p>
-              <h3 className="text-lg font-bold text-white">Scan {label} QR</h3>
+              <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-semibold">Physical QR Scanner</p>
+              <h3 className="text-lg font-bold text-foreground">Scan {label} QR</h3>
             </div>
           </div>
         </div>
@@ -612,12 +612,12 @@ export function QRScannerModal({
               <div className={`w-16 h-16 rounded-full flex items-center justify-center ${
                 scanType === "pickup" ? "bg-amber-500/20" : "bg-emerald-500/20"
               }`}>
-                <CheckCircle2 className={`w-8 h-8 ${scanType === "pickup" ? "text-amber-400" : "text-emerald-400"}`} />
+                <CheckCircle2 className={`w-8 h-8 ${scanType === "pickup" ? "text-warning" : "text-success"}`} />
               </div>
-              <p className={`font-bold text-lg ${scanType === "pickup" ? "text-amber-400" : "text-emerald-400"}`}>
+              <p className={`font-bold text-lg ${scanType === "pickup" ? "text-warning" : "text-success"}`}>
                 {label} Verified ✓
               </p>
-              <p className="text-sm text-white/40 text-center">
+              <p className="text-sm text-muted-foreground text-center">
                 {scanType === "pickup" ? "Food picked up. Heading to delivery." : "Delivery confirmed. Route complete!"}
               </p>
               <Button
@@ -635,15 +635,15 @@ export function QRScannerModal({
             /* ─── Camera Error State (No manual entry fallback) ─── */
             <div className="flex flex-col items-center gap-3 py-6 text-center">
               <div className="w-16 h-16 rounded-full bg-red-500/20 flex items-center justify-center">
-                <Camera className="w-8 h-8 text-red-400" />
+                <Camera className="w-8 h-8 text-destructive" />
               </div>
-              <p className="font-bold text-lg text-red-400">Camera Access Required</p>
-              <p className="text-sm text-white/60 max-w-xs">
+              <p className="font-bold text-lg text-destructive">Camera Access Required</p>
+              <p className="text-sm text-muted-foreground max-w-xs">
                 {cameraError}
               </p>
               <Button
                 onClick={handleRetryCamera}
-                className="mt-2 font-bold px-6 bg-white/10 hover:bg-white/20 text-white border border-white/20"
+                className="mt-2 font-bold px-6 bg-muted hover:bg-muted text-foreground border border-border"
               >
                 <RefreshCw className="w-4 h-4 mr-2" /> Retry Camera
               </Button>
@@ -656,7 +656,7 @@ export function QRScannerModal({
                 {/* Scan overlay */}
                 <div className="absolute inset-0 pointer-events-none">
                   <div className="absolute inset-0 flex items-center justify-center">
-                    <div className="w-[200px] h-[200px] border-2 border-white/30 rounded-2xl relative">
+                    <div className="w-[200px] h-[200px] border-2 border-border rounded-2xl relative">
                       <div className="absolute top-0 left-0 w-6 h-6 border-t-2 border-l-2 border-white rounded-tl-lg" />
                       <div className="absolute top-0 right-0 w-6 h-6 border-t-2 border-r-2 border-white rounded-tr-lg" />
                       <div className="absolute bottom-0 left-0 w-6 h-6 border-b-2 border-l-2 border-white rounded-bl-lg" />
@@ -673,12 +673,12 @@ export function QRScannerModal({
                 )}
               </div>
 
-              <p className="text-xs text-white/40 text-center">
+              <p className="text-xs text-muted-foreground text-center">
                 Point your camera directly at the physical QR code shown by the {scanType === "pickup" ? "donor" : "receiver"}.
               </p>
 
               {error && (
-                <div className="flex items-center gap-2 text-red-400 text-sm bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2">
+                <div className="flex items-center gap-2 text-destructive text-sm bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2">
                   <AlertTriangle className="w-4 h-4 shrink-0" />
                   <span>{error}</span>
                 </div>

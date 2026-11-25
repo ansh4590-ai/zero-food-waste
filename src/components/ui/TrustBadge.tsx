@@ -13,8 +13,8 @@ export function TrustBadge({ type, className, showText = true }: TrustBadgeProps
       className={cn(
         "inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-semibold select-none",
         type === "organization"
-          ? "bg-blue-50 text-blue-700 border border-blue-200"
-          : "bg-green-50 text-green-700 border border-green-200",
+          ? "bg-info/10 text-info border border-blue-200"
+          : "bg-success/10 text-success border border-green-200",
         className
       )}
       title={type === "organization" ? "Verified Partner Organization" : "Verified Identity"}

@@ -14,10 +14,10 @@ interface NeonButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> 
 }
 
 const variantStyles: Record<NeonButtonVariant, string> = {
-  primary:   "bg-[rgba(47,111,87,0.2)] border-[rgba(47,111,87,0.5)] text-[#00e599] hover:bg-[rgba(47,111,87,0.4)] hover:border-[rgba(47,111,87,0.9)] hover:shadow-[0_0_20px_rgba(47,111,87,0.35)] hover:text-white",
-  secondary: "bg-[rgba(59,130,246,0.15)] border-[rgba(59,130,246,0.4)] text-[#60a5fa] hover:bg-[rgba(59,130,246,0.3)] hover:border-[rgba(59,130,246,0.8)] hover:shadow-[0_0_20px_rgba(59,130,246,0.3)] hover:text-white",
-  danger:    "bg-[rgba(239,68,68,0.15)] border-[rgba(239,68,68,0.4)] text-[#f87171] hover:bg-[rgba(239,68,68,0.3)] hover:border-[rgba(239,68,68,0.8)] hover:shadow-[0_0_20px_rgba(239,68,68,0.3)] hover:text-white",
-  ghost:     "bg-transparent border-[rgba(255,255,255,0.08)] text-white/60 hover:bg-[rgba(255,255,255,0.06)] hover:text-white/90 hover:border-[rgba(255,255,255,0.15)]",
+  primary:   "bg-[rgba(47,111,87,0.2)] border-[rgba(47,111,87,0.5)] text-success hover:bg-[rgba(47,111,87,0.4)] hover:border-[rgba(47,111,87,0.9)] hover:shadow-[0_0_20px_rgba(47,111,87,0.35)] hover:text-foreground",
+  secondary: "bg-[rgba(59,130,246,0.15)] border-[rgba(59,130,246,0.4)] text-info hover:bg-[rgba(59,130,246,0.3)] hover:border-[rgba(59,130,246,0.8)] hover:shadow-[0_0_20px_rgba(59,130,246,0.3)] hover:text-foreground",
+  danger:    "bg-[rgba(239,68,68,0.15)] border-[rgba(239,68,68,0.4)] text-destructive hover:bg-[rgba(239,68,68,0.3)] hover:border-[rgba(239,68,68,0.8)] hover:shadow-[0_0_20px_rgba(239,68,68,0.3)] hover:text-foreground",
+  ghost:     "bg-transparent border-border text-muted-foreground hover:bg-accent hover:text-foreground hover:border-input",
 };
 
 const sizeStyles: Record<NeonButtonSize, string> = {
@@ -54,7 +54,7 @@ const NeonButton = forwardRef<HTMLButtonElement, NeonButtonProps>(
         className={cn(
           "inline-flex items-center justify-center font-semibold border backdrop-blur-sm",
           "transition-all duration-200 ease-out active:scale-[0.97]",
-          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#00e599]/50",
+          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
           "disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none",
           variantStyles[variant],
           sizeStyles[size],

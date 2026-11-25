@@ -49,6 +49,7 @@ export default function Settings() {
           <CardContent>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <button
+                aria-pressed={theme === "light"}
                 onClick={() => setTheme("light")}
                 className={`flex flex-col items-center gap-3 p-4 rounded-lg border-2 transition-all ${theme === 'light' ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/50 hover:bg-muted/50'}`}
               >
@@ -58,6 +59,7 @@ export default function Settings() {
                 <span className="font-medium">Light</span>
               </button>
               <button
+                aria-pressed={theme === "dark"}
                 onClick={() => setTheme("dark")}
                 className={`flex flex-col items-center gap-3 p-4 rounded-lg border-2 transition-all ${theme === 'dark' ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/50 hover:bg-muted/50'}`}
               >
@@ -67,6 +69,7 @@ export default function Settings() {
                 <span className="font-medium">Dark</span>
               </button>
               <button
+                aria-pressed={theme === "system"}
                 onClick={() => setTheme("system")}
                 className={`flex flex-col items-center gap-3 p-4 rounded-lg border-2 transition-all ${theme === 'system' ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/50 hover:bg-muted/50'}`}
               >

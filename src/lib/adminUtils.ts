@@ -27,9 +27,9 @@ export function formatWaitTime(submittedAt: string | null | undefined): string {
  * <  40  →  red     (poor)
  */
 export function getFaceMatchColor(score: number): string {
-  if (score >= 70) return 'text-emerald-600';
-  if (score >= 40) return 'text-amber-600';
-  return 'text-red-600';
+  if (score >= 70) return 'text-success';
+  if (score >= 40) return 'text-warning';
+  return 'text-destructive';
 }
 
 /**
@@ -61,9 +61,9 @@ export const CHART_COLORS = [
  * Matches the design system's card background, border, and text colors.
  */
 export const TOOLTIP_STYLE: React.CSSProperties = {
-  background: 'hsl(var(--card))',
-  border: '1px solid hsl(var(--border))',
+  background: 'var(--card)',
+  border: '1px solid var(--border)',
   borderRadius: 8,
   fontSize: 12,
-  color: 'hsl(var(--card-foreground))',
+  color: 'var(--card-foreground)',
 };

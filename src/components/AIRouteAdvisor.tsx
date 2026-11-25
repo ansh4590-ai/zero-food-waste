@@ -78,7 +78,7 @@ export function AIRouteAdvisor({ tasks, onApply }: AIRouteAdvisorProps) {
       >
         <div className="flex items-center gap-2.5">
           <div className="p-1.5 rounded-lg bg-purple-500/15 border border-purple-500/25">
-            <Sparkles className="w-4 h-4 text-purple-400" />
+            <Sparkles className="w-4 h-4 text-violet" />
           </div>
           <div>
             <span className="text-sm font-semibold text-foreground">AI Route Advisor</span>
@@ -99,16 +99,16 @@ export function AIRouteAdvisor({ tasks, onApply }: AIRouteAdvisorProps) {
         <div className="px-4 pb-4 border-t border-border">
           {isLoading ? (
             <div className="flex items-center gap-3 py-6 justify-center text-sm text-muted-foreground">
-              <Loader2 className="w-4 h-4 animate-spin text-purple-400" />
+              <Loader2 className="w-4 h-4 animate-spin text-violet" />
               <span>AI is analyzing your tasks...</span>
             </div>
           ) : error ? (
             <div className="flex flex-col items-center gap-2 py-5 text-center">
-              <AlertTriangle className="w-5 h-5 text-amber-400 opacity-60" />
+              <AlertTriangle className="w-5 h-5 text-warning opacity-60" />
               <p className="text-sm text-muted-foreground">AI advisor is currently unavailable.</p>
               <button
                 onClick={handleGetAdvice}
-                className="text-xs text-purple-400 hover:text-purple-300 underline underline-offset-2 transition-colors"
+                className="text-xs text-violet hover:text-purple-300 underline underline-offset-2 transition-colors"
               >
                 Retry
               </button>
@@ -117,7 +117,7 @@ export function AIRouteAdvisor({ tasks, onApply }: AIRouteAdvisorProps) {
             <div className="space-y-3 pt-3">
               {/* Reasoning */}
               <div className="flex items-start gap-2.5 bg-purple-500/5 border border-purple-500/15 rounded-lg p-3">
-                <Route className="w-4 h-4 text-purple-400 shrink-0 mt-0.5" />
+                <Route className="w-4 h-4 text-violet shrink-0 mt-0.5" />
                 <p className="text-sm text-foreground/90 leading-relaxed">
                   {advice.reasoning}
                 </p>
@@ -136,7 +136,7 @@ export function AIRouteAdvisor({ tasks, onApply }: AIRouteAdvisorProps) {
                       key={taskId}
                       className="flex items-center gap-3 py-1.5 px-2 rounded-md bg-muted/20"
                     >
-                      <span className="w-6 h-6 rounded-full bg-purple-500/20 border border-purple-500/30 text-purple-400 flex items-center justify-center text-xs font-bold">
+                      <span className="w-6 h-6 rounded-full bg-purple-500/20 border border-purple-500/30 text-violet flex items-center justify-center text-xs font-bold">
                         {idx + 1}
                       </span>
                       <span className="text-sm text-foreground truncate">{task.name}</span>
@@ -149,12 +149,12 @@ export function AIRouteAdvisor({ tasks, onApply }: AIRouteAdvisorProps) {
               {!applied ? (
                 <button
                   onClick={handleApply}
-                  className="w-full mt-2 py-2 px-4 text-sm font-medium rounded-lg bg-purple-500/15 border border-purple-500/30 text-purple-400 hover:bg-purple-500/25 hover:text-purple-300 transition-colors"
+                  className="w-full mt-2 py-2 px-4 text-sm font-medium rounded-lg bg-purple-500/15 border border-purple-500/30 text-violet hover:bg-purple-500/25 hover:text-purple-300 transition-colors"
                 >
                   Apply AI Route Order
                 </button>
               ) : (
-                <div className="w-full mt-2 py-2 px-4 text-sm font-medium rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-500 text-center">
+                <div className="w-full mt-2 py-2 px-4 text-sm font-medium rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-success text-center">
                   Route order applied!
                 </div>
               )}

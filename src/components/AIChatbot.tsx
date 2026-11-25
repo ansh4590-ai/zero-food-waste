@@ -136,7 +136,7 @@ export function AIChatbot() {
             {messages.length === 0 && (
               <div className="text-center py-8">
                 <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-purple-500/20 to-indigo-500/20 border border-purple-500/20 flex items-center justify-center mx-auto mb-4">
-                  <Bot className="w-7 h-7 text-purple-400" />
+                  <Bot className="w-7 h-7 text-violet" />
                 </div>
                 <h4 className="text-sm font-semibold text-foreground mb-1.5">Welcome to Zero Food Waste AI</h4>
                 <p className="text-xs text-muted-foreground leading-relaxed max-w-[250px] mx-auto">
@@ -160,7 +160,7 @@ export function AIChatbot() {
               <div key={msg.id} className={`flex gap-2.5 ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
                 {msg.role === "assistant" && (
                   <div className="w-7 h-7 rounded-full bg-gradient-to-br from-purple-500/20 to-indigo-500/20 border border-purple-500/20 flex items-center justify-center shrink-0 mt-0.5">
-                    <Bot className="w-3.5 h-3.5 text-purple-400" />
+                    <Bot className="w-3.5 h-3.5 text-violet" />
                   </div>
                 )}
                 <div className={`max-w-[75%] px-3.5 py-2.5 rounded-2xl text-sm leading-relaxed ${
@@ -181,7 +181,7 @@ export function AIChatbot() {
             {isTyping && (
               <div className="flex gap-2.5">
                 <div className="w-7 h-7 rounded-full bg-gradient-to-br from-purple-500/20 to-indigo-500/20 border border-purple-500/20 flex items-center justify-center shrink-0">
-                  <Bot className="w-3.5 h-3.5 text-purple-400" />
+                  <Bot className="w-3.5 h-3.5 text-violet" />
                 </div>
                 <div className="bg-muted px-4 py-3 rounded-2xl rounded-bl-md flex items-center gap-1.5">
                   <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground/50 animate-bounce" style={{ animationDelay: "0ms" }} />
@@ -196,7 +196,7 @@ export function AIChatbot() {
           {/* Input */}
           <div className="px-3 pb-3 pt-2 border-t border-border shrink-0">
             {rateLimitReached ? (
-              <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-xs text-amber-500">
+              <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-xs text-warning">
                 <AlertCircle className="w-3.5 h-3.5 shrink-0" />
                 Chat limit reached for this session. Refresh to start a new one.
               </div>

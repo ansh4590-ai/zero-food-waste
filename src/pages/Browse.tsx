@@ -339,7 +339,7 @@ export default function Browse() {
                       <div className="flex flex-wrap gap-y-2 gap-x-4">
                         {item.freshnessScore != null && (
                           <div className="flex items-center text-sm" title="Advisory AI/donor estimate — not a certified food inspection">
-                            <Sparkles className="h-4 w-4 mr-1.5 text-amber-500" />
+                            <Sparkles className="h-4 w-4 mr-1.5 text-warning" />
                             <span className="text-muted-foreground font-medium">
                               Est. Freshness: <span className="text-foreground">{item.freshnessScore}/100</span>
                             </span>
@@ -347,7 +347,7 @@ export default function Browse() {
                         )}
                         {item.qualityStatus && (
                           <div className="flex items-center text-sm" title="Advisory AI/donor estimate — not a certified food inspection">
-                            <Leaf className="h-4 w-4 mr-1.5 text-blue-500" />
+                            <Leaf className="h-4 w-4 mr-1.5 text-info" />
                             <span className="text-muted-foreground font-medium">
                               Est. Quality: <span className={`capitalize ${item.qualityStatus === 'excellent' ? 'text-emerald-600 dark:text-emerald-400' :
                                 item.qualityStatus === 'good' ? 'text-blue-600 dark:text-blue-400' :
@@ -381,8 +381,8 @@ export default function Browse() {
                       </div>
 
                       {countdown && (
-                        <div className={`flex items-center text-xs font-semibold pl-6 ${windowStatus === 'expired' ? 'text-red-500' :
-                          windowStatus === 'upcoming' ? 'text-amber-500' :
+                        <div className={`flex items-center text-xs font-semibold pl-6 ${windowStatus === 'expired' ? 'text-destructive' :
+                          windowStatus === 'upcoming' ? 'text-warning' :
                             'text-emerald-600 dark:text-emerald-400'
                           }`}>
                           {windowStatus === 'upcoming' ? '⏳ Upcoming • ' :
@@ -422,7 +422,7 @@ export default function Browse() {
         <DialogContent className="sm:max-w-md bg-card text-card-foreground border border-border rounded-2xl shadow-2xl">
           <DialogHeader>
             <DialogTitle className="text-lg font-bold flex items-center gap-2">
-              <AlertTriangle className="w-5 h-5 text-amber-500" /> Confirm Food Request
+              <AlertTriangle className="w-5 h-5 text-warning" /> Confirm Food Request
             </DialogTitle>
             <DialogDescription className="text-muted-foreground text-sm">
               Please double-check the details below before confirming your request.

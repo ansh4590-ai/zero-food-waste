@@ -15,7 +15,7 @@ const KycTrendChart: React.FC<KycTrendChartProps> = React.memo(function KycTrend
     <Card className="border-border">
       <CardHeader className="pb-2">
         <CardTitle className="text-sm flex items-center gap-2">
-          <TrendingUp className="h-4 w-4 text-blue-500" /> KYC Submissions (Last 7 Days)
+          <TrendingUp className="h-4 w-4 text-info" /> KYC Submissions (Last 7 Days)
         </CardTitle>
       </CardHeader>
       <CardContent className="pb-4">

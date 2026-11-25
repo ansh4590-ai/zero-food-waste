@@ -152,9 +152,9 @@ export function DateTimePicker({
       style={panelStyle}
       className="
         rounded-xl overflow-hidden
-        border border-white/10
+        border border-border
         shadow-[0_16px_48px_rgba(0,0,0,0.8),0_0_0_1px_rgba(255,255,255,0.04)]
-        bg-gradient-to-br from-[#12151e] to-[#0c0f17]
+        bg-popover text-popover-foreground
       "
     >
       {/* ── Two-column layout ── */}
@@ -165,14 +165,14 @@ export function DateTimePicker({
           {/* Month nav */}
           <div className="flex items-center justify-between mb-2">
             <button type="button" onClick={prevMonth}
-              className="p-1 rounded-lg hover:bg-white/10 text-zinc-400 hover:text-white transition-all">
+              className="p-1 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-all">
               <ChevronLeft className="h-3.5 w-3.5" />
             </button>
-            <span className="text-xs font-semibold text-white tracking-wide">
+            <span className="text-xs font-semibold text-foreground tracking-wide">
               {MONTHS[viewMonth].slice(0,3)} {viewYear}
             </span>
             <button type="button" onClick={nextMonth}
-              className="p-1 rounded-lg hover:bg-white/10 text-zinc-400 hover:text-white transition-all">
+              className="p-1 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-all">
               <ChevronRight className="h-3.5 w-3.5" />
             </button>
           </div>
@@ -180,7 +180,7 @@ export function DateTimePicker({
           {/* Day headers */}
           <div className="grid grid-cols-7 mb-0.5">
             {DAYS.map(d => (
-              <div key={d} className="text-center text-[9px] font-semibold text-zinc-600 py-0.5 uppercase tracking-wider">
+              <div key={d} className="text-center text-[9px] font-semibold text-muted-foreground py-0.5 uppercase tracking-wider">
                 {d}
               </div>
             ))}
@@ -198,12 +198,12 @@ export function DateTimePicker({
                     relative h-5 w-full rounded text-[11px] font-medium transition-all duration-150
                     flex items-center justify-center
                     ${disabled
-                      ? 'text-zinc-700 cursor-not-allowed'
+                      ? 'text-muted-foreground cursor-not-allowed'
                       : selected
-                        ? 'bg-emerald-500 text-white shadow-[0_2px_8px_rgba(16,185,129,0.5)] font-bold'
+                        ? 'bg-primary text-primary-foreground shadow-[0_2px_8px_rgba(16,185,129,0.5)] font-bold'
                         : today
-                          ? 'bg-white/10 text-emerald-400 font-semibold hover:bg-emerald-500/20'
-                          : 'text-zinc-300 hover:bg-white/10 hover:text-white'
+                          ? 'bg-muted text-success font-semibold hover:bg-emerald-500/20'
+                          : 'text-foreground hover:bg-muted hover:text-foreground'
                     }
                   `}
                 >
@@ -218,36 +218,36 @@ export function DateTimePicker({
         </div>
 
         {/* Vertical divider */}
-        <div className="w-px bg-white/5 my-3" />
+        <div className="w-px bg-muted my-3" />
 
         {/* RIGHT — Time drums */}
         <div className="w-[130px] shrink-0 p-2.5 flex flex-col gap-1.5">
-          <div className="text-[9px] font-semibold text-zinc-500 uppercase tracking-wider">Time</div>
+          <div className="text-[9px] font-semibold text-muted-foreground uppercase tracking-wider">Time</div>
 
           <div className="flex items-start gap-1.5">
             {/* Hour */}
             <div className="flex-1">
-              <div className="text-[9px] text-zinc-600 mb-0.5 text-center uppercase tracking-wider">Hr</div>
-              <div className="h-[108px] overflow-y-auto rounded bg-black/40 border border-white/8 [&::-webkit-scrollbar]:hidden scroll-smooth">
+              <div className="text-[9px] text-muted-foreground mb-0.5 text-center uppercase tracking-wider">Hr</div>
+              <div className="h-[108px] overflow-y-auto rounded bg-muted border border-border [&::-webkit-scrollbar]:hidden scroll-smooth">
                 {hours24.map(h => (
                   <button key={h} type="button" onClick={() => setHour(h)}
                     className={`w-full py-0.5 text-[11px] text-center transition-colors duration-100
-                      ${h === hour ? 'bg-emerald-500/20 text-emerald-400 font-bold' : 'text-zinc-400 hover:text-white hover:bg-white/5'}`}
+                      ${h === hour ? 'bg-emerald-500/20 text-success font-bold' : 'text-muted-foreground hover:text-foreground hover:bg-muted'}`}
                   >{pad(h)}</button>
                 ))}
               </div>
             </div>
 
-            <div className="text-zinc-600 text-sm font-light mt-5">:</div>
+            <div className="text-muted-foreground text-sm font-light mt-5">:</div>
 
             {/* Minute */}
             <div className="flex-1">
-              <div className="text-[9px] text-zinc-600 mb-0.5 text-center uppercase tracking-wider">Min</div>
-              <div className="h-[108px] overflow-y-auto rounded bg-black/40 border border-white/8 [&::-webkit-scrollbar]:hidden">
+              <div className="text-[9px] text-muted-foreground mb-0.5 text-center uppercase tracking-wider">Min</div>
+              <div className="h-[108px] overflow-y-auto rounded bg-muted border border-border [&::-webkit-scrollbar]:hidden">
                 {minutes5.map(m => (
                   <button key={m} type="button" onClick={() => setMinute(m)}
                     className={`w-full py-0.5 text-[11px] text-center transition-colors duration-100
-                      ${m === minute ? 'bg-emerald-500/20 text-emerald-400 font-bold' : 'text-zinc-400 hover:text-white hover:bg-white/5'}`}
+                      ${m === minute ? 'bg-emerald-500/20 text-success font-bold' : 'text-muted-foreground hover:text-foreground hover:bg-muted'}`}
                   >{pad(m)}</button>
                 ))}
               </div>
@@ -256,9 +256,9 @@ export function DateTimePicker({
 
           {/* Live preview */}
           <div className="mt-auto rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex flex-col items-center justify-center py-2">
-            <span className="text-lg font-bold text-emerald-400 tabular-nums">{pad(hour)}:{pad(minute)}</span>
+            <span className="text-lg font-bold text-success tabular-nums">{pad(hour)}:{pad(minute)}</span>
             {selDate && (
-              <span className="text-[9px] text-zinc-500 mt-0.5">
+              <span className="text-[9px] text-muted-foreground mt-0.5">
                 {MONTHS[selDate.getMonth()].slice(0,3)} {selDate.getDate()}
               </span>
             )}
@@ -269,12 +269,12 @@ export function DateTimePicker({
       {/* ── Action row ── */}
       <div className="flex gap-2 px-3 pb-3">
         <button type="button" onClick={() => setOpen(false)}
-          className="flex-1 py-1.5 rounded-lg text-xs font-medium bg-white/5 border border-white/10 text-zinc-400 hover:bg-white/10 hover:text-white transition-all">
+          className="flex-1 py-1.5 rounded-lg text-xs font-medium bg-muted border border-border text-muted-foreground hover:bg-muted hover:text-foreground transition-all">
           Cancel
         </button>
         <button type="button" onClick={confirm} disabled={!selDate}
-          className="flex-1 py-1.5 rounded-lg text-xs font-semibold text-white
-            bg-gradient-to-r from-emerald-600 to-emerald-500
+          className="flex-1 py-1.5 rounded-lg text-xs font-semibold text-primary-foreground
+            bg-primary
             shadow-[0_2px_12px_rgba(16,185,129,0.4)]
             disabled:opacity-40 disabled:cursor-not-allowed
             hover:shadow-[0_4px_16px_rgba(16,185,129,0.6)] transition-all duration-200">
@@ -296,20 +296,20 @@ export function DateTimePicker({
         onClick={openPicker}
         className="
           w-full flex items-center gap-2 px-3 py-2 rounded-lg
-          bg-[#0f1117] border border-white/10 text-sm text-left
-          hover:border-emerald-500/50 hover:bg-[#131620]
+          bg-card border border-border text-sm text-left
+          hover:border-emerald-500/50 hover:bg-accent
           focus:outline-none focus:border-emerald-500
           transition-all duration-200
           shadow-[0_2px_8px_rgba(0,0,0,0.4)]
         "
       >
-        <CalendarDays className="h-4 w-4 text-emerald-400 shrink-0" />
-        <span className={displayValue ? 'text-white' : 'text-zinc-500'}>
+        <CalendarDays className="h-4 w-4 text-success shrink-0" />
+        <span className={displayValue ? 'text-foreground' : 'text-muted-foreground'}>
           {displayValue || placeholder}
         </span>
         {value && (
           <button type="button" onClick={e => { e.stopPropagation(); clear(); }}
-            className="ml-auto text-zinc-500 hover:text-white transition-colors">
+            className="ml-auto text-muted-foreground hover:text-foreground transition-colors">
             <X className="h-3.5 w-3.5" />
           </button>
         )}

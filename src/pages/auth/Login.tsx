@@ -99,19 +99,19 @@ export default function Login() {
     >
       <form onSubmit={handleSubmit} className="space-y-5">
         <div className="space-y-2">
-          <label className="text-sm font-medium leading-none text-zinc-300" htmlFor="email">
+          <label className="text-sm font-medium leading-none text-foreground" htmlFor="email">
             Email
           </label>
           <div className="relative">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <Mail className="h-4 w-4 text-zinc-500" />
+              <Mail className="h-4 w-4 text-muted-foreground" />
             </div>
             <Input 
               id="email" 
               name="email" 
               type="email" 
               placeholder="name@example.com" 
-              className="pl-10 bg-zinc-900/50 border-white/10 text-white placeholder:text-zinc-500 focus-visible:ring-emerald-500"
+              className="pl-10 bg-card border-border text-foreground placeholder:text-muted-foreground focus-visible:ring-emerald-500"
               required 
               value={formData.email}
               onChange={handleChange}
@@ -121,23 +121,23 @@ export default function Login() {
         
         <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <label className="text-sm font-medium leading-none text-zinc-300" htmlFor="password">
+            <label className="text-sm font-medium leading-none text-foreground" htmlFor="password">
               Password
             </label>
-            <a href="#" className="text-sm font-medium text-emerald-400 hover:text-emerald-300 transition-colors">
+            <a href="#" className="text-sm font-medium text-success hover:text-emerald-300 transition-colors">
               Forgot password?
             </a>
           </div>
           <div className="relative">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <Lock className="h-4 w-4 text-zinc-500" />
+              <Lock className="h-4 w-4 text-muted-foreground" />
             </div>
             <Input 
               id="password" 
               name="password" 
               type="password" 
               placeholder="••••••••"
-              className="pl-10 bg-zinc-900/50 border-white/10 text-white placeholder:text-zinc-500 focus-visible:ring-emerald-500"
+              className="pl-10 bg-card border-border text-foreground placeholder:text-muted-foreground focus-visible:ring-emerald-500"
               required 
               value={formData.password}
               onChange={handleChange}
@@ -147,7 +147,7 @@ export default function Login() {
         
         <Button 
           type="submit" 
-          className="w-full bg-emerald-600 hover:bg-emerald-500 text-white transition-all active:scale-[0.98]" 
+          className="w-full bg-primary hover:bg-primary/90 text-primary-foreground transition-all active:scale-[0.98]"
           disabled={isLoading || isGoogleLoading}
         >
           {isLoading ? "Signing in..." : "Sign in"}
@@ -156,17 +156,17 @@ export default function Login() {
 
       <div className="relative my-8">
         <div className="absolute inset-0 flex items-center">
-          <span className="w-full border-t border-white/10" />
+          <span className="w-full border-t border-border" />
         </div>
         <div className="relative flex justify-center text-xs uppercase tracking-wider">
-          <span className="bg-zinc-900 px-3 text-zinc-500 font-medium rounded-full">Or continue with</span>
+          <span className="bg-card px-3 text-muted-foreground font-medium rounded-full">Or continue with</span>
         </div>
       </div>
 
       <Button 
         type="button" 
         variant="outline" 
-        className="w-full bg-transparent border-white/10 text-white hover:bg-white/5 transition-all active:scale-[0.98]" 
+        className="w-full bg-transparent border-border text-foreground hover:bg-muted transition-all active:scale-[0.98]"
         disabled={isLoading || isGoogleLoading}
         onClick={handleGoogleSignIn}
       >
@@ -186,9 +186,9 @@ export default function Login() {
       </Button>
 
       <div className="mt-8 text-center">
-        <p className="text-sm text-zinc-400">
+        <p className="text-sm text-muted-foreground">
           Don't have an account?{" "}
-          <Link to="/register" className="font-medium text-emerald-400 hover:text-emerald-300 transition-colors">
+          <Link to="/register" className="font-medium text-success hover:text-emerald-300 transition-colors">
             Sign up
           </Link>
         </p>

@@ -32,7 +32,7 @@ export const getAutoStatusLabel = (status: string): string => {
  * Get the risk level based on the KYC score.
  */
 export const getKycRiskLevel = (score: number): { label: string; color: string } => {
-  if (score >= 80) return { label: 'Low Risk',    color: '#10b981' };
-  if (score >= 60) return { label: 'Medium Risk', color: '#f59e0b' };
-  return { label: 'High Risk',   color: '#ef4444' };
+  if (score >= 80) return { label: 'Low Risk',    color: 'var(--success)' };
+  if (score >= 60) return { label: 'Medium Risk', color: 'var(--warning)' };
+  return { label: 'High Risk',   color: 'var(--destructive)' };
 };

@@ -77,83 +77,83 @@ export default function DonorSignup() {
     >
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="space-y-2">
-          <label className="text-sm font-medium leading-none text-zinc-300">Name / Business Name</label>
+          <label className="text-sm font-medium leading-none text-foreground">Name / Business Name</label>
           <Input 
             name="name" 
             required 
             value={formData.name} 
             onChange={handleChange} 
-            className="bg-zinc-900/50 border-white/10 text-white placeholder:text-zinc-500 focus-visible:ring-emerald-500" 
+            className="bg-card border-border text-foreground placeholder:text-muted-foreground focus-visible:ring-emerald-500"
           />
         </div>
         
         <div className="space-y-2">
-          <label className="text-sm font-medium leading-none text-zinc-300">Email</label>
+          <label className="text-sm font-medium leading-none text-foreground">Email</label>
           <Input 
             name="email" 
             type="email" 
             required 
             value={formData.email} 
             onChange={handleChange} 
-            className="bg-zinc-900/50 border-white/10 text-white placeholder:text-zinc-500 focus-visible:ring-emerald-500" 
+            className="bg-card border-border text-foreground placeholder:text-muted-foreground focus-visible:ring-emerald-500"
           />
         </div>
         
         <div className="space-y-2">
-          <label className="text-sm font-medium leading-none text-zinc-300">Password</label>
+          <label className="text-sm font-medium leading-none text-foreground">Password</label>
           <Input 
             name="password" 
             type="password" 
             required 
             value={formData.password} 
             onChange={handleChange} 
-            className="bg-zinc-900/50 border-white/10 text-white placeholder:text-zinc-500 focus-visible:ring-emerald-500" 
+            className="bg-card border-border text-foreground placeholder:text-muted-foreground focus-visible:ring-emerald-500"
           />
         </div>
 
         <div className="space-y-2">
-          <label className="text-sm font-medium leading-none text-zinc-300">Phone Number</label>
+          <label className="text-sm font-medium leading-none text-foreground">Phone Number</label>
           <Input 
             name="phone" 
             type="tel" 
             required 
             value={formData.phone} 
             onChange={handleChange} 
-            className="bg-zinc-900/50 border-white/10 text-white placeholder:text-zinc-500 focus-visible:ring-emerald-500" 
+            className="bg-card border-border text-foreground placeholder:text-muted-foreground focus-visible:ring-emerald-500"
           />
         </div>
 
         <div className="space-y-2">
-          <label className="text-sm font-medium leading-none text-zinc-300">Donor Type</label>
+          <label className="text-sm font-medium leading-none text-foreground">Donor Type</label>
           <select 
             name="donorType" 
-            className="flex h-10 w-full rounded-md border border-white/10 bg-zinc-900/50 px-3 py-2 text-sm text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+            className="flex h-10 w-full rounded-md border border-border bg-card px-3 py-2 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
             value={formData.donorType} 
             onChange={handleChange}
           >
-            <option value="restaurant" className="bg-zinc-900">Restaurant / Cafe</option>
-            <option value="grocery" className="bg-zinc-900">Grocery Store</option>
-            <option value="event" className="bg-zinc-900">Event Organizer</option>
-            <option value="individual" className="bg-zinc-900">Individual</option>
+            <option value="restaurant" className="bg-card">Restaurant / Cafe</option>
+            <option value="grocery" className="bg-card">Grocery Store</option>
+            <option value="event" className="bg-card">Event Organizer</option>
+            <option value="individual" className="bg-card">Individual</option>
           </select>
         </div>
 
         <div className="space-y-2">
-          <label className="text-sm font-medium leading-none text-zinc-300">Address</label>
+          <label className="text-sm font-medium leading-none text-foreground">Address</label>
           <AddressAutocomplete
             name="address"
             value={formData.address}
             onChange={(val) => setFormData(prev => ({ ...prev, address: val }))}
             onSelect={handleAddressSelect}
             placeholder="Start typing address or pincode..."
-            className="bg-zinc-900/50 border-white/10 text-white placeholder:text-zinc-500 focus-visible:ring-emerald-500"
+            className="bg-card border-border text-foreground placeholder:text-muted-foreground focus-visible:ring-emerald-500"
             required
           />
         </div>
         
         <Button 
           type="submit" 
-          className="w-full mt-6 bg-emerald-600 hover:bg-emerald-500 text-white transition-all active:scale-[0.98]" 
+          className="w-full mt-6 bg-primary hover:bg-primary/90 text-primary-foreground transition-all active:scale-[0.98]"
           disabled={isLoading}
         >
           {isLoading ? "Registering..." : "Register as Donor"}
@@ -161,7 +161,7 @@ export default function DonorSignup() {
       </form>
       
       <div className="mt-6 text-center">
-        <Link to="/register" className="text-sm font-medium text-emerald-400 hover:text-emerald-300 transition-colors">
+        <Link to="/register" className="text-sm font-medium text-success hover:text-emerald-300 transition-colors">
           ← Back to roles
         </Link>
       </div>

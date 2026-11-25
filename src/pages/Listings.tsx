@@ -138,11 +138,11 @@ export default function Listings() {
                 
                 <div className="space-y-2 mt-auto">
                   <div className="flex items-start gap-2 text-sm text-muted-foreground">
-                    <MapPin className="w-4 h-4 shrink-0 mt-0.5 text-red-400" />
+                    <MapPin className="w-4 h-4 shrink-0 mt-0.5 text-destructive" />
                     <span className="line-clamp-2 leading-tight">{listing.location_name || 'Location hidden'}</span>
                   </div>
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <Calendar className="w-4 h-4 shrink-0 text-amber-400" />
+                    <Calendar className="w-4 h-4 shrink-0 text-warning" />
                     <span>Expires: {new Date(listing.expiry_time).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute:'2-digit' })}</span>
                   </div>
                 </div>

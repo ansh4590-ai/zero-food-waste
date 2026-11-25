@@ -61,7 +61,7 @@ NeonCardHeader.displayName = "NeonCardHeader";
 
 const NeonCardTitle = forwardRef<HTMLHeadingElement, React.HTMLAttributes<HTMLHeadingElement>>(
   ({ className, children, ...props }, ref) => (
-    <h3 ref={ref} className={cn("text-base font-semibold text-white/90 tracking-tight", className)} {...props}>
+    <h3 ref={ref} className={cn("text-base font-semibold text-foreground tracking-tight", className)} {...props}>
       {children}
     </h3>
   )
@@ -70,7 +70,7 @@ NeonCardTitle.displayName = "NeonCardTitle";
 
 const NeonCardDescription = forwardRef<HTMLParagraphElement, React.HTMLAttributes<HTMLParagraphElement>>(
   ({ className, ...props }, ref) => (
-    <p ref={ref} className={cn("text-sm text-white/50", className)} {...props} />
+    <p ref={ref} className={cn("text-sm text-muted-foreground", className)} {...props} />
   )
 );
 NeonCardDescription.displayName = "NeonCardDescription";

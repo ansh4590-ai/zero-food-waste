@@ -105,7 +105,7 @@ export default function ReviewDialog({
                 <div className="aspect-[4/3] bg-gray-100 dark:bg-muted rounded-xl border flex items-center justify-center overflow-hidden">
                   {signedUrls.aadhaar
                     ? <img src={signedUrls.aadhaar} alt="Aadhaar" className="object-contain w-full h-full" />
-                    : user?.documents?.aadhaar ? <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /> : <span className="text-sm text-gray-400">No Image</span>}
+                    : user?.documents?.aadhaar ? <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /> : <span className="text-sm text-muted-foreground">No Image</span>}
                 </div>
               </div>
               <div className="space-y-2">
@@ -113,7 +113,7 @@ export default function ReviewDialog({
                 <div className="aspect-[4/3] bg-gray-100 dark:bg-muted rounded-xl border flex items-center justify-center overflow-hidden">
                   {signedUrls.selfie
                     ? <img src={signedUrls.selfie} alt="Selfie" className="object-contain w-full h-full" />
-                    : user?.documents?.selfie ? <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /> : <span className="text-sm text-gray-400">No Image</span>}
+                    : user?.documents?.selfie ? <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /> : <span className="text-sm text-muted-foreground">No Image</span>}
                 </div>
               </div>
             </div>

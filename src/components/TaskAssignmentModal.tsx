@@ -143,39 +143,39 @@ export function TaskAssignmentModal({ volunteerLat, volunteerLng, onAccepted }: 
 
   return (
     <Dialog open onOpenChange={(open) => { if (!open && !isActing) setPendingTask(null); }}>
-      <DialogContent className="sm:max-w-md bg-[#0f1111] text-white border border-white/10 rounded-2xl shadow-2xl p-0 overflow-hidden">
+      <DialogContent className="sm:max-w-md bg-background text-foreground border border-border rounded-2xl shadow-2xl p-0 overflow-hidden">
         {/* Urgent header stripe */}
-        <div className="bg-gradient-to-r from-blue-600 to-blue-500 px-6 py-4">
+        <div className="bg-gradient-to-r from-info/20 to-info/5 px-6 py-4">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center">
-              <Navigation className="w-5 h-5 text-white" />
+            <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center">
+              <Navigation className="w-5 h-5 text-foreground" />
             </div>
             <div>
-              <p className="text-[10px] uppercase tracking-widest text-blue-100 font-semibold">Auto-Dispatch Alert</p>
-              <DialogTitle className="text-lg font-bold text-white m-0">New Assignment</DialogTitle>
+              <p className="text-[10px] uppercase tracking-widest text-info font-semibold">Auto-Dispatch Alert</p>
+              <DialogTitle className="text-lg font-bold text-foreground m-0">New Assignment</DialogTitle>
             </div>
           </div>
         </div>
 
         <div className="px-6 py-5 space-y-4">
-          <DialogDescription className="text-white/50 text-xs sr-only">
+          <DialogDescription className="text-muted-foreground text-xs sr-only">
             A new food delivery task has been assigned to you. Review the details and accept or decline.
           </DialogDescription>
 
           {/* Food info */}
-          <div className="bg-white/5 border border-white/10 rounded-xl p-4">
+          <div className="bg-muted border border-border rounded-xl p-4">
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-2">
-                <Package className="w-4 h-4 text-amber-400" />
-                <span className="font-semibold text-white text-sm">{pendingTask.foodName}</span>
+                <Package className="w-4 h-4 text-warning" />
+                <span className="font-semibold text-foreground text-sm">{pendingTask.foodName}</span>
               </div>
-              <Badge className="bg-amber-500/15 text-amber-400 border-amber-500/30 text-[10px]">
+              <Badge className="bg-amber-500/15 text-warning border-amber-500/30 text-[10px]">
                 {pendingTask.quantity}
               </Badge>
             </div>
 
             {minutesToExpiry !== null && minutesToExpiry > 0 && (
-              <div className={`flex items-center gap-1.5 text-xs mb-3 ${minutesToExpiry <= 30 ? "text-red-400" : "text-amber-400/70"}`}>
+              <div className={`flex items-center gap-1.5 text-xs mb-3 ${minutesToExpiry <= 30 ? "text-destructive" : "text-warning"}`}>
                 <Clock className="w-3 h-3" />
                 Expires in {minutesToExpiry < 60 ? `${minutesToExpiry} min` : `${Math.floor(minutesToExpiry / 60)}h ${minutesToExpiry % 60}m`}
               </div>
@@ -185,15 +185,15 @@ export function TaskAssignmentModal({ volunteerLat, volunteerLng, onAccepted }: 
               <div className="flex items-start gap-2">
                 <span className="w-2 h-2 rounded-full bg-amber-400 mt-1.5 shrink-0" />
                 <div>
-                  <p className="text-[10px] text-white/40 uppercase tracking-wider">Pickup</p>
-                  <p className="text-xs text-white/80">{pendingTask.pickupAddress}</p>
+                  <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Pickup</p>
+                  <p className="text-xs text-foreground">{pendingTask.pickupAddress}</p>
                 </div>
               </div>
               <div className="flex items-start gap-2">
                 <span className="w-2 h-2 rounded-full bg-emerald-400 mt-1.5 shrink-0" />
                 <div>
-                  <p className="text-[10px] text-white/40 uppercase tracking-wider">Dropoff</p>
-                  <p className="text-xs text-white/80">{pendingTask.dropoffAddress}</p>
+                  <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Dropoff</p>
+                  <p className="text-xs text-foreground">{pendingTask.dropoffAddress}</p>
                 </div>
               </div>
             </div>
@@ -201,8 +201,8 @@ export function TaskAssignmentModal({ volunteerLat, volunteerLng, onAccepted }: 
 
           {/* Distance badge */}
           <div className="flex items-center justify-center gap-2">
-            <MapPin className="w-4 h-4 text-blue-400" />
-            <span className="text-sm font-semibold text-blue-400">
+            <MapPin className="w-4 h-4 text-info" />
+            <span className="text-sm font-semibold text-info">
               {distanceKm.toFixed(1)} km from your location
             </span>
           </div>
@@ -213,7 +213,7 @@ export function TaskAssignmentModal({ volunteerLat, volunteerLng, onAccepted }: 
               variant="outline"
               onClick={() => handleAction("decline")}
               disabled={isActing}
-              className="flex-1 border-red-500/30 text-red-400 hover:bg-red-500/10 hover:text-red-300 hover:border-red-500/50 bg-transparent h-11"
+              className="flex-1 border-red-500/30 text-destructive hover:bg-red-500/10 hover:text-red-300 hover:border-red-500/50 bg-transparent h-11"
             >
               {isActing ? <Loader2 className="w-4 h-4 animate-spin" /> : (
                 <><XCircle className="w-4 h-4 mr-2" /> Decline</>
@@ -230,7 +230,7 @@ export function TaskAssignmentModal({ volunteerLat, volunteerLng, onAccepted }: 
             </Button>
           </div>
 
-          <p className="text-[10px] text-white/25 text-center">
+          <p className="text-[10px] text-muted-foreground text-center">
             Task auto-expires if no action is taken within 2 minutes
           </p>
         </div>

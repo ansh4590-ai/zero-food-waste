@@ -178,8 +178,8 @@ function AnimatedProcessFlow() {
                 animate={{ opacity: isActive ? 1 : 0.5, y: isActive ? 0 : 4 }}
                 transition={{ duration: 0.4 }}
               >
-                <h4 className="font-bold text-base md:text-lg text-gray-900 dark:text-white mb-1 md:mb-2">{s.title}</h4>
-                <p className="text-xs md:text-sm text-gray-500 dark:text-white/50 leading-relaxed max-w-[140px] md:max-w-[180px] mx-auto">{s.desc}</p>
+                <h4 className="font-bold text-base md:text-lg text-foreground mb-1 md:mb-2">{s.title}</h4>
+                <p className="text-xs md:text-sm text-muted-foreground leading-relaxed max-w-[140px] md:max-w-[180px] mx-auto">{s.desc}</p>
               </motion.div>
 
               {/* Mini Preview Card */}
@@ -211,9 +211,9 @@ function AnimatedProcessFlow() {
                         <div className="p-2 rounded-xl" style={{ backgroundColor: `${s.color}20` }}>
                           <Icon className="w-5 h-5 md:w-6 md:h-6" style={{ color: s.color }} />
                         </div>
-                        <span className="text-sm md:text-base font-bold text-gray-900 dark:text-white">Step {i + 1} — {s.title}</span>
+                        <span className="text-sm md:text-base font-bold text-foreground">Step {i + 1} — {s.title}</span>
                       </div>
-                      <p className="text-xs md:text-sm text-gray-600 dark:text-white/70 leading-relaxed">{s.preview}</p>
+                      <p className="text-xs md:text-sm text-muted-foreground leading-relaxed">{s.preview}</p>
                     </div>
                     {/* Arrow */}
                     <div
@@ -266,10 +266,10 @@ function AnimatedKYCMockup() {
   return (
     <div className="relative w-full max-w-sm mx-auto group">
       <div ref={ref} className="w-full aspect-[1/2] rounded-[2.5rem] border-[6px] border-white dark:border-[#171a1a] bg-gray-100 dark:bg-[#0a0c0c] shadow-[0_20px_50px_rgba(0,0,0,0.1)] dark:shadow-[0_0_50px_rgba(0,0,0,0.8)] relative overflow-hidden flex flex-col pt-10 px-6 pb-6 transition-transform duration-500 hover:-translate-y-2">
-        <div className="h-4 w-40 bg-white dark:bg-[#171a1a] absolute top-0 left-1/2 -translate-x-1/2 rounded-b-xl z-20" />
+        <div className="h-4 w-40 bg-card absolute top-0 left-1/2 -translate-x-1/2 rounded-b-xl z-20" />
 
-        <h4 className="text-xl font-bold mb-2 text-gray-900 dark:text-white relative z-20">Identity Audit</h4>
-        <p className="text-xs text-gray-600 dark:text-white/40 mb-6 relative z-20">Level-2 Clearance Protocol</p>
+        <h4 className="text-xl font-bold mb-2 text-foreground relative z-20">Identity Audit</h4>
+        <p className="text-xs text-muted-foreground mb-6 relative z-20">Level-2 Clearance Protocol</p>
 
         <div className="flex-1 relative flex flex-col items-center justify-center min-h-[200px]">
 
@@ -283,17 +283,17 @@ function AnimatedKYCMockup() {
                 exit={{ opacity: 0, y: -20 }}
                 className="w-full space-y-3 absolute inset-x-0"
               >
-                <div className={`p-4 rounded-xl border transition-all duration-500 flex flex-col gap-3 ${step >= 0 ? 'border-[#2f6f57]/50 bg-[#2f6f57]/10' : 'border-gray-200 dark:border-white/5 opacity-50'}`}>
+                <div className={`p-4 rounded-xl border transition-all duration-500 flex flex-col gap-3 ${step >= 0 ? 'border-[#2f6f57]/50 bg-[#2f6f57]/10' : 'border-border opacity-50'}`}>
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                      <FileCheck2 className={`w-4 h-4 ${step >= 0 ? 'text-[#2f6f57] dark:text-[#10b981]' : 'text-gray-400'}`} />
-                      <span className="text-sm font-semibold text-gray-900 dark:text-white">Aadhaar Verification</span>
+                      <FileCheck2 className={`w-4 h-4 ${step >= 0 ? 'text-primary dark:text-[#10b981]' : 'text-gray-400'}`} />
+                      <span className="text-sm font-semibold text-foreground">Aadhaar Verification</span>
                     </div>
-                    {step > 0 ? <CheckCircle2 className="w-4 h-4 text-[#2f6f57] dark:text-[#10b981]" /> : <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1, ease: "linear" }} className="w-4 h-4 border-2 border-[#2f6f57] dark:border-[#10b981] border-t-transparent rounded-full" />}
+                    {step > 0 ? <CheckCircle2 className="w-4 h-4 text-primary dark:text-[#10b981]" /> : <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1, ease: "linear" }} className="w-4 h-4 border-2 border-[#2f6f57] dark:border-[#10b981] border-t-transparent rounded-full" />}
                   </div>
 
                   {/* ID Card Graphic inside the mobile */}
-                  <div className="relative w-full h-20 bg-white dark:bg-[#1a1d1d] rounded-lg border border-gray-200 dark:border-white/10 overflow-hidden flex items-center px-3">
+                  <div className="relative w-full h-20 bg-card rounded-lg border border-border overflow-hidden flex items-center px-3">
                     {step === 0 && (
                       <motion.div
                         animate={{ left: ["-20%", "120%", "-20%"] }}
@@ -313,13 +313,13 @@ function AnimatedKYCMockup() {
                       <div className="h-1.5 bg-[#2f6f57]/30 dark:bg-[#10b981]/30 rounded w-full mt-2" />
                     </div>
                   </div>
-                  {step === 0 && <span className="text-[10px] text-[#2f6f57] dark:text-[#10b981] font-medium text-center animate-pulse">Extracting UIDAI Data...</span>}
+                  {step === 0 && <span className="text-[10px] text-primary dark:text-[#10b981] font-medium text-center animate-pulse">Extracting UIDAI Data...</span>}
                 </div>
 
-                <div className={`p-4 rounded-xl border transition-all duration-500 flex items-center justify-between ${step >= 1 ? 'border-orange-500/50 bg-orange-500/10' : 'border-gray-200 dark:border-white/5 opacity-50'}`}>
+                <div className={`p-4 rounded-xl border transition-all duration-500 flex items-center justify-between ${step >= 1 ? 'border-orange-500/50 bg-orange-500/10' : 'border-border opacity-50'}`}>
                   <div className="flex items-center gap-3">
                     <Fingerprint className={`w-4 h-4 ${step >= 1 ? 'text-orange-500 animate-pulse' : 'text-gray-400'}`} />
-                    <span className="text-sm font-semibold text-gray-900 dark:text-white">Biometric Selfie</span>
+                    <span className="text-sm font-semibold text-foreground">Biometric Selfie</span>
                   </div>
                   {step > 1 ? <CheckCircle2 className="w-4 h-4 text-orange-500" /> : (step === 1 && <span className="text-[10px] uppercase font-bold text-orange-500">Checking...</span>)}
                 </div>
@@ -356,7 +356,7 @@ function AnimatedKYCMockup() {
               >
                 <div className="relative mb-6">
                   {step === 3 ? (
-                    <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1.5, ease: "linear" }} className="w-16 h-16 rounded-full border-4 border-gray-200 dark:border-white/10 border-t-[#2f6f57] dark:border-t-[#10b981]" />
+                    <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1.5, ease: "linear" }} className="w-16 h-16 rounded-full border-4 border-border border-t-[#2f6f57] dark:border-t-[#10b981]" />
                   ) : (
                     <motion.div
                       initial={{ scale: 0 }} animate={{ scale: 1 }}
@@ -366,10 +366,10 @@ function AnimatedKYCMockup() {
                     </motion.div>
                   )}
                 </div>
-                <h5 className="font-bold text-lg text-gray-900 dark:text-white mb-1">
+                <h5 className="font-bold text-lg text-foreground mb-1">
                   {step === 3 ? 'Analyzing Data...' : 'Identity Verified'}
                 </h5>
-                <p className="text-xs text-gray-500 dark:text-white/50">
+                <p className="text-xs text-muted-foreground">
                   {step === 3 ? 'Cross-referencing government databases' : 'Clearance Level-2 Granted'}
                 </p>
               </motion.div>
@@ -386,7 +386,7 @@ function AnimatedKYCMockup() {
                 animate={{ width: `${(step / 3) * 100}%` }}
                 transition={{ duration: 0.5 }}
               />
-              <div className="absolute inset-0 flex items-center justify-center text-xs font-bold text-gray-600 dark:text-white/60 mix-blend-difference">
+              <div className="absolute inset-0 flex items-center justify-center text-xs font-bold text-muted-foreground mix-blend-difference">
                 Processing {Math.round((step / 3) * 100)}%
               </div>
             </div>
@@ -454,9 +454,9 @@ function InteractiveRoleCard({ role, index, onClick }: { role: (typeof ROLES)[nu
 
   // Map role ids to colors
   const themeColors = {
-    1: { main: "#00e599", bg: "rgba(0, 229, 153, 0.08)", border: "rgba(0, 229, 153, 0.4)", shadow: "rgba(0, 229, 153, 0.2)" }, // Donor - Bright Green
-    2: { main: "#3b82f6", bg: "rgba(59, 130, 246, 0.08)", border: "rgba(59, 130, 246, 0.4)", shadow: "rgba(59, 130, 246, 0.2)" }, // Receiver - Blue
-    3: { main: "#ffaa00", bg: "rgba(255, 170, 0, 0.08)", border: "rgba(255, 170, 0, 0.4)", shadow: "rgba(255, 170, 0, 0.2)" }, // Volunteer - Orange/Yellow
+    1: { main: "var(--success)", bg: "rgba(0, 229, 153, 0.08)", border: "rgba(0, 229, 153, 0.4)", shadow: "rgba(0, 229, 153, 0.2)" }, // Donor - Bright Green
+    2: { main: "var(--info)", bg: "rgba(59, 130, 246, 0.08)", border: "rgba(59, 130, 246, 0.4)", shadow: "rgba(59, 130, 246, 0.2)" }, // Receiver - Blue
+    3: { main: "var(--warning)", bg: "rgba(255, 170, 0, 0.08)", border: "rgba(255, 170, 0, 0.4)", shadow: "rgba(255, 170, 0, 0.2)" }, // Volunteer - Orange/Yellow
   };
   const theme = themeColors[role.id as keyof typeof themeColors] || themeColors[1];
 
@@ -499,7 +499,7 @@ function InteractiveRoleCard({ role, index, onClick }: { role: (typeof ROLES)[nu
       />
 
       {/* Icon Upgrade */}
-      <div className="w-14 h-14 rounded-2xl flex items-center justify-center mb-6 transition-transform duration-500 relative z-10 border" style={{ backgroundColor: `${theme.main}10`, borderColor: `${theme.main}30` }}>
+      <div className="w-14 h-14 rounded-2xl flex items-center justify-center mb-6 transition-transform duration-500 relative z-10 border" style={{ backgroundColor: theme.bg, borderColor: theme.border }}>
          <role.icon className="w-6 h-6 relative z-10" style={{ color: theme.main }} />
       </div>
       
@@ -558,7 +558,7 @@ export default function Home() {
   const floatY = useTransform(smoothMouseY, [-1, 1], shouldReduceMotion ? [0, 0] : [-80, 80]);
 
   return (
-    <div className="relative flex flex-col justify-start bg-background font-sans selection:bg-[#2f6f57] selection:text-white overflow-hidden text-gray-900 dark:text-white transition-colors duration-300 min-h-screen">
+    <div className="relative flex flex-col justify-start bg-background font-sans selection:bg-[#2f6f57] selection:text-white overflow-hidden text-foreground transition-colors duration-300 min-h-screen">
 
       {/* ─── NATIVE CSS ANIMATION BLOCK ─── */}
       <style>{`
@@ -618,7 +618,7 @@ export default function Home() {
               initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, ease: "easeOut" }}
               className="mb-8"
             >
-              <span className="inline-flex items-center rounded-full border border-gray-200 dark:border-white/10 bg-white/80 dark:bg-[#171a1a]/80 backdrop-blur-md px-4 py-1.5 text-xs font-semibold text-gray-700 dark:text-white/80 tracking-wide shadow-sm dark:shadow-[0_0_20px_rgba(255,255,255,0.03)] cursor-default">
+              <span className="inline-flex items-center rounded-full border border-border bg-white/80 dark:bg-[#171a1a]/80 backdrop-blur-md px-4 py-1.5 text-xs font-semibold text-muted-foreground tracking-wide shadow-sm dark:shadow-[0_0_20px_rgba(255,255,255,0.03)] cursor-default">
                 <span className="relative flex h-2 w-2 mr-2.5">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#10b981] opacity-75"></span>
                   <span className="relative inline-flex rounded-full h-2 w-2 bg-[#10b981]"></span>
@@ -631,7 +631,7 @@ export default function Home() {
             <motion.h1
               initial="hidden" animate="visible"
               variants={{ visible: { transition: { staggerChildren: 0.1 } } }}
-              className="text-4xl sm:text-5xl md:text-7xl lg:text-[5.5rem] font-black tracking-tight text-gray-900 dark:text-white leading-[1.05] mb-6 max-w-[900px] drop-shadow-sm dark:drop-shadow-none"
+              className="text-4xl sm:text-5xl md:text-7xl lg:text-[5.5rem] font-black tracking-tight text-foreground leading-[1.05] mb-6 max-w-[900px] drop-shadow-sm dark:drop-shadow-none"
             >
               {["Surplus", "Food"].map((word, i) => (
                 <motion.span
@@ -654,7 +654,7 @@ export default function Home() {
             {/* Subtext */}
             <motion.p
               initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, delay: 0.2, ease: "easeOut" }}
-              className="text-lg md:text-xl lg:text-2xl text-gray-600 dark:text-white/60 leading-relaxed max-w-2xl mb-12 font-medium"
+              className="text-lg md:text-xl lg:text-2xl text-muted-foreground leading-relaxed max-w-2xl mb-12 font-medium"
             >
               Connect restaurants, caterers, volunteers, and verified NGOs to rescue surplus food before it expires.
             </motion.p>
@@ -685,13 +685,13 @@ export default function Home() {
             {/* Trust Strip below buttons */}
             <motion.div
               initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 1, delay: 0.6 }}
-              className="mt-12 flex flex-wrap items-center justify-center gap-3 text-xs md:text-sm font-semibold text-gray-500 dark:text-white/40 tracking-wide"
+              className="mt-12 flex flex-wrap items-center justify-center gap-3 text-xs md:text-sm font-semibold text-muted-foreground tracking-wide"
             >
-              <span className="flex items-center gap-1.5"><ShieldCheck className="w-4 h-4 text-[#2f6f57]/70" /> Trusted by NGOs</span>
+              <span className="flex items-center gap-1.5"><ShieldCheck className="w-4 h-4 text-primary" /> Trusted by NGOs</span>
               <span className="opacity-30 mx-1">•</span>
-              <span className="flex items-center gap-1.5"><ShieldCheck className="w-4 h-4 text-[#2f6f57]/70" /> Verified Volunteers</span>
+              <span className="flex items-center gap-1.5"><ShieldCheck className="w-4 h-4 text-primary" /> Verified Volunteers</span>
               <span className="opacity-30 mx-1">•</span>
-              <span className="flex items-center gap-1.5"><Lock className="w-4 h-4 text-[#2f6f57]/70" /> QR Secure Delivery</span>
+              <span className="flex items-center gap-1.5"><Lock className="w-4 h-4 text-primary" /> QR Secure Delivery</span>
             </motion.div>
 
           </motion.div>
@@ -705,7 +705,7 @@ export default function Home() {
       <DemoSection />
 
       {/* ────────────────── TESTIMONIALS / LOGOS ────────────────── */}
-      <section className="py-10 border-b border-gray-200 dark:border-white/5 bg-white dark:bg-[#171a1a]">
+      <section className="py-10 border-b border-border bg-card">
         <div className="max-w-7xl mx-auto px-6 text-center">
           <p className="text-[10px] tracking-widest uppercase font-bold text-gray-400 dark:text-white/30 mb-8">Trusted by verified NGOs & Foundations</p>
           <div className="flex flex-wrap justify-center items-center gap-10 md:gap-16 opacity-60 hover:opacity-100 transition-opacity duration-500 grayscale hover:grayscale-0">
@@ -718,15 +718,15 @@ export default function Home() {
       </section>
 
       {/* ────────────────── WORKFLOW VISUALIZATION (Interactive Flow) ────────────────── */}
-      <section className="py-12 md:py-16 bg-gray-50 dark:bg-[#0f1111] relative border-b border-gray-200 dark:border-white/5 transition-colors duration-300 overflow-visible">
+      <section className="py-12 md:py-16 bg-background relative border-b border-border transition-colors duration-300 overflow-visible">
         <div className="max-w-6xl mx-auto px-6">
           <motion.div
             initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.6 }}
             className="text-center mb-12 md:mb-16"
           >
-            <h2 className="text-xs md:text-sm uppercase tracking-[0.2em] font-bold text-gray-500 dark:text-white/40 mb-3">The Rescue Protocol</h2>
-            <h3 className="text-3xl md:text-4xl lg:text-5xl font-bold text-gray-900 dark:text-white">Closed-loop operations.</h3>
-            <p className="text-sm md:text-base text-gray-500 dark:text-white/40 mt-4 font-medium">Scroll to activate each step — click any node to preview what happens.</p>
+            <h2 className="text-xs md:text-sm uppercase tracking-[0.2em] font-bold text-muted-foreground mb-3">The Rescue Protocol</h2>
+            <h3 className="text-3xl md:text-4xl lg:text-5xl font-bold text-foreground">Closed-loop operations.</h3>
+            <p className="text-sm md:text-base text-muted-foreground mt-4 font-medium">Scroll to activate each step — click any node to preview what happens.</p>
           </motion.div>
 
           <div className="pb-40 md:pb-16">
@@ -811,9 +811,9 @@ export default function Home() {
                 {ROLES.filter(r => r.id === activeRole).map(role => {
                   // Map role ids to colors for modal as well
                   const themeColors = {
-                    1: { main: "#00e599", bg: "rgba(0,229,153,0.15)", border: "rgba(0,229,153,0.4)" },
-                    2: { main: "#3b82f6", bg: "rgba(59,130,246,0.15)", border: "rgba(59,130,246,0.4)" },
-                    3: { main: "#ffaa00", bg: "rgba(255,170,0,0.15)", border: "rgba(255,170,0,0.4)" },
+                    1: { main: "var(--success)", bg: "rgba(0,229,153,0.15)", border: "rgba(0,229,153,0.4)" },
+                    2: { main: "var(--info)", bg: "rgba(59,130,246,0.15)", border: "rgba(59,130,246,0.4)" },
+                    3: { main: "var(--warning)", bg: "rgba(255,170,0,0.15)", border: "rgba(255,170,0,0.4)" },
                   };
                   const theme = themeColors[role.id as keyof typeof themeColors] || themeColors[1];
 
@@ -821,20 +821,20 @@ export default function Home() {
                     <motion.div
                       layoutId={`card-${role.id}`}
                       key={role.id}
-                      className="relative bg-[#050505] border border-white/10 p-8 md:p-12 rounded-[2rem] shadow-2xl w-full max-w-xl max-h-[90vh] overflow-y-auto flex flex-col z-[510] outline-none"
+                      className="relative bg-popover border border-border p-8 md:p-12 rounded-[2rem] shadow-2xl w-full max-w-xl max-h-[90vh] overflow-y-auto flex flex-col z-[510] outline-none"
                     >
-                      <button onClick={() => setActiveRole(null)} className="absolute top-6 right-6 p-2 rounded-full hover:bg-white/10 text-gray-400 hover:text-white transition-colors outline-none"><X className="w-5 h-5" /></button>
+                      <button onClick={() => setActiveRole(null)} className="absolute top-6 right-6 p-2 rounded-full hover:bg-muted text-muted-foreground hover:text-foreground transition-colors outline-none"><X className="w-5 h-5" /></button>
                       <div className="w-16 h-16 rounded-2xl border flex items-center justify-center mb-8" style={{ backgroundColor: theme.bg, borderColor: theme.border }}>
                         <role.icon className="w-8 h-8" style={{ color: theme.main }} />
                       </div>
-                      <h3 className="text-3xl font-bold text-white mb-4">{role.title} Terminal</h3>
-                      <p className="text-gray-400 leading-relaxed mb-8 text-lg">{role.extended}</p>
+                      <h3 className="text-3xl font-bold text-foreground mb-4">{role.title} Terminal</h3>
+                      <p className="text-muted-foreground leading-relaxed mb-8 text-lg">{role.extended}</p>
 
                       <div className="flex flex-col sm:flex-row gap-4 mt-auto">
-                        <Button asChild className="h-12 flex-1 text-black font-bold active:scale-95 shadow-md border-0 hover:opacity-90 transition-opacity" style={{ backgroundColor: theme.main }}>
+                        <Button asChild className="h-12 flex-1 text-white dark:text-black font-bold active:scale-95 shadow-md border-0 hover:opacity-90 transition-opacity" style={{ backgroundColor: theme.main }}>
                           <Link to={role.href}>Enter Live Portal</Link>
                         </Button>
-                        <Button variant="outline" className="h-12 flex-1 bg-transparent text-white border-white/20 hover:bg-white/5 active:scale-95" onClick={() => setActiveRole(null)}>
+                        <Button variant="outline" className="h-12 flex-1 bg-transparent text-foreground border-border hover:bg-muted active:scale-95" onClick={() => setActiveRole(null)}>
                           Close
                         </Button>
                       </div>
@@ -848,15 +848,15 @@ export default function Home() {
       </section>
 
       {/* ────────────────── VERIFICATION (KYC) ────────────────── */}
-      <section className="py-20 relative bg-gray-50 dark:bg-[#0f1111] border-y border-gray-200 dark:border-white/5 overflow-hidden transition-colors duration-300">
+      <section className="py-20 relative bg-background border-y border-border overflow-hidden transition-colors duration-300">
         <div className="max-w-6xl mx-auto px-6 grid grid-cols-1 lg:grid-cols-2 gap-20 items-center">
 
           <motion.div
             initial={{ opacity: 0, x: -30 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }} transition={{ duration: 0.8 }}
             className="order-2 lg:order-1"
           >
-            <h2 className="text-4xl font-bold tracking-tight mb-6 text-gray-900 dark:text-white">Safety and Trust First.</h2>
-            <p className="text-lg text-gray-600 dark:text-white/50 leading-relaxed mb-10">
+            <h2 className="text-4xl font-bold tracking-tight mb-6 text-foreground">Safety and Trust First.</h2>
+            <p className="text-lg text-muted-foreground leading-relaxed mb-10">
               Every pickup and delivery is tracked safely. All volunteers undergo strict Aadhaar verification before handling food.
             </p>
             <ul className="space-y-6">
@@ -867,10 +867,10 @@ export default function Home() {
               ].map((item, i) => (
                 <li key={i} className="flex flex-col gap-1 hover:pl-2 transition-all duration-300">
                   <div className="flex items-center gap-3 mb-1">
-                    <ShieldCheck className="w-5 h-5 text-[#2f6f57]" />
-                    <span className="font-bold text-gray-900 dark:text-white text-sm">{item.title}</span>
+                    <ShieldCheck className="w-5 h-5 text-primary" />
+                    <span className="font-bold text-foreground text-sm">{item.title}</span>
                   </div>
-                  <span className="text-sm text-gray-600 dark:text-white/40 pl-8">{item.body}</span>
+                  <span className="text-sm text-muted-foreground pl-8">{item.body}</span>
                 </li>
               ))}
             </ul>
@@ -887,36 +887,36 @@ export default function Home() {
       </section>
 
       {/* ────────────────── IMPACT METRICS ────────────────── */}
-      <section className="pt-20 pb-12 bg-white dark:bg-[#0a0c0c] border-b border-gray-200 dark:border-white/5">
+      <section className="pt-20 pb-12 bg-card border-b border-border">
         <div className="max-w-6xl mx-auto px-6">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8 md:gap-12 text-center">
 
             <div className="flex flex-col items-center justify-center">
-              <div className="text-4xl md:text-5xl font-bold tracking-tighter mb-2 text-[#2f6f57]">
+              <div className="text-4xl md:text-5xl font-bold tracking-tighter mb-2 text-primary">
                 <AnimatedNumber value={148} />
               </div>
-              <div className="text-gray-500 dark:text-white/60 font-medium text-xs md:text-sm uppercase tracking-widest">Verified Donors</div>
+              <div className="text-muted-foreground font-medium text-xs md:text-sm uppercase tracking-widest">Verified Donors</div>
             </div>
 
             <div className="flex flex-col items-center justify-center">
-              <div className="text-4xl md:text-5xl font-bold tracking-tighter mb-2 text-[#2f6f57]">
+              <div className="text-4xl md:text-5xl font-bold tracking-tighter mb-2 text-primary">
                 <AnimatedNumber value={42} />
               </div>
-              <div className="text-gray-500 dark:text-white/60 font-medium text-xs md:text-sm uppercase tracking-widest">NGO Partners</div>
+              <div className="text-muted-foreground font-medium text-xs md:text-sm uppercase tracking-widest">NGO Partners</div>
             </div>
 
             <div className="flex flex-col items-center justify-center">
-              <div className="text-4xl md:text-5xl font-bold tracking-tighter mb-2 text-[#2f6f57]">
+              <div className="text-4xl md:text-5xl font-bold tracking-tighter mb-2 text-primary">
                 <AnimatedNumber value={19} />
               </div>
-              <div className="text-gray-500 dark:text-white/60 font-medium text-xs md:text-sm uppercase tracking-widest">Active Volunteers</div>
+              <div className="text-muted-foreground font-medium text-xs md:text-sm uppercase tracking-widest">Active Volunteers</div>
             </div>
 
             <div className="flex flex-col items-center justify-center">
-              <div className="text-4xl md:text-5xl font-bold tracking-tighter mb-2 text-[#2f6f57]">
-                <AnimatedNumber value={14} /><span className="text-2xl md:text-3xl text-gray-500 dark:text-white/40 ml-1 font-normal">min</span>
+              <div className="text-4xl md:text-5xl font-bold tracking-tighter mb-2 text-primary">
+                <AnimatedNumber value={14} /><span className="text-2xl md:text-3xl text-muted-foreground ml-1 font-normal">min</span>
               </div>
-              <div className="text-gray-500 dark:text-white/60 font-medium text-xs md:text-sm uppercase tracking-widest">Avg Response Time</div>
+              <div className="text-muted-foreground font-medium text-xs md:text-sm uppercase tracking-widest">Avg Response Time</div>
             </div>
 
           </div>
@@ -928,13 +928,13 @@ export default function Home() {
         <div className="max-w-3xl mx-auto px-6 relative z-10">
           <motion.h2
             initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.6 }}
-            className="text-4xl md:text-5xl font-bold tracking-tight text-gray-900 dark:text-white mb-6"
+            className="text-4xl md:text-5xl font-bold tracking-tight text-foreground mb-6"
           >
             Ready to make an impact?
           </motion.h2>
           <motion.p
             initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.6, delay: 0.1 }}
-            className="text-lg text-gray-600 dark:text-white/50 mb-12 mx-auto leading-relaxed"
+            className="text-lg text-muted-foreground mb-12 mx-auto leading-relaxed"
           >
             Join our network of food heroes across India to eliminate hunger and reduce waste. Whether you're donating or delivering, every action counts.
           </motion.p>
