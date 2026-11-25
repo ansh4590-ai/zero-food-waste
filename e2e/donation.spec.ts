@@ -5,6 +5,15 @@
 import { test, expect } from '@playwright/test';
 import { loginAs } from './helpers/auth';
 
+async function pickFutureDateTime(page: import('@playwright/test').Page, triggerText: RegExp, hourStr: string) {
+  await page.getByRole('button', { name: triggerText }).click();
+  // Advance one month so day 15 is always in the future
+  await page.locator('div.fixed button:has(svg.lucide-chevron-right)').click();
+  await page.locator('div.fixed button:not([disabled])', { hasText: /^15$/ }).first().click();
+  await page.locator('div.fixed div:has(> div:text-is("Hr")) button', { hasText: new RegExp(`^${hourStr}$`) }).first().click();
+  await page.getByRole('button', { name: 'Confirm', exact: true }).click();
+}
+
 test.describe('Donation Lifecycle', () => {
 
   test.beforeEach(async ({ page }) => {
@@ -118,34 +127,13 @@ test.describe('Donation Lifecycle', () => {
     await page.locator('#title').fill('Fresh Pasta');
     await page.locator('#quantity').fill('10 plates');
 
-    const now = Date.now();
-    const toLocal = (ms: number) => {
-      const d = new Date(ms);
-      const pad = (n: number) => String(n).padStart(2, '0');
-      return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-    };
-    await page.evaluate(({ start, end, exp }) => {
-      const setVal = (name: string, val: string) => {
-        const input = document.querySelector(`input[name="${name}"]`) as HTMLInputElement;
-        if (input) {
-          const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!;
-          setter.call(input, val);
-          input.dispatchEvent(new Event('input', { bubbles: true }));
-          input.dispatchEvent(new Event('change', { bubbles: true }));
-        }
-      };
-      setVal('pickupStart', start);
-      setVal('pickupEnd', end);
-      setVal('expiry', exp);
-    }, {
-      start: toLocal(now + 15 * 60_000),
-      end: toLocal(now + 60 * 60_000),
-      exp: toLocal(now + 120 * 60_000),
-    });
+    await pickFutureDateTime(page, /pick expiry date & time/i, '14');
+    await pickFutureDateTime(page, /start time/i, '10');
+    await pickFutureDateTime(page, /end time/i, '12');
 
     const addressInput = page.locator('#address');
     await addressInput.fill('Address Alpha');
-    const suggestion = page.getByText('Address Alpha').first();
+    const suggestion = page.locator('ul li', { hasText: 'Address Alpha' }).first();
     await suggestion.waitFor({ state: 'visible', timeout: 10_000 });
     await suggestion.click();
     await expect(page.locator('.leaflet-marker-icon')).toBeVisible({ timeout: 5_000 });
@@ -230,34 +218,13 @@ test.describe('Donation Lifecycle', () => {
     await page.locator('#title').fill('Rice Bowls');
     await page.locator('#quantity').fill('15 bowls');
 
-    const now = Date.now();
-    const toLocal = (ms: number) => {
-      const d = new Date(ms);
-      const pad = (n: number) => String(n).padStart(2, '0');
-      return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-    };
-    await page.evaluate(({ start, end, exp }) => {
-      const setVal = (name: string, val: string) => {
-        const input = document.querySelector(`input[name="${name}"]`) as HTMLInputElement;
-        if (input) {
-          const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!;
-          setter.call(input, val);
-          input.dispatchEvent(new Event('input', { bubbles: true }));
-          input.dispatchEvent(new Event('change', { bubbles: true }));
-        }
-      };
-      setVal('pickupStart', start);
-      setVal('pickupEnd', end);
-      setVal('expiry', exp);
-    }, {
-      start: toLocal(now + 15 * 60_000),
-      end: toLocal(now + 60 * 60_000),
-      exp: toLocal(now + 120 * 60_000),
-    });
+    await pickFutureDateTime(page, /pick expiry date & time/i, '14');
+    await pickFutureDateTime(page, /start time/i, '10');
+    await pickFutureDateTime(page, /end time/i, '12');
 
     const addressInput = page.locator('#address');
     await addressInput.fill('Address Beta');
-    const suggestion = page.getByText('Address Beta').first();
+    const suggestion = page.locator('ul li', { hasText: 'Address Beta' }).first();
     await suggestion.waitFor({ state: 'visible', timeout: 10_000 });
     await suggestion.click();
 
@@ -354,34 +321,13 @@ test.describe('Donation Lifecycle', () => {
     await page.locator('#title').fill('Curry Trays');
     await page.locator('#quantity').fill('20 trays');
 
-    const now = Date.now();
-    const toLocal = (ms: number) => {
-      const d = new Date(ms);
-      const pad = (n: number) => String(n).padStart(2, '0');
-      return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-    };
-    await page.evaluate(({ start, end, exp }) => {
-      const setVal = (name: string, val: string) => {
-        const input = document.querySelector(`input[name="${name}"]`) as HTMLInputElement;
-        if (input) {
-          const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!;
-          setter.call(input, val);
-          input.dispatchEvent(new Event('input', { bubbles: true }));
-          input.dispatchEvent(new Event('change', { bubbles: true }));
-        }
-      };
-      setVal('pickupStart', start);
-      setVal('pickupEnd', end);
-      setVal('expiry', exp);
-    }, {
-      start: toLocal(now + 15 * 60_000),
-      end: toLocal(now + 60 * 60_000),
-      exp: toLocal(now + 120 * 60_000),
-    });
+    await pickFutureDateTime(page, /pick expiry date & time/i, '14');
+    await pickFutureDateTime(page, /start time/i, '10');
+    await pickFutureDateTime(page, /end time/i, '12');
 
     const addressInput = page.locator('#address');
     await addressInput.fill('Connaught Place');
-    const suggestion = page.getByText('Connaught Place').first();
+    const suggestion = page.locator('ul li', { hasText: 'Connaught Place' }).first();
     await suggestion.waitFor({ state: 'visible', timeout: 10_000 });
     await suggestion.click();
 
@@ -453,18 +399,21 @@ test.describe('Donation Lifecycle', () => {
 
     // Axis 1: lat = 0, lng = 77.5 -> valid
     await requestBtn.click();
+    await page.getByRole('button', { name: /yes, request food/i }).click();
     await expect(page.getByText(/set your location before requesting food/i)).toHaveCount(0);
 
     // Axis 2: lat = 12.9, lng = 0 -> valid
     currentProfile = { location_lat: 12.9, location_lng: 0 };
     await page.reload();
     await page.getByRole('button', { name: /request/i }).first().click();
+    await page.getByRole('button', { name: /yes, request food/i }).click();
     await expect(page.getByText(/set your location before requesting food/i)).toHaveCount(0);
 
     // Missing coordinate: lat = 0, lng = null -> rejected
     currentProfile = { location_lat: 0, location_lng: null };
     await page.reload();
     await page.getByRole('button', { name: /request/i }).first().click();
+    await page.getByRole('button', { name: /yes, request food/i }).click();
     await expect(page.getByText(/set your location before requesting food/i)).toBeVisible({ timeout: 5_000 });
   });
 });
