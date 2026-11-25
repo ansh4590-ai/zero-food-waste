@@ -148,7 +148,7 @@ export default function Browse() {
         .eq("id", user.id)
         .single();
 
-      if (!profile?.location_lat || !profile?.location_lng) {
+      if (profile?.location_lat == null || profile?.location_lng == null) {
         toast.error("Set your location before requesting food", {
           description: "Visit your profile to set your delivery address.",
         });
@@ -288,7 +288,7 @@ export default function Browse() {
             const windowStatus = getPickupWindowStatus(item.pickupWindowStart, item.pickupWindowEnd);
             const isLegacy = windowStatus === 'legacy';
             const isRequestable = windowStatus === 'available' || isLegacy;
-            
+
             return (
               <div key={item.id} className="bg-card text-card-foreground rounded-lg shadow-sm border border-border overflow-hidden hover:shadow-md transition-shadow flex flex-col">
                 <div className="relative h-48 bg-gray-100 flex items-center justify-center">
@@ -349,12 +349,11 @@ export default function Browse() {
                           <div className="flex items-center text-sm" title="Advisory AI/donor estimate — not a certified food inspection">
                             <Leaf className="h-4 w-4 mr-1.5 text-blue-500" />
                             <span className="text-muted-foreground font-medium">
-                              Est. Quality: <span className={`capitalize ${
-                                item.qualityStatus === 'excellent' ? 'text-emerald-600 dark:text-emerald-400' :
+                              Est. Quality: <span className={`capitalize ${item.qualityStatus === 'excellent' ? 'text-emerald-600 dark:text-emerald-400' :
                                 item.qualityStatus === 'good' ? 'text-blue-600 dark:text-blue-400' :
-                                item.qualityStatus === 'usable' ? 'text-amber-600 dark:text-amber-400' :
-                                'text-red-600 dark:text-red-400'
-                              }`}>{item.qualityStatus}</span>
+                                  item.qualityStatus === 'usable' ? 'text-amber-600 dark:text-amber-400' :
+                                    'text-red-600 dark:text-red-400'
+                                }`}>{item.qualityStatus}</span>
                             </span>
                           </div>
                         )}
@@ -380,19 +379,18 @@ export default function Browse() {
                           </span>
                         </div>
                       </div>
-                      
+
                       {countdown && (
-                        <div className={`flex items-center text-xs font-semibold pl-6 ${
-                          windowStatus === 'expired' ? 'text-red-500' :
-                          windowStatus === 'upcoming' ? 'text-amber-500' : 
-                          'text-emerald-600 dark:text-emerald-400'
-                        }`}>
-                          {windowStatus === 'upcoming' ? '⏳ Upcoming • ' : 
-                           windowStatus === 'available' ? '✅ Available • ' : 
-                           '❌ Expired • '}{countdown}
+                        <div className={`flex items-center text-xs font-semibold pl-6 ${windowStatus === 'expired' ? 'text-red-500' :
+                          windowStatus === 'upcoming' ? 'text-amber-500' :
+                            'text-emerald-600 dark:text-emerald-400'
+                          }`}>
+                          {windowStatus === 'upcoming' ? '⏳ Upcoming • ' :
+                            windowStatus === 'available' ? '✅ Available • ' :
+                              '❌ Expired • '}{countdown}
                         </div>
                       )}
-                      
+
                       {item.expiresIn && (
                         <div className="flex items-center text-xs text-muted-foreground pl-6">
                           ⚠️ Expires: {item.expiresIn}
@@ -408,8 +406,8 @@ export default function Browse() {
                     onClick={() => setConfirmItem(item)}
                     disabled={requestingIds.has(item.id) || !isRequestable}
                   >
-                    {!isRequestable 
-                      ? (windowStatus === 'upcoming' ? "Not Yet Open" : "Window Closed") 
+                    {!isRequestable
+                      ? (windowStatus === 'upcoming' ? "Not Yet Open" : "Window Closed")
                       : requestingIds.has(item.id) ? "Requesting…" : "Request Pickup"}
                   </Button>
                 </div>

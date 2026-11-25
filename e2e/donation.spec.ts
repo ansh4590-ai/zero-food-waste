@@ -5,6 +5,20 @@
 import { test, expect } from '@playwright/test';
 import { loginAs } from './helpers/auth';
 
+async function pickFutureDateTime(page: import('@playwright/test').Page, triggerText: RegExp, hourStr: string) {
+  const trigger = page.getByRole('button', { name: triggerText });
+  await trigger.evaluate((el) => el.scrollIntoView({ block: 'center' }));
+  await trigger.click();
+  const confirmBtn = page.getByRole('button', { name: 'Confirm', exact: true });
+  await confirmBtn.waitFor({ state: 'visible', timeout: 5_000 });
+  const portal = page.locator('body > div').filter({ has: confirmBtn }).last();
+  // Advance one month so day 15 is always in the future
+  await portal.locator('button:has(svg.lucide-chevron-right)').click({ force: true });
+  await portal.locator('button:not([disabled])', { hasText: /^15$/ }).first().click({ force: true });
+  await portal.locator('div:has(> div:text-is("Hr")) button', { hasText: new RegExp(`^${hourStr}$`) }).first().click({ force: true });
+  await confirmBtn.click({ force: true });
+}
+
 test.describe('Donation Lifecycle', () => {
 
   test.beforeEach(async ({ page }) => {
@@ -82,5 +96,441 @@ test.describe('Donation Lifecycle', () => {
   test('upcoming pickups section is visible on dashboard', async ({ page }) => {
     await page.goto('/dashboard');
     await expect(page.getByRole('heading', { name: 'Upcoming Pickups', exact: true })).toBeVisible({ timeout: 15_000 });
+  });
+
+  test('editing address after selecting A invalidates coordinates until a new suggestion is selected', async ({ page }) => {
+    await page.route('**/api/classify', route => route.fulfill({
+      json: { is_food: true, title: 'Fresh Pasta', predicted_category: 'cooked_meal' },
+    }));
+    await page.route('https://photon.komoot.io/api/*', route => route.fulfill({
+      json: {
+        features: [{
+          geometry: { coordinates: [72.8777, 19.076] },
+          properties: { osm_id: 1, name: 'Address Alpha', city: 'Mumbai', state: 'MH', country: 'India' },
+        }],
+      },
+    }));
+
+    await page.goto('/donate');
+
+    const upload = page.locator('input[type="file"]');
+    await upload.waitFor({ state: 'attached' });
+    await upload.evaluate(async (el: HTMLInputElement) => {
+      const canvas = document.createElement('canvas');
+      canvas.width = 40;
+      canvas.height = 40;
+      const ctx = canvas.getContext('2d')!;
+      ctx.fillStyle = '#22c55e';
+      ctx.fillRect(0, 0, 40, 40);
+      const blob = await new Promise<Blob>(r => canvas.toBlob(b => r(b!), 'image/png'));
+      const dt = new DataTransfer();
+      dt.items.add(new File([blob], 'food.png', { type: 'image/png' }));
+      el.files = dt.files;
+      el.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+
+    await page.locator('#title').fill('Fresh Pasta');
+    await page.locator('#quantity').fill('10 plates');
+
+    await pickFutureDateTime(page, /pick expiry date & time/i, '14');
+    await pickFutureDateTime(page, /start time/i, '10');
+    await pickFutureDateTime(page, /end time/i, '12');
+
+    const addressInput = page.locator('#address');
+    await addressInput.fill('Address Alpha');
+    const suggestion = page.locator('ul li', { hasText: 'Address Alpha' }).first();
+    await suggestion.waitFor({ state: 'visible', timeout: 10_000 });
+    await suggestion.click();
+    await expect(page.locator('.leaflet-marker-icon')).toBeVisible({ timeout: 5_000 });
+
+    await addressInput.fill('Address Beta');
+    await expect(page.locator('.leaflet-marker-icon')).toHaveCount(0);
+
+    await page.getByRole('button', { name: /next: review/i }).click();
+    await expect(page.getByText(/please select a pickup address from the suggestions/i)).toBeVisible({ timeout: 5_000 });
+    await expect(page.getByRole('heading', { name: /review your donation/i })).toHaveCount(0);
+  });
+
+  test('delayed GPS callback after selecting address B does not overwrite B coordinates', async ({ page }) => {
+    await page.addInitScript(() => {
+      (window as any).__gpsCallbackRegistered = false;
+      (window as any).__triggerDelayedGps = null;
+      Object.defineProperty(navigator, 'geolocation', {
+        configurable: true,
+        value: {
+          getCurrentPosition: (success: PositionCallback) => {
+            (window as any).__gpsCallbackRegistered = true;
+            (window as any).__triggerDelayedGps = () =>
+              success({
+                coords: {
+                  latitude: 12.9716,
+                  longitude: 77.5946,
+                  accuracy: 10,
+                  altitude: null,
+                  altitudeAccuracy: null,
+                  heading: null,
+                  speed: null,
+                  toJSON: () => ({}),
+                },
+                timestamp: Date.now(),
+                toJSON: () => ({}),
+              } as GeolocationPosition);
+          },
+        },
+      });
+    });
+
+    await page.route('**/api/classify', route => route.fulfill({
+      json: { is_food: true, title: 'Rice Bowls', predicted_category: 'cooked_meal' },
+    }));
+    await page.route('https://photon.komoot.io/api/*', route => route.fulfill({
+      json: {
+        features: [{
+          geometry: { coordinates: [77.209, 28.6139] },
+          properties: { osm_id: 2, name: 'Address Beta', city: 'Delhi', state: 'DL', country: 'India' },
+        }],
+      },
+    }));
+
+    let insertedPayload: any = null;
+    await page.route('**/storage/v1/object/food_images/**', route => route.fulfill({ status: 200, json: { Key: 'food_images/test.png' } }));
+    await page.route('**/rest/v1/food_listings*', async (route) => {
+      if (route.request().method() === 'POST') {
+        insertedPayload = route.request().postDataJSON();
+        return route.fulfill({ status: 201, json: [{ id: insertedPayload?.id || '1' }] });
+      }
+      return route.fulfill({ status: 200, json: null });
+    });
+
+    await page.goto('/donate');
+
+    const upload = page.locator('input[type="file"]');
+    await upload.waitFor({ state: 'attached' });
+    await upload.evaluate(async (el: HTMLInputElement) => {
+      const canvas = document.createElement('canvas');
+      canvas.width = 40;
+      canvas.height = 40;
+      const ctx = canvas.getContext('2d')!;
+      ctx.fillStyle = '#22c55e';
+      ctx.fillRect(0, 0, 40, 40);
+      const blob = await new Promise<Blob>(r => canvas.toBlob(b => r(b!), 'image/png'));
+      const dt = new DataTransfer();
+      dt.items.add(new File([blob], 'food.png', { type: 'image/png' }));
+      el.files = dt.files;
+      el.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+
+    await page.locator('#title').fill('Rice Bowls');
+    await page.locator('#quantity').fill('15 bowls');
+
+    await pickFutureDateTime(page, /pick expiry date & time/i, '14');
+    await pickFutureDateTime(page, /start time/i, '10');
+    await pickFutureDateTime(page, /end time/i, '12');
+
+    const addressInput = page.locator('#address');
+    await addressInput.fill('Address Beta');
+    const suggestion = page.locator('ul li', { hasText: 'Address Beta' }).first();
+    await suggestion.waitFor({ state: 'visible', timeout: 10_000 });
+    await suggestion.click();
+
+    await expect.poll(() => page.evaluate(() => (window as any).__gpsCallbackRegistered), { timeout: 5_000 }).toBe(true);
+    await page.evaluate(() => {
+      (window as any).__triggerDelayedGps();
+    });
+
+    await page.getByRole('button', { name: /next: review/i }).click();
+    await expect(page.getByRole('heading', { name: /review your donation/i })).toBeVisible({ timeout: 5_000 });
+    await page.getByRole('button', { name: /confirm & publish/i }).click();
+    await expect.poll(() => insertedPayload?.pickup_lat, { timeout: 10_000 }).toBe(28.6139);
+    expect(insertedPayload.pickup_lng).toBe(77.209);
+  });
+
+  test('retry after lost insert response reconciles 23505 without deleting photo when first lookup sees no row', async ({ page }) => {
+    await page.route('**/api/classify', route => route.fulfill({
+      json: { is_food: true, title: 'Curry Trays', predicted_category: 'cooked_meal' },
+    }));
+    await page.route('https://photon.komoot.io/api/*', route => route.fulfill({
+      json: {
+        features: [{
+          geometry: { coordinates: [77.209, 28.6139] },
+          properties: { osm_id: 3, name: 'Connaught Place', city: 'Delhi', state: 'DL', country: 'India' },
+        }],
+      },
+    }));
+
+    let deleteCalls = 0;
+    let uploadCalls = 0;
+    let postAttempt = 0;
+    let getAttempt = 0;
+    let savedImageUrl = '';
+
+    await page.route('**/storage/v1/object/food_images/**', async (route) => {
+      if (route.request().method() === 'DELETE') {
+        deleteCalls += 1;
+        return route.fulfill({ status: 200, json: [] });
+      }
+      uploadCalls += 1;
+      return route.fulfill({ status: 200, json: { Key: 'food_images/test.png' } });
+    });
+
+    await page.route('**/rest/v1/food_listings*', async (route) => {
+      if (route.request().method() === 'POST') {
+        postAttempt += 1;
+        const body = route.request().postDataJSON();
+        savedImageUrl = body.image_url;
+        if (postAttempt === 1) {
+          // Simulate lost response after server-side insert is still in flight
+          return route.abort('timedout');
+        }
+        // Retry sees 23505 because the first insert committed
+        return route.fulfill({
+          status: 409,
+          contentType: 'application/json',
+          json: { code: '23505', message: 'duplicate key value violates unique constraint' },
+        });
+      }
+      if (route.request().method() === 'GET') {
+        getAttempt += 1;
+        if (getAttempt === 1) {
+          // First lookup sees no row while original insert is still in flight
+          return route.fulfill({ status: 200, contentType: 'application/json', json: null });
+        }
+        // Second lookup (after 23505) confirms the committed row with the same image_url
+        return route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          json: { id: 'confirmed-id', image_url: savedImageUrl },
+        });
+      }
+      return route.continue();
+    });
+
+    await page.goto('/donate');
+
+    const upload = page.locator('input[type="file"]');
+    await upload.waitFor({ state: 'attached' });
+    await upload.evaluate(async (el: HTMLInputElement) => {
+      const canvas = document.createElement('canvas');
+      canvas.width = 40;
+      canvas.height = 40;
+      const ctx = canvas.getContext('2d')!;
+      ctx.fillStyle = '#22c55e';
+      ctx.fillRect(0, 0, 40, 40);
+      const blob = await new Promise<Blob>(r => canvas.toBlob(b => r(b!), 'image/png'));
+      const dt = new DataTransfer();
+      dt.items.add(new File([blob], 'food.png', { type: 'image/png' }));
+      el.files = dt.files;
+      el.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+
+    await page.locator('#title').fill('Curry Trays');
+    await page.locator('#quantity').fill('20 trays');
+
+    await pickFutureDateTime(page, /pick expiry date & time/i, '14');
+    await pickFutureDateTime(page, /start time/i, '10');
+    await pickFutureDateTime(page, /end time/i, '12');
+
+    const addressInput = page.locator('#address');
+    await addressInput.fill('Connaught Place');
+    const suggestion = page.locator('ul li', { hasText: 'Connaught Place' }).first();
+    await suggestion.waitFor({ state: 'visible', timeout: 10_000 });
+    await suggestion.click();
+
+    await page.getByRole('button', { name: /next: review/i }).click();
+    await expect(page.getByRole('heading', { name: /review your donation/i })).toBeVisible({ timeout: 5_000 });
+
+    // First attempt times out; photo must NOT be deleted
+    await page.getByRole('button', { name: /confirm & publish/i }).click();
+    await expect(page.getByRole('button', { name: /confirm & publish/i })).toBeEnabled({ timeout: 10_000 });
+    expect(deleteCalls).toBe(0);
+
+    // Retry: lookup sees no row, retries same insert -> 23505 -> read-back confirms row -> success!
+    await page.getByRole('button', { name: /confirm & publish/i }).click();
+    await expect(page.getByText(/listing published!/i)).toBeVisible({ timeout: 10_000 });
+    expect(uploadCalls).toBe(1);
+    expect(deleteCalls).toBe(0);
+  });
+
+  test('editing quantity after timeout retries original listingId and does not publish a second listing when original commits late', async ({ page }) => {
+    await page.route('**/api/classify', route => route.fulfill({
+      json: { is_food: true, title: 'Curry Trays', predicted_category: 'cooked_meal' },
+    }));
+    await page.route('https://photon.komoot.io/api/*', route => route.fulfill({
+      json: {
+        features: [{
+          geometry: { coordinates: [77.209, 28.6139] },
+          properties: { osm_id: 4, name: 'Connaught Place', city: 'Delhi', state: 'DL', country: 'India' },
+        }],
+      },
+    }));
+
+    const postedIds: string[] = [];
+    const postedQuantities: string[] = [];
+    let deleteCalls = 0;
+    let postAttempt = 0;
+    let getAttempt = 0;
+    let savedImageUrl = '';
+
+    await page.route('**/storage/v1/object/food_images/**', async (route) => {
+      if (route.request().method() === 'DELETE') {
+        deleteCalls += 1;
+        return route.fulfill({ status: 200, json: [] });
+      }
+      return route.fulfill({ status: 200, json: { Key: 'food_images/test.png' } });
+    });
+
+    await page.route('**/rest/v1/food_listings*', async (route) => {
+      if (route.request().method() === 'POST') {
+        postAttempt += 1;
+        const body = route.request().postDataJSON();
+        postedIds.push(body.id);
+        postedQuantities.push(body.quantity_description);
+        savedImageUrl = body.image_url;
+        if (postAttempt === 1) {
+          return route.abort('timedout');
+        }
+        return route.fulfill({
+          status: 409,
+          contentType: 'application/json',
+          json: { code: '23505', message: 'duplicate key value violates unique constraint' },
+        });
+      }
+      if (route.request().method() === 'GET') {
+        getAttempt += 1;
+        if (getAttempt === 1) {
+          return route.fulfill({ status: 200, contentType: 'application/json', json: null });
+        }
+        return route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          json: { id: postedIds[0], image_url: savedImageUrl },
+        });
+      }
+      return route.continue();
+    });
+
+    await page.goto('/donate');
+
+    const upload = page.locator('input[type="file"]');
+    await upload.waitFor({ state: 'attached' });
+    await upload.evaluate(async (el: HTMLInputElement) => {
+      const canvas = document.createElement('canvas');
+      canvas.width = 40;
+      canvas.height = 40;
+      const ctx = canvas.getContext('2d')!;
+      ctx.fillStyle = '#22c55e';
+      ctx.fillRect(0, 0, 40, 40);
+      const blob = await new Promise<Blob>(r => canvas.toBlob(b => r(b!), 'image/png'));
+      const dt = new DataTransfer();
+      dt.items.add(new File([blob], 'food.png', { type: 'image/png' }));
+      el.files = dt.files;
+      el.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+
+    await page.locator('#title').fill('Curry Trays');
+    await page.locator('#quantity').fill('10 trays');
+
+    await pickFutureDateTime(page, /pick expiry date & time/i, '14');
+    await pickFutureDateTime(page, /start time/i, '10');
+    await pickFutureDateTime(page, /end time/i, '12');
+
+    const addressInput = page.locator('#address');
+    await addressInput.fill('Connaught Place');
+    const suggestion = page.locator('ul li', { hasText: 'Connaught Place' }).first();
+    await suggestion.waitFor({ state: 'visible', timeout: 10_000 });
+    await suggestion.click();
+
+    await page.getByRole('button', { name: /next: review/i }).click();
+    await expect(page.getByRole('heading', { name: /review your donation/i })).toBeVisible({ timeout: 5_000 });
+
+    // First attempt times out
+    await page.getByRole('button', { name: /confirm & publish/i }).click();
+    await expect(page.getByRole('button', { name: /confirm & publish/i })).toBeEnabled({ timeout: 10_000 });
+
+    // Donor goes Back to Edit and changes quantity from 10 trays to 20 trays
+    await page.getByRole('button', { name: /back to edit/i }).click();
+    await page.locator('#quantity').fill('20 trays');
+    await page.getByRole('button', { name: /next: review/i }).click();
+    await expect(page.getByRole('heading', { name: /review your donation/i })).toBeVisible({ timeout: 5_000 });
+
+    // Retry: lookup sees no row, so it MUST retry original listingId & 10 trays (not 20 trays)
+    await page.getByRole('button', { name: /confirm & publish/i }).click();
+    await expect(page.getByText(/previous donation was already published before your edits/i)).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByText(/listing published!/i)).toHaveCount(0);
+    expect(postedIds).toHaveLength(2);
+    expect(postedIds[1]).toBe(postedIds[0]);
+    expect(postedQuantities).toEqual(['10 trays', '10 trays']);
+    expect(deleteCalls).toBe(0);
+  });
+
+  test('donor profile with zero latitude and zero longitude is treated as valid location', async ({ page }) => {
+    await page.route('**/rest/v1/profiles*', route => route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      json: { location_lat: 0, location_lng: 0 },
+    }));
+    await page.goto('/donate');
+    await expect(page.locator('.leaflet-marker-icon')).toBeVisible({ timeout: 10_000 });
+  });
+
+  test('receiver profile coordinates allow 0 on either axis independently and reject missing coordinate', async ({ page }) => {
+    await loginAs(page, 'receiver');
+
+    let currentProfile = { location_lat: 0 as number | null, location_lng: 77.5 as number | null };
+    await page.route('**/rest/v1/profiles*', route => route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      json: currentProfile,
+    }));
+    await page.route('**/rest/v1/food_listings*', route => route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      json: [{
+        id: '11111111-1111-4111-8111-111111111111',
+        title: 'Equatorial Surplus Meals',
+        food_category: 'cooked_meal',
+        quantity_description: '10 meals',
+        status: 'active',
+        expiry_time: new Date(Date.now() + 3600_000).toISOString(),
+        pickup_window: '10:00 - 11:00',
+        location_name: 'Equator Kitchen',
+        pickup_lat: 0,
+        pickup_lng: 0,
+        donor_id: '22222222-2222-4222-8222-222222222222',
+        created_at: new Date().toISOString(),
+      }],
+    }));
+    await page.route('**/rest/v1/food_requests*', async (route) => {
+      if (route.request().method() === 'GET') {
+        return route.fulfill({ status: 200, contentType: 'application/json', json: null });
+      }
+      if (route.request().method() === 'POST') {
+        return route.fulfill({ status: 201, contentType: 'application/json', json: [{ id: 'req-1' }] });
+      }
+      return route.continue();
+    });
+
+    await page.goto('/browse');
+    const requestBtn = page.getByRole('button', { name: /request/i }).first();
+    await requestBtn.waitFor({ state: 'visible', timeout: 10_000 });
+
+    // Axis 1: lat = 0, lng = 77.5 -> valid
+    await requestBtn.click();
+    await page.getByRole('button', { name: /yes, request food/i }).click();
+    await expect(page.getByText(/set your location before requesting food/i)).toHaveCount(0);
+
+    // Axis 2: lat = 12.9, lng = 0 -> valid
+    currentProfile = { location_lat: 12.9, location_lng: 0 };
+    await page.reload();
+    await page.getByRole('button', { name: /request/i }).first().click();
+    await page.getByRole('button', { name: /yes, request food/i }).click();
+    await expect(page.getByText(/set your location before requesting food/i)).toHaveCount(0);
+
+    // Missing coordinate: lat = 0, lng = null -> rejected
+    currentProfile = { location_lat: 0, location_lng: null };
+    await page.reload();
+    await page.getByRole('button', { name: /request/i }).first().click();
+    await page.getByRole('button', { name: /yes, request food/i }).click();
+    await expect(page.getByText(/set your location before requesting food/i)).toBeVisible({ timeout: 5_000 });
   });
 });
