@@ -14,6 +14,8 @@ import {
   type ReactNode,
 } from "react";
 import { supabase, isValidSupabaseId } from "../lib/supabase";
+import { toast } from "sonner";
+import { useNavigate } from "react-router-dom";
 import { useAuthStore } from "../store";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
@@ -53,6 +55,9 @@ export function useNotificationContext(): NotificationContextValue {
 // ─── Provider ────────────────────────────────────────────────────────────────
 
 export function NotificationProvider({ children }: { children: ReactNode }) {
+  const navigate = useNavigate();
+  const navigateRef = useRef(navigate);
+  useEffect(() => { navigateRef.current = navigate; }, [navigate]);
   const { user } = useAuthStore();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -122,15 +127,11 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
           },
           (payload) => {
             const newNotif = payload.new as Notification;
-            setNotifications((prev) => [newNotif, ...prev]);
-            
-            // Pop a toast so the user knows immediately
-            import("sonner").then(({ toast }) => {
-              toast(newNotif.title, {
-                description: newNotif.message,
-                icon: newNotif.type === 'task_assigned' ? '📦' : '🔔',
-                duration: 6000,
-              });
+            setNotifications((prev) => [newNotif, ...prev.filter(n => n.id !== newNotif.id)].slice(0, 50));
+            toast(newNotif.title, {
+              id: newNotif.id,
+              description: newNotif.message,
+              action: { label: "View", onClick: () => navigateRef.current(newNotif.link || "/notifications") },
             });
           }
         )

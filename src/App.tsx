@@ -11,7 +11,6 @@ import { useEffect } from "react";
 import { useAuthStore } from "./store";
 import { RBACProvider } from "./contexts/RBACContext";
 import { NotificationProvider } from "./contexts/NotificationContext";
-import { NotificationsListener } from "./components/NotificationsListener";
 
 import { lazy, Suspense } from "react";
 
@@ -58,8 +57,8 @@ export default function App() {
   return (
     <ThemeProvider defaultTheme="dark" storageKey="vite-ui-theme">
       <RBACProvider>
-        <NotificationProvider>
         <Router>
+          <NotificationProvider>
           <Suspense fallback={<div className="flex min-h-screen items-center justify-center bg-background"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div></div>}>
             <Routes>
               {/* Public Routes - using MainLayout (Top Nav + Footer) */}
@@ -114,9 +113,8 @@ export default function App() {
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
           </Suspense>
-          <NotificationsListener />
+          </NotificationProvider>
         </Router>
-        </NotificationProvider>
       </RBACProvider>
       <Toaster position="top-center" richColors theme="dark" />
     </ThemeProvider>
