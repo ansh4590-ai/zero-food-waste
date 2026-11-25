@@ -13,9 +13,9 @@ interface AuthLayoutProps {
 }
 
 const stats = [
-  { icon: <Utensils className="h-5 w-5 text-emerald-400" />, value: "125K+", label: "Meals Rescued", sub: "This Month" },
-  { icon: <Users className="h-5 w-5 text-blue-400" />, value: "1,250+", label: "Active NGOs", sub: "Across India" },
-  { icon: <HeartHandshake className="h-5 w-5 text-rose-400" />, value: "8,500+", label: "Volunteers", sub: "Making Impact" },
+  { icon: <Utensils className="h-5 w-5 text-emerald-400" />, value: "Live", label: "Food Rescue", sub: "Real-Time Matching" },
+  { icon: <Users className="h-5 w-5 text-blue-400" />, value: "Verified", label: "Partner NGOs", sub: "KYC Screened" },
+  { icon: <HeartHandshake className="h-5 w-5 text-rose-400" />, value: "QR", label: "Chain of Custody", sub: "Pickup to Delivery" },
 ];
 
 const trustItems = [

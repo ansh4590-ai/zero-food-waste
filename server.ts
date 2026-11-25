@@ -93,13 +93,37 @@ const PORT = parseInt(process.env.PORT || '3000', 10);
   const aiAccountLimiter = async (req: AuthenticatedRequest, res: express.Response, next: express.NextFunction) => {
     try {
       const { data, error } = await supabaseAdmin.rpc("consume_ai_quota", { p_user_id: req.user!.id });
-      if (error) throw error;
+      if (error) {
+        const msg = String(error.message || "");
+        const isMissingRpc =
+          error.code === "PGRST202" ||
+          error.code === "42883" ||
+          msg.includes("consume_ai_quota") ||
+          msg.toLowerCase().includes("does not exist") ||
+          msg.toLowerCase().includes("function") ||
+          msg.toLowerCase().includes("rpc");
+        if (isMissingRpc) {
+          console.warn("[aiAccountLimiter] RPC missing, bypassing quota check:", error.code || msg);
+          return next();
+        }
+        // In non-production, never block the request on quota errors — degrade gracefully
+        if (process.env.NODE_ENV !== "production") {
+          console.warn("[aiAccountLimiter] Non-prod quota error, allowing request:", error.code || msg);
+          return next();
+        }
+        throw error;
+      }
       if (data !== true) {
         res.setHeader("Retry-After", "60");
         return res.status(429).json({ error: "AI request limit reached. Try again in a minute." });
       }
       next();
-    } catch {
+    } catch (err) {
+      console.error("[aiAccountLimiter] Unexpected error:", err);
+      // In non-production, fall through rather than blocking AI features
+      if (process.env.NODE_ENV !== "production") {
+        return next();
+      }
       return res.status(503).json({ error: "AI service temporarily unavailable." });
     }
   };

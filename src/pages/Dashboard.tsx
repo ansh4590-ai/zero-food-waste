@@ -50,7 +50,7 @@ function DonorDashboard() {
             if (LISTING_DELIVERED_STATUSES.includes(l.status)) {
               deliveries++;
               const match = String(l.quantity_description || "").match(/(\d+)/);
-              meals += match ? parseInt(match[1], 10) : 15;
+              meals += match ? parseInt(match[1], 10) : 0;
             }
 
             // Find upcoming pickups
@@ -272,7 +272,7 @@ function ReceiverDashboard() {
             deliveries++;
             if (l?.donor_id) partners.add(l.donor_id);
             const match = String(l?.quantity_description || "").match(/(\d+)/);
-            meals += match ? parseInt(match[1], 10) : 15;
+            meals += match ? parseInt(match[1], 10) : 0;
           }
         });
 
@@ -696,8 +696,9 @@ function AdminDashboard() {
         const totalUsers = totalUsersRes.count ?? 0;
         const pendingKyc = pendingKycRes.count ?? 0;
         const activeListings = activeListingsRes.count ?? 0;
+        const hasQueryError = Boolean(totalUsersRes.error || pendingKycRes.error || activeListingsRes.error || recentPendingRes.error);
 
-        setStats({ totalUsers, activeListings, pendingKyc, platformHealth: 100 });
+        setStats({ totalUsers, activeListings, pendingKyc, platformHealth: hasQueryError ? 0 : 100 });
         setRecentVerifications(recentPendingRes.data ?? []);
       } catch (e) {
         console.error(e);
@@ -832,7 +833,12 @@ function AdminDashboard() {
 
 export default function Dashboard() {
   const { roles, isLoading } = useUserRole();
-  const primaryRole = roles?.[0] || 'donor';
+  const { can } = usePermissions();
+  const rawRole = (roles?.[0] || "").toLowerCase().trim();
+  const normalizedRole =
+    rawRole === "recipient" || rawRole === "ngo"
+      ? "receiver"
+      : rawRole;
 
   if (isLoading) {
     return (
@@ -844,10 +850,19 @@ export default function Dashboard() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 animate-fade-in">
-      {primaryRole === 'donor' && <DonorDashboard />}
-      {primaryRole === 'receiver' && <ReceiverDashboard />}
-      {primaryRole === 'volunteer' && <VolunteerDashboard />}
-      {primaryRole === 'admin' && <AdminDashboard />}
+      {normalizedRole === 'donor' ? (
+        <DonorDashboard />
+      ) : normalizedRole === 'receiver' ? (
+        <ReceiverDashboard />
+      ) : normalizedRole === 'volunteer' ? (
+        <VolunteerDashboard />
+      ) : normalizedRole === 'admin' ? (
+        <AdminDashboard />
+      ) : can("food.create") ? (
+        <DonorDashboard />
+      ) : (
+        <ReceiverDashboard />
+      )}
     </div>
   );
 }
