@@ -4,6 +4,8 @@ import { createClient } from "@supabase/supabase-js";
 import path from "path";
 import dotenv from "dotenv";
 import crypto from "crypto";
+import { evaluateSpoilageRisk } from "./server/spoilage.js";
+import { handleTaskProofUpload } from "./server/proofUpload.js";
 import { RekognitionClient, CompareFacesCommand } from "@aws-sdk/client-rekognition";
 import vision from "@google-cloud/vision";
 import cors from "cors";
@@ -474,38 +476,8 @@ Return ONLY valid JSON with no markdown or extra text:
 
   // 12. Spoilage Risk Predictor
   app.post("/api/predict-spoilage", requireAuth, (req, res) => {
-    const { food_type, preparation_time, current_temperature_celsius, travel_distance_km, storage_type } = req.body;
-    
-    let risk = "low";
-    let safe_hours = 24;
-    let recommendation = "Safe to transport.";
-
-    // Rule-based logic
-    if (storage_type === "ambient" && current_temperature_celsius > 25) {
-      if (food_type === "cooked_meal") {
-        risk = "high";
-        safe_hours = 2;
-        recommendation = "Immediate refrigeration required. High risk of bacterial growth.";
-      } else if (food_type === "raw_produce") {
-        risk = "medium";
-        safe_hours = 12;
-        recommendation = "Keep in a cool, shaded place.";
-      }
-    } else if (storage_type === "refrigerated") {
-      safe_hours = food_type === "cooked_meal" ? 48 : 72;
-    }
-
-    if (travel_distance_km > 20 && storage_type === "ambient") {
-      risk = risk === "high" ? "high" : "medium";
-      recommendation += " Use insulated bags for long travel.";
-    }
-
-    res.json({
-      spoilage_risk: risk,
-      estimated_safe_hours: safe_hours,
-      recommendation,
-      method: "heuristic_rule_based"
-    });
+    const result = evaluateSpoilageRisk(req.body);
+    return res.status(result.status).json(result.body);
   });
 
   // 13. Fraud & Anomaly Detection
@@ -962,96 +934,14 @@ Return ONLY valid JSON with no markdown or extra text:
   // ─── 18. PHOTO PROOF UPLOAD ──────────────────────────────────────────────────
   app.post("/api/tasks/:taskId/upload-proof", requireAuth, async (req: AuthenticatedRequest, res) => {
     try {
-      const { taskId } = req.params;
-      const { imageBase64, proof_type } = req.body;
-      const volunteer_id = req.user!.id;
-
-      if (!UUID_REGEX.test(taskId)) {
-        return res.status(400).json({ error: "Invalid taskId format." });
-      }
-
-      if (typeof imageBase64 !== "string" || !imageBase64 || !proof_type) {
-        return res.status(400).json({ error: "imageBase64 and proof_type are required." });
-      }
-
-      if (!['pickup', 'delivery'].includes(proof_type)) {
-        return res.status(400).json({ error: "proof_type must be 'pickup' or 'delivery'." });
-      }
-
-      // Verify task exists and is assigned to the authenticated caller
-      const { data: task, error: taskErr } = await supabaseAdmin
-        .from('volunteer_tasks')
-        .select('id, volunteer_id, status')
-        .eq('id', taskId)
-        .eq('volunteer_id', volunteer_id)
-        .maybeSingle();
-
-      if (taskErr || !task) {
-        return res.status(404).json({ error: "Task not found or not assigned to you." });
-      }
-
-      // Enforce task stage based on proof_type
-      if (proof_type === 'pickup') {
-        if (!['assigned', 'pending_acceptance'].includes(task.status)) {
-          return res.status(409).json({ error: `Cannot upload pickup proof: task is in '${task.status}' state, expected 'assigned'.` });
-        }
-      } else if (proof_type === 'delivery') {
-        if (task.status !== 'picked_up') {
-          return res.status(409).json({ error: `Cannot upload delivery proof: task is in '${task.status}' state, expected 'picked_up'.` });
-        }
-      }
-
-      // Extract raw base64
-      const raw = imageBase64.replace(/^data:image\/\w+;base64,/, "");
-      const buffer = Buffer.from(raw, 'base64');
-
-      // Keep the encoded request below the default host payload limit.
-      if (buffer.length > 3 * 1024 * 1024) {
-        return res.status(400).json({ error: "Proof image exceeds 3 MiB size limit." });
-      }
-
-      // Validate image magic bytes (JPEG, PNG, WebP)
-      const isJpeg = buffer.length > 3 && buffer[0] === 0xFF && buffer[1] === 0xD8 && buffer[2] === 0xFF;
-      const isPng = buffer.length > 8 && buffer[0] === 0x89 && buffer[1] === 0x50 && buffer[2] === 0x4E && buffer[3] === 0x47;
-      const isWebp = buffer.length > 12 && buffer.slice(8, 12).toString('ascii') === 'WEBP';
-
-      if (!isJpeg && !isPng && !isWebp) {
-        return res.status(400).json({ error: "Invalid image format. Allowed formats: JPEG, PNG, WebP." });
-      }
-
-      const mimeType = isPng ? 'image/png' : isWebp ? 'image/webp' : 'image/jpeg';
-      const ext = isPng ? 'png' : isWebp ? 'webp' : 'jpg';
-      const fileName = `${taskId}/${proof_type}_${Date.now()}.${ext}`;
-
-      // Upload to private task_proofs bucket
-      const { error: uploadErr } = await supabaseAdmin.storage
-        .from('task_proofs')
-        .upload(fileName, buffer, { contentType: mimeType, upsert: true });
-
-      if (uploadErr) throw uploadErr;
-
-      // Generate a short-lived signed URL (5 minutes) for immediate viewing
-      const { data: signedData, error: signedErr } = await supabaseAdmin.storage
-        .from('task_proofs')
-        .createSignedUrl(fileName, 300);
-
-      if (signedErr) {
-        console.warn("Could not generate signed URL for proof:", signedErr);
-      }
-
-      const proofSignedUrl = signedData?.signedUrl || "";
-
-      // Save file path to volunteer_tasks
-      const column = proof_type === 'pickup' ? 'pickup_image_url' : 'delivery_image_url';
-      const { error: updateErr } = await supabaseAdmin
-        .from('volunteer_tasks')
-        .update({ [column]: fileName })
-        .eq('id', taskId)
-        .eq('volunteer_id', volunteer_id);
-
-      if (updateErr) throw updateErr;
-
-      res.json({ success: true, url: proofSignedUrl, path: fileName });
+      const result = await handleTaskProofUpload({
+        supabaseAdmin,
+        taskId: req.params.taskId,
+        volunteerId: req.user!.id,
+        proofType: req.body?.proof_type,
+        imageBase64: req.body?.imageBase64,
+      });
+      res.status(result.status).json(result.body);
     } catch (err: unknown) {
       console.error("Proof upload error:", err);
       res.status(500).json({ error: "Internal server error" });
