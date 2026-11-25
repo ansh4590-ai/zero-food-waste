@@ -675,7 +675,7 @@ function VolunteerDashboard() {
 
 function AdminDashboard() {
   const navigate = useNavigate();
-  const [stats, setStats] = useState({ totalUsers: 0, activeListings: 0, pendingKyc: 0, platformHealth: 100 });
+  const [stats, setStats] = useState({ totalUsers: 0, activeListings: 0, pendingKyc: 0, platformHealth: 0 });
   const [recentVerifications, setRecentVerifications] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 

@@ -1259,8 +1259,8 @@ export default function Donate() {
                     <div className="bg-muted/30 rounded-xl p-4 border border-border md:col-span-2">
                       <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">AI Quality Analysis</p>
                       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                        <div className="text-center"><p className="text-xs text-muted-foreground">Priority</p><p className="font-bold text-sm text-foreground">{classificationResult.priority_score ?? 'N/A'}/100</p></div>
-                        <div className="text-center"><p className="text-xs text-muted-foreground">Freshness</p><p className="font-bold text-sm text-emerald-600">{classificationResult.freshness_score ?? 'N/A'}/100</p></div>
+                        <div className="text-center"><p className="text-xs text-muted-foreground">Priority</p><p className="font-bold text-sm text-foreground">{classificationResult.priority_score != null ? `${classificationResult.priority_score}/100` : 'N/A'}</p></div>
+                        <div className="text-center"><p className="text-xs text-muted-foreground">Freshness</p><p className="font-bold text-sm text-emerald-600">{classificationResult.freshness_score != null ? `${classificationResult.freshness_score}/100` : 'N/A'}</p></div>
                         <div className="text-center"><p className="text-xs text-muted-foreground">Quality</p><p className="font-bold text-sm text-foreground capitalize">{classificationResult.quality_status ?? 'N/A'}</p></div>
                         <div className="text-center"><p className="text-xs text-muted-foreground">Shelf Life</p><p className="font-bold text-sm text-foreground">{classificationResult.estimated_safe_hours != null ? `~${classificationResult.estimated_safe_hours}h` : 'N/A'}</p></div>
                       </div>

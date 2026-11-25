@@ -383,52 +383,37 @@ const PORT = parseInt(process.env.PORT || '3000', 10);
         return res.status(400).json({ error: "Image too large. Please upload an image under 3MB." });
       }
 
-      // If no API key is provided, return 503 in production or mock in dev
+      // Require configured Gemini API key (no hardcoded mock classification)
       if (!ai) {
-        if (process.env.NODE_ENV === "production") {
-          return res.status(503).json({ error: "AI classification service unavailable: GEMINI_API_KEY is not configured." });
-        }
-        console.warn("No GEMINI_API_KEY provided. Falling back to mock classification in development.");
-        return res.json({
-          is_food: true,
-          title: "Aloo Sabji with Puri",
-          detected_items: ["aloo sabji", "puri", "green chutney"],
-          predicted_category: "Cooked Meals",
-          quantity_description: "3 servings",
-          confidence_score: 95,
-          freshness_score: 90,
-          quality_status: "good",
-          estimated_safe_hours: 6,
-          spoilage_risk: "medium",
-          priority_score: 85,
-          packaged_food: false,
-          brand_name: null,
-          expiry_visible: null,
-          notes: "Mock data fallback for development"
-        });
+        return res.status(503).json({ error: "AI classification service unavailable: GEMINI_API_KEY is not configured." });
       }
 
       // Reuse mimeMatch from validation above to get the correct MIME type
       const detectedMime = (mimeMatch?.[1] || "image/jpeg") as "image/jpeg" | "image/png" | "image/webp";
       const base64Data = imageBase64.replace(/^data:image\/[a-zA-Z0-9+.-]+;base64,/, "");
 
-      const elitePrompt = `You are a world-class food recognition AI. Analyze the uploaded image carefully and identify the food accurately regardless of cuisine (Indian, Italian, Chinese, Mexican, etc.).
+      const elitePrompt = `You are a food recognition and quality inspection AI. Analyze the uploaded image carefully based ONLY on what is visibly present in the image (Indian, Italian, Chinese, Mexican, bakery, produce, packaged food, etc.).
 
 If the image does NOT contain food, return ONLY this JSON:
 {"is_food": false, "reason": "No food detected in the image"}
 
-If food IS detected, identify it accurately. Examples of what to detect:
-- Indian: roti, dal, biryani, paneer curry, idli, dosa, samosa, khichdi, chole, rajma
-- International: spaghetti, pasta, pizza, burger, sandwich, sushi, noodles, fried rice, soup
-- General: fruits, vegetables, salad, bread, desserts, packaged food
+If food IS detected, inspect the visual appearance, portion size, packaging/containment, and perishability carefully from the image and estimate distinct values specific to THIS image:
+- freshness_score (0-100): judge strictly by visible color, moisture, texture, browning/wilting, or packaging integrity.
+- safe_hours: realistic hours remaining before spoilage at ambient temperature for this specific food type.
+- spoilage_risk: "critical" (<2h or signs of spoilage), "high" (2-4h, moist cooked/dairy/meat), "medium" (4-12h), or "low" (>12h, dry/bakery/sealed/fresh uncut produce).
+- priority_score (0-100): urgency for rescue (higher for large perishable cooked meals that will spoil soon, lower for shelf-stable packaged/dry items).
+- quality_status: "excellent", "good", "usable", or "risky" matching visual quality.
+- confidence (0-100): actual visual certainty given lighting, angle, occlusion, and clarity.
+- quantity: specific estimated count or servings visible in the photo (e.g. "2 plates", "6 pastries", "1 bowl").
 
 Return ONLY valid JSON with no markdown or extra text:
 {
   "is_food": true,
-  "food_name": "<accurate name of the dish, e.g. Spaghetti Marinara>",
-  "quantity": "<estimated servings>",
+  "food_name": "<specific dish or food item visible in the image>",
+  "detected_items": ["<item 1>", "<item 2>"],
+  "quantity": "<estimated visible quantity/servings>",
   "freshness_score": <0-100>,
-  "safe_hours": <estimated hours food is safe to eat>,
+  "safe_hours": <number>,
   "veg/nonveg": "<veg or nonveg>",
   "confidence": <0-100>,
   "predicted_category": "<one of: Cooked Meals, Fresh Produce, Bakery, Packaged Food, Beverages, Other>",
@@ -450,6 +435,7 @@ Return ONLY valid JSON with no markdown or extra text:
         ],
         config: {
           responseMimeType: "application/json",
+          temperature: 0.2,
         }
       });
 
@@ -472,15 +458,16 @@ Return ONLY valid JSON with no markdown or extra text:
         "Other": "other"
       };
 
-      const rawCategory = rawResult.predicted_category || "Cooked Meals";
-      const mappedCategory = categoryMap[rawCategory] || "cooked_meal";
+      const rawCategory = rawResult.predicted_category || "Other";
+      const mappedCategory = categoryMap[rawCategory] || "other";
 
-      // Map to legacy frontend keys while preserving new keys
+      // Map to legacy frontend keys while preserving new keys (never substitute hardcoded fake scores)
       const finalResult = {
         ...rawResult,                    // spread raw result FIRST
         is_food: true,
-        title: rawResult.food_name || "Food Item",
-        quantity_description: rawResult.quantity || "1 serving",
+        title: rawResult.food_name || null,
+        detected_items: Array.isArray(rawResult.detected_items) ? rawResult.detected_items : null,
+        quantity_description: rawResult.quantity || null,
         estimated_safe_hours: rawResult.safe_hours ?? null,
         confidence_score: rawResult.confidence ?? null,
         freshness_score: rawResult.freshness_score ?? null,

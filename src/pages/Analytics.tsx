@@ -79,7 +79,7 @@ export default function Analytics() {
             if (weeklyMap[dayName]) {
               weeklyMap[dayName].donations++;
               const match = String(l.quantity_description || "").match(/(\d+)/);
-              const meals = match ? parseInt(match[1], 10) : 15;
+              const meals = match ? parseInt(match[1], 10) : 0;
               weeklyMap[dayName].meals += meals;
             }
           }
