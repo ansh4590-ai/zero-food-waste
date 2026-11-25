@@ -17,7 +17,7 @@ export default function VerificationQueue({ users, isLoading, onRefresh, onSelec
       <CardHeader className="flex flex-row items-center justify-between">
         <div>
           <CardTitle className="flex items-center gap-2">
-            <ShieldCheck className="h-5 w-5 text-info" />
+            <ShieldCheck className="h-5 w-5 text-blue-500" />
             Priority Verification Queue
           </CardTitle>
           <CardDescription>Sorted by risk score — lowest confidence first. AI decisions can be overridden.</CardDescription>

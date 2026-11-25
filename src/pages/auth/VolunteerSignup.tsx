@@ -64,84 +64,84 @@ export default function VolunteerSignup() {
     >
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="space-y-2">
-          <label className="text-sm font-medium leading-none text-foreground">Full Name</label>
+          <label className="text-sm font-medium leading-none text-zinc-300">Full Name</label>
           <Input 
             name="name" 
             required 
             value={formData.name} 
             onChange={handleChange} 
-            className="bg-card border-border text-foreground placeholder:text-muted-foreground focus-visible:ring-emerald-500"
+            className="bg-zinc-900/50 border-white/10 text-white placeholder:text-zinc-500 focus-visible:ring-emerald-500" 
           />
         </div>
         
         <div className="space-y-2">
-          <label className="text-sm font-medium leading-none text-foreground">Email</label>
+          <label className="text-sm font-medium leading-none text-zinc-300">Email</label>
           <Input 
             name="email" 
             type="email" 
             required 
             value={formData.email} 
             onChange={handleChange} 
-            className="bg-card border-border text-foreground placeholder:text-muted-foreground focus-visible:ring-emerald-500"
+            className="bg-zinc-900/50 border-white/10 text-white placeholder:text-zinc-500 focus-visible:ring-emerald-500" 
           />
         </div>
         
         <div className="space-y-2">
-          <label className="text-sm font-medium leading-none text-foreground">Password</label>
+          <label className="text-sm font-medium leading-none text-zinc-300">Password</label>
           <Input 
             name="password" 
             type="password" 
             required 
             value={formData.password} 
             onChange={handleChange} 
-            className="bg-card border-border text-foreground placeholder:text-muted-foreground focus-visible:ring-emerald-500"
+            className="bg-zinc-900/50 border-white/10 text-white placeholder:text-zinc-500 focus-visible:ring-emerald-500" 
           />
         </div>
 
         <div className="space-y-2">
-          <label className="text-sm font-medium leading-none text-foreground">Phone Number</label>
+          <label className="text-sm font-medium leading-none text-zinc-300">Phone Number</label>
           <Input 
             name="phone" 
             type="tel" 
             required 
             value={formData.phone} 
             onChange={handleChange} 
-            className="bg-card border-border text-foreground placeholder:text-muted-foreground focus-visible:ring-emerald-500"
+            className="bg-zinc-900/50 border-white/10 text-white placeholder:text-zinc-500 focus-visible:ring-emerald-500" 
           />
         </div>
 
         <div className="space-y-2">
-          <label className="text-sm font-medium leading-none text-foreground">Vehicle Type</label>
+          <label className="text-sm font-medium leading-none text-zinc-300">Vehicle Type</label>
           <select 
             name="vehicleType" 
-            className="flex h-10 w-full rounded-md border border-border bg-card px-3 py-2 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+            className="flex h-10 w-full rounded-md border border-white/10 bg-zinc-900/50 px-3 py-2 text-sm text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
             value={formData.vehicleType} 
             onChange={handleChange}
           >
-            <option value="car" className="bg-card">Car</option>
-            <option value="van" className="bg-card">Van / Minivan</option>
-            <option value="truck" className="bg-card">Truck</option>
-            <option value="bike" className="bg-card">Bicycle / Scooter</option>
-            <option value="none" className="bg-card">No Vehicle (Walking)</option>
+            <option value="car" className="bg-zinc-900">Car</option>
+            <option value="van" className="bg-zinc-900">Van / Minivan</option>
+            <option value="truck" className="bg-zinc-900">Truck</option>
+            <option value="bike" className="bg-zinc-900">Bicycle / Scooter</option>
+            <option value="none" className="bg-zinc-900">No Vehicle (Walking)</option>
           </select>
         </div>
 
         <div className="space-y-2">
-          <label className="text-sm font-medium leading-none text-foreground">Availability</label>
+          <label className="text-sm font-medium leading-none text-zinc-300">Availability</label>
           <select 
             name="availability" 
-            className="flex h-10 w-full rounded-md border border-border bg-card px-3 py-2 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+            className="flex h-10 w-full rounded-md border border-white/10 bg-zinc-900/50 px-3 py-2 text-sm text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
             value={formData.availability} 
             onChange={handleChange}
           >
-            <option value="weekdays" className="bg-card">Weekdays</option>
-            <option value="weekends" className="bg-card">Weekends</option>
-            <option value="evenings" className="bg-card">Evenings</option>
-            <option value="anytime" className="bg-card">Anytime</option>
+            <option value="weekdays" className="bg-zinc-900">Weekdays</option>
+            <option value="weekends" className="bg-zinc-900">Weekends</option>
+            <option value="evenings" className="bg-zinc-900">Evenings</option>
+            <option value="anytime" className="bg-zinc-900">Anytime</option>
           </select>
         </div>
 
-        <div className="p-3 rounded-lg bg-orange-950/30 border border-orange-500/20 text-xs text-warning flex items-start gap-2">
+        <div className="p-3 rounded-lg bg-orange-950/30 border border-orange-500/20 text-xs text-orange-300 flex items-start gap-2">
           <span>🛡️</span>
           <span>
             Identity verification is completed securely in the Smart KYC portal after registration.
@@ -158,7 +158,7 @@ export default function VolunteerSignup() {
       </form>
 
       <div className="mt-6 text-center">
-        <Link to="/register" className="text-sm font-medium text-warning hover:text-orange-300 transition-colors">
+        <Link to="/register" className="text-sm font-medium text-orange-400 hover:text-orange-300 transition-colors">
           ← Back to roles
         </Link>
       </div>

@@ -15,7 +15,7 @@ const variantClass: Record<NeonBadgeVariant, string> = {
   amber:  "neon-badge neon-badge-amber",
   red:    "neon-badge neon-badge-red",
   violet: "neon-badge neon-badge-violet",
-  gray:   "neon-badge bg-muted border-border text-muted-foreground",
+  gray:   "neon-badge bg-white/5 border-white/15 text-white/50",
 };
 
 const dotColor: Record<NeonBadgeVariant, string> = {
@@ -24,7 +24,7 @@ const dotColor: Record<NeonBadgeVariant, string> = {
   amber:  "bg-[#fbbf24]",
   red:    "bg-[#f87171]",
   violet: "bg-[#a78bfa]",
-  gray:   "bg-muted-foreground",
+  gray:   "bg-white/40",
 };
 
 /**

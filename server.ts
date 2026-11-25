@@ -1,5 +1,4 @@
 import express from "express";
-import http from "http";
 import { GoogleGenAI } from "@google/genai";
 import { createClient } from "@supabase/supabase-js";
 import path from "path";
@@ -1205,20 +1204,12 @@ Return ONLY valid JSON with no markdown or extra text:
   // (configured via vercel.ts's outputDirectory).
   if (!process.env.VERCEL) {
     (async () => {
-      const server = http.createServer(app);
-      let viteServer: { close: () => Promise<void> } | null = null;
-
       if (process.env.NODE_ENV !== "production") {
         const { createServer: createViteServer } = await import("vite");
         const vite = await createViteServer({
-          server: {
-            middlewareMode: true,
-            // Share the Express HTTP server port so Vite does not bind a separate 24678 WebSocket port.
-            hmr: process.env.DISABLE_HMR === "true" ? false : { server },
-          },
+          server: { middlewareMode: true },
           appType: "spa",
         });
-        viteServer = vite;
         app.use(vite.middlewares);
       } else {
         const distPath = path.join(process.cwd(), 'dist');
@@ -1228,21 +1219,17 @@ Return ONLY valid JSON with no markdown or extra text:
         });
       }
 
-      server.listen(PORT, "0.0.0.0", () => {
+      const server = app.listen(PORT, "0.0.0.0", () => {
         console.log(`Server running on http://localhost:${PORT}`);
       });
 
       // ─── GRACEFUL SHUTDOWN ─────────────────────────────────────────────
       const shutdown = (signal: string) => {
         console.log(`\n[${signal}] Shutting down gracefully...`);
-        Promise.resolve(viteServer?.close())
-          .catch(() => {})
-          .finally(() => {
-            server.close(() => {
-              console.log('HTTP server closed.');
-              process.exit(0);
-            });
-          });
+        server.close(() => {
+          console.log('HTTP server closed.');
+          process.exit(0);
+        });
         // Force exit after 10s if connections aren't drained
         setTimeout(() => {
           console.error('Forced shutdown after timeout.');

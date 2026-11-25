@@ -175,7 +175,7 @@ export default function Verification() {
   if (isLoading) return (
     <div className="flex justify-center items-center p-12 min-h-[60vh]">
       <div className="flex flex-col items-center gap-3">
-        <Loader2 className="h-8 w-8 animate-spin text-info" />
+        <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
         <span className="text-sm text-muted-foreground">Loading verification status…</span>
       </div>
     </div>
@@ -185,8 +185,8 @@ export default function Verification() {
     <div className="max-w-3xl mx-auto px-4 py-12">
       <div className="mb-8 text-center max-w-xl mx-auto">
         <div className="relative inline-block mb-4">
-          <ShieldCheck className="h-12 w-12 text-info mx-auto border-4 border-blue-50 rounded-full p-1 bg-card text-card-foreground" />
-          <Brain className="h-5 w-5 text-violet absolute -top-1 -right-1 bg-card rounded-full p-0.5" />
+          <ShieldCheck className="h-12 w-12 text-blue-600 mx-auto border-4 border-blue-50 rounded-full p-1 bg-card text-card-foreground" />
+          <Brain className="h-5 w-5 text-violet-500 absolute -top-1 -right-1 bg-card rounded-full p-0.5" />
         </div>
         <h1 className="text-3xl font-extrabold text-foreground tracking-tight">Smart Identity Verification</h1>
         <p className="mt-3 text-lg text-gray-500">
@@ -200,7 +200,7 @@ export default function Verification() {
           <div className="absolute top-0 left-0 w-1 h-full bg-emerald-500" />
           <CardContent className="flex flex-col sm:flex-row items-center justify-between p-6 sm:p-8 gap-6">
             <div className="flex items-start gap-4">
-              <CheckCircle2 className="w-8 h-8 text-success shrink-0 mt-1" />
+              <CheckCircle2 className="w-8 h-8 text-emerald-600 shrink-0 mt-1" />
               <div>
                 <h3 className="text-xl font-bold text-emerald-900 dark:text-emerald-200 mb-1">Identity Verified</h3>
                 <p className="text-emerald-700 dark:text-emerald-400 leading-relaxed max-w-lg">
@@ -231,7 +231,7 @@ export default function Verification() {
           <div className="absolute top-0 left-0 w-1 h-full bg-amber-400" />
           <CardContent className="flex flex-col sm:flex-row items-center justify-between p-6 sm:p-8 gap-6">
             <div className="flex items-start gap-4">
-              <Clock className="w-8 h-8 text-warning shrink-0 mt-1" />
+              <Clock className="w-8 h-8 text-amber-600 shrink-0 mt-1" />
               <div>
                 <h3 className="text-xl font-bold text-amber-900 dark:text-amber-200 mb-1">Under AI + Human Review</h3>
                 <p className="text-amber-700 dark:text-amber-400 leading-relaxed max-w-lg">
@@ -269,7 +269,7 @@ export default function Verification() {
         <Card className="border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950/30 shadow-sm mb-8 overflow-hidden relative">
           <div className="absolute top-0 left-0 w-1 h-full bg-red-500" />
           <CardContent className="p-6 sm:p-8 flex items-start gap-4">
-            <AlertCircle className="w-8 h-8 text-destructive shrink-0 mt-1" />
+            <AlertCircle className="w-8 h-8 text-red-600 shrink-0 mt-1" />
             <div className="flex-1">
               <h3 className="text-xl font-bold text-red-900 dark:text-red-200 mb-1">Verification Unsuccessful</h3>
               <p className="text-red-700 dark:text-red-400 mb-4">{rejectionReason || "Your documents could not be verified. Please try uploading again with clearer photos."}</p>
@@ -297,7 +297,7 @@ export default function Verification() {
           <form onSubmit={handleSubmit}>
             <CardHeader className="bg-muted/50 border-b border-border">
               <CardTitle className="text-xl flex items-center gap-2">
-                <Brain className="h-5 w-5 text-violet" />
+                <Brain className="h-5 w-5 text-violet-500" />
                 Upload Documents
               </CardTitle>
               <CardDescription>All uploads are encrypted. Our AI engine scores your documents in real-time for faster verification.</CardDescription>
@@ -305,7 +305,7 @@ export default function Verification() {
             <CardContent className="space-y-8 p-6 sm:p-8">
               {/* Aadhaar */}
               <div className="space-y-3">
-                <Label className="text-base font-semibold text-foreground">1. Aadhaar Card (Front)<span className="text-destructive">*</span></Label>
+                <Label className="text-base font-semibold text-foreground">1. Aadhaar Card (Front)<span className="text-red-500">*</span></Label>
                 <p className="text-sm text-gray-500 -mt-1">Clear photo of your government-issued ID.</p>
                 <div className="relative group">
                   <Input 
@@ -320,7 +320,7 @@ export default function Verification() {
 
               {/* PAN */}
               <div className="space-y-3">
-                <Label className="text-base font-semibold text-foreground">2. PAN Card (Optional — <span className="text-violet">+5 AI score bonus</span>)</Label>
+                <Label className="text-base font-semibold text-foreground">2. PAN Card (Optional — <span className="text-violet-600">+5 AI score bonus</span>)</Label>
                 <p className="text-sm text-gray-500 -mt-1">Helps speed up verification and boosts your confidence score.</p>
                 <div className="relative group">
                   <Input 
@@ -334,7 +334,7 @@ export default function Verification() {
 
               {/* Selfie */}
               <div className="space-y-3 pt-2">
-                <Label className="text-base font-semibold text-foreground">3. Recent Selfie<span className="text-destructive">*</span></Label>
+                <Label className="text-base font-semibold text-foreground">3. Recent Selfie<span className="text-red-500">*</span></Label>
                 <p className="text-sm text-gray-500 -mt-1">For AI face match with your Aadhaar photo. Please ensure good lighting.</p>
                 <div className="relative group">
                   <Input 
@@ -350,7 +350,7 @@ export default function Verification() {
               {/* AI Engine Info */}
               <div className="bg-violet-50 dark:bg-violet-950/20 border border-violet-200 dark:border-violet-800 rounded-xl p-4">
                 <div className="flex items-start gap-3">
-                  <Brain className="h-5 w-5 text-violet shrink-0 mt-0.5" />
+                  <Brain className="h-5 w-5 text-violet-600 shrink-0 mt-0.5" />
                   <div>
                     <h4 className="text-sm font-semibold text-violet-900 dark:text-violet-200">Smart KYC Engine</h4>
                     <p className="text-xs text-violet-700 dark:text-violet-400 mt-1 leading-relaxed">

@@ -88,7 +88,7 @@ export function AddressAutocomplete({
               <Search className="h-4 w-4 animate-pulse" /> Searching...
             </div>
           ) : error ? (
-            <div className="p-4 text-sm text-center text-destructive">
+            <div className="p-4 text-sm text-center text-red-500">
               {error}
             </div>
           ) : suggestions.length > 0 ? (

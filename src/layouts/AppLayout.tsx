@@ -32,7 +32,7 @@ export default function AppLayout() {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, logout } = useAuthStore();
-  const { resolvedTheme, setTheme } = useTheme();
+  const { theme, setTheme } = useTheme();
   const { can } = usePermissions();
   const { roles } = useUserRole();
   const primaryRole = roles?.[0] || 'donor';
@@ -77,7 +77,7 @@ export default function AppLayout() {
   };
 
   const toggleTheme = () => {
-    const isDark = resolvedTheme === "dark";
+    const isDark = theme === "dark" || (theme === "system" && window.matchMedia("(prefers-color-scheme: dark)").matches);
     setTheme(isDark ? "light" : "dark");
   };
 
@@ -164,26 +164,26 @@ export default function AppLayout() {
           
           {can("food.create") && (
             <Link to="/donate" className={`sidebar-nav-item ${location.pathname === "/donate" ? "active" : ""}`} title={isSidebarCollapsed ? "Donate Food" : undefined}>
-              <HeartHandshake className="nav-icon text-success" />
+              <HeartHandshake className="nav-icon text-emerald-500" />
               <span className="sidebar-label">Donate Food</span>
             </Link>
           )}
           
           <Link to="/browse" className={`sidebar-nav-item ${location.pathname === "/browse" ? "active" : ""}`} title={isSidebarCollapsed ? "Find Food" : undefined}>
-            <Search className="nav-icon text-info" />
+            <Search className="nav-icon text-blue-500" />
             <span className="sidebar-label">Find Food</span>
           </Link>
 
           {can("tasks.view_assigned") && (
             <Link to="/tasks" className={`sidebar-nav-item ${location.pathname === "/tasks" ? "active" : ""}`} title={isSidebarCollapsed ? "My Tasks" : undefined}>
-              <Activity className="nav-icon text-warning" />
+              <Activity className="nav-icon text-amber-500" />
               <span className="sidebar-label">My Tasks</span>
             </Link>
           )}
 
           {can("users.read") && (
             <Link to="/admin" className={`sidebar-nav-item ${location.pathname === "/admin" ? "active" : ""}`} title={isSidebarCollapsed ? "Admin Panel" : undefined}>
-              <Settings className="nav-icon text-violet" />
+              <Settings className="nav-icon text-purple-500" />
               <span className="sidebar-label">Admin Panel</span>
             </Link>
           )}
@@ -257,7 +257,7 @@ export default function AppLayout() {
             onClick={toggleTheme}
             className="text-muted-foreground hover:text-foreground h-9 w-9"
           >
-            {resolvedTheme === "dark" ? (
+            {theme === "dark" || (theme === "system" && typeof window !== "undefined" && window.matchMedia("(prefers-color-scheme: dark)").matches) ? (
               <Sun className="h-4 w-4" />
             ) : (
               <Moon className="h-4 w-4" />

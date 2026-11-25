@@ -17,19 +17,19 @@ const FleetCharts: React.FC<FleetChartsProps> = React.memo(function FleetCharts(
       <Card className="bg-card border-border">
         <CardHeader className="pb-2">
           <CardTitle className="text-sm flex items-center gap-2">
-            <BarChart3 className="w-4 h-4 text-info" /> Daily Rescue Trend
+            <BarChart3 className="w-4 h-4 text-blue-500" /> Daily Rescue Trend
           </CardTitle>
           <CardDescription className="text-xs">Deliveries completed in the last 7 days</CardDescription>
         </CardHeader>
         <CardContent className="pt-0">
           <ResponsiveContainer width="100%" height={180}>
             <BarChart data={dailyRescueTrend}>
-              <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-              <XAxis dataKey="day" tick={{ fontSize: 11, fill: 'var(--muted-foreground)' }} />
-              <YAxis allowDecimals={false} tick={{ fontSize: 11, fill: 'var(--muted-foreground)' }} />
+              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+              <XAxis dataKey="day" tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} />
+              <YAxis allowDecimals={false} tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} />
               <Tooltip
                 contentStyle={TOOLTIP_STYLE}
-                labelStyle={{ color: 'var(--card-foreground)' }}
+                labelStyle={{ color: 'hsl(var(--card-foreground))' }}
               />
               <Bar dataKey="count" fill="#3b82f6" radius={[4, 4, 0, 0]} />
             </BarChart>
@@ -41,7 +41,7 @@ const FleetCharts: React.FC<FleetChartsProps> = React.memo(function FleetCharts(
       <Card className="bg-card border-border">
         <CardHeader className="pb-2">
           <CardTitle className="text-sm flex items-center gap-2">
-            <Package className="w-4 h-4 text-warning" /> Food Category Breakdown
+            <Package className="w-4 h-4 text-amber-500" /> Food Category Breakdown
           </CardTitle>
           <CardDescription className="text-xs">Distribution of all listings by category</CardDescription>
         </CardHeader>

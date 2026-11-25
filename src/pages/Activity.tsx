@@ -36,11 +36,11 @@ export default function Activity() {
 
   const getActivityIcon = (type: string) => {
     switch(type) {
-      case 'listing_created': return <Package className="w-4 h-4 text-info" />;
-      case 'reservation_made': return <Utensils className="w-4 h-4 text-warning" />;
-      case 'task_assigned': return <Truck className="w-4 h-4 text-violet" />;
+      case 'listing_created': return <Package className="w-4 h-4 text-blue-500" />;
+      case 'reservation_made': return <Utensils className="w-4 h-4 text-amber-500" />;
+      case 'task_assigned': return <Truck className="w-4 h-4 text-purple-500" />;
       case 'task_completed':
-      case 'listing_completed': return <CheckCircle2 className="w-4 h-4 text-success" />;
+      case 'listing_completed': return <CheckCircle2 className="w-4 h-4 text-emerald-500" />;
       default: return <AlertCircle className="w-4 h-4 text-muted-foreground" />;
     }
   };

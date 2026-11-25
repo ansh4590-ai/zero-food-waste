@@ -322,7 +322,7 @@ export default function Request() {
                         <Button
                           variant="outline"
                           size="sm"
-                          className="text-destructive border-red-200 hover:bg-red-50 dark:border-red-900 dark:hover:bg-red-950/40"
+                          className="text-red-600 border-red-200 hover:bg-red-50 dark:border-red-900 dark:hover:bg-red-950/40"
                           onClick={() => cancelRequest(req.id)}
                         >
                           Cancel Request

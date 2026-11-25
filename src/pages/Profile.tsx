@@ -232,7 +232,7 @@ export default function Profile() {
         <User className="w-4 h-4" />
         {roleLabel[profile.role] ?? profile.role}
         {profile.verification_status === "approved" && (
-          <CheckCircle2 className="w-4 h-4 text-success ml-1" />
+          <CheckCircle2 className="w-4 h-4 text-emerald-500 ml-1" />
         )}
       </div>
 
@@ -297,7 +297,7 @@ export default function Profile() {
             {/* ── Location status badge ── */}
             {profile.location_lat && profile.location_lng ? (
               <div className="flex items-start gap-3 px-4 py-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-sm">
-                <CheckCircle2 className="w-4 h-4 text-success shrink-0 mt-0.5" />
+                <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
                 <div className="min-w-0">
                   <span className="font-semibold text-emerald-700 dark:text-emerald-400">Location set</span>
                   {profile.location_text ? (
@@ -314,7 +314,7 @@ export default function Profile() {
               </div>
             ) : (
               <div className="flex items-start gap-3 px-4 py-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-sm">
-                <AlertTriangle className="w-4 h-4 text-warning shrink-0 mt-0.5" />
+                <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
                 <div>
                   <span className="font-semibold text-amber-700 dark:text-amber-400">No location set</span>
                   <p className="text-muted-foreground text-xs mt-0.5">
@@ -397,7 +397,7 @@ export default function Profile() {
           size="lg"
           disabled={isSaving}
           className={`w-full h-12 font-bold text-base transition-all ${
-            saved ? "bg-primary hover:bg-primary/90 text-primary-foreground" : ""
+            saved ? "bg-emerald-600 hover:bg-emerald-700 text-white" : ""
           }`}
         >
           {isSaving ? (

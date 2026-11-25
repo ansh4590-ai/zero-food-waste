@@ -3,18 +3,18 @@ import { Button } from "../components/ui/button";
 
 export default function Support() {
   return (
-    <div className="bg-background pt-12 pb-12 text-foreground transition-colors duration-300">
+    <div className="bg-gray-50 dark:bg-[#0f1111] pt-12 pb-12 text-gray-900 dark:text-gray-100 transition-colors duration-300">
       <div className="max-w-6xl mx-auto px-6">
         
         {/* Header */}
         <div className="text-center mb-16">
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-[#2f6f57]/10 mb-6 border border-[#2f6f57]/20">
-            <LifeBuoy className="w-8 h-8 text-primary" />
+            <LifeBuoy className="w-8 h-8 text-[#2f6f57]" />
           </div>
-          <h1 className="text-4xl md:text-5xl font-bold tracking-tight text-foreground mb-4">
+          <h1 className="text-4xl md:text-5xl font-bold tracking-tight text-gray-900 dark:text-white mb-4">
             Support Center
           </h1>
-          <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+          <p className="text-lg text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">
             Need help? We’re here to assist with donations, deliveries, app bugs, and critical account security issues.
           </p>
         </div>
@@ -26,12 +26,12 @@ export default function Support() {
              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
 
                 {/* Account Help */}
-                <div className="bg-card rounded-2xl p-6 border border-border shadow-sm hover:shadow-md transition-shadow cursor-default group">
-                   <div className="flex items-center gap-3 mb-4 text-primary">
+                <div className="bg-white dark:bg-[#171a1a] rounded-2xl p-6 border border-gray-200 dark:border-gray-800 shadow-sm hover:shadow-md transition-shadow cursor-default group">
+                   <div className="flex items-center gap-3 mb-4 text-[#2f6f57]">
                      <User className="w-5 h-5" />
-                     <h2 className="text-lg font-bold text-foreground">A. Account Help</h2>
+                     <h2 className="text-lg font-bold text-gray-900 dark:text-white">A. Account Help</h2>
                    </div>
-                   <ul className="space-y-2 text-sm text-muted-foreground">
+                   <ul className="space-y-2 text-sm text-gray-600 dark:text-gray-400">
                      <li className="flex items-center gap-2 group-hover:text-gray-900 dark:group-hover:text-gray-300 transition-colors cursor-pointer"><div className="w-1 h-1 rounded-full bg-gray-300 dark:bg-gray-700" /> Login & auth issues</li>
                      <li className="flex items-center gap-2 group-hover:text-gray-900 dark:group-hover:text-gray-300 transition-colors cursor-pointer"><div className="w-1 h-1 rounded-full bg-gray-300 dark:bg-gray-700" /> Updating business profile</li>
                      <li className="flex items-center gap-2 group-hover:text-gray-900 dark:group-hover:text-gray-300 transition-colors cursor-pointer"><div className="w-1 h-1 rounded-full bg-gray-300 dark:bg-gray-700" /> Verification KYC help</li>
@@ -39,12 +39,12 @@ export default function Support() {
                 </div>
 
                 {/* Donation Help */}
-                <div className="bg-card rounded-2xl p-6 border border-border shadow-sm hover:shadow-md transition-shadow cursor-default group">
-                   <div className="flex items-center gap-3 mb-4 text-primary">
+                <div className="bg-white dark:bg-[#171a1a] rounded-2xl p-6 border border-gray-200 dark:border-gray-800 shadow-sm hover:shadow-md transition-shadow cursor-default group">
+                   <div className="flex items-center gap-3 mb-4 text-[#2f6f57]">
                      <HeartHandshake className="w-5 h-5" />
-                     <h2 className="text-lg font-bold text-foreground">B. Donation Help</h2>
+                     <h2 className="text-lg font-bold text-gray-900 dark:text-white">B. Donation Help</h2>
                    </div>
-                   <ul className="space-y-2 text-sm text-muted-foreground">
+                   <ul className="space-y-2 text-sm text-gray-600 dark:text-gray-400">
                      <li className="flex items-center gap-2 group-hover:text-gray-900 dark:group-hover:text-gray-300 transition-colors cursor-pointer"><div className="w-1 h-1 rounded-full bg-gray-300 dark:bg-gray-700" /> How to list surplus food</li>
                      <li className="flex items-center gap-2 group-hover:text-gray-900 dark:group-hover:text-gray-300 transition-colors cursor-pointer"><div className="w-1 h-1 rounded-full bg-gray-300 dark:bg-gray-700" /> Uploading image errors</li>
                      <li className="flex items-center gap-2 group-hover:text-gray-900 dark:group-hover:text-gray-300 transition-colors cursor-pointer"><div className="w-1 h-1 rounded-full bg-gray-300 dark:bg-gray-700" /> Pickup time coordination</li>
@@ -52,12 +52,12 @@ export default function Support() {
                 </div>
 
                 {/* Volunteer Help */}
-                <div className="bg-card rounded-2xl p-6 border border-border shadow-sm hover:shadow-md transition-shadow cursor-default group">
-                   <div className="flex items-center gap-3 mb-4 text-primary">
+                <div className="bg-white dark:bg-[#171a1a] rounded-2xl p-6 border border-gray-200 dark:border-gray-800 shadow-sm hover:shadow-md transition-shadow cursor-default group">
+                   <div className="flex items-center gap-3 mb-4 text-[#2f6f57]">
                      <Truck className="w-5 h-5" />
-                     <h2 className="text-lg font-bold text-foreground">C. Volunteer Help</h2>
+                     <h2 className="text-lg font-bold text-gray-900 dark:text-white">C. Volunteer Help</h2>
                    </div>
-                   <ul className="space-y-2 text-sm text-muted-foreground">
+                   <ul className="space-y-2 text-sm text-gray-600 dark:text-gray-400">
                      <li className="flex items-center gap-2 group-hover:text-gray-900 dark:group-hover:text-gray-300 transition-colors cursor-pointer"><div className="w-1 h-1 rounded-full bg-gray-300 dark:bg-gray-700" /> Task claiming / bugs</li>
                      <li className="flex items-center gap-2 group-hover:text-gray-900 dark:group-hover:text-gray-300 transition-colors cursor-pointer"><div className="w-1 h-1 rounded-full bg-gray-300 dark:bg-gray-700" /> QR camera scanning help</li>
                      <li className="flex items-center gap-2 group-hover:text-gray-900 dark:group-hover:text-gray-300 transition-colors cursor-pointer"><div className="w-1 h-1 rounded-full bg-gray-300 dark:bg-gray-700" /> Map dropoff routing problems</li>
@@ -65,12 +65,12 @@ export default function Support() {
                 </div>
 
                 {/* Receiver Help */}
-                <div className="bg-card rounded-2xl p-6 border border-border shadow-sm hover:shadow-md transition-shadow cursor-default group">
-                   <div className="flex items-center gap-3 mb-4 text-primary">
+                <div className="bg-white dark:bg-[#171a1a] rounded-2xl p-6 border border-gray-200 dark:border-gray-800 shadow-sm hover:shadow-md transition-shadow cursor-default group">
+                   <div className="flex items-center gap-3 mb-4 text-[#2f6f57]">
                      <MapPin className="w-5 h-5" />
-                     <h2 className="text-lg font-bold text-foreground">D. Receiver Help</h2>
+                     <h2 className="text-lg font-bold text-gray-900 dark:text-white">D. Receiver Help</h2>
                    </div>
-                   <ul className="space-y-2 text-sm text-muted-foreground">
+                   <ul className="space-y-2 text-sm text-gray-600 dark:text-gray-400">
                      <li className="flex items-center gap-2 group-hover:text-gray-900 dark:group-hover:text-gray-300 transition-colors cursor-pointer"><div className="w-1 h-1 rounded-full bg-gray-300 dark:bg-gray-700" /> Request mismatch / food issues</li>
                      <li className="flex items-center gap-2 group-hover:text-gray-900 dark:group-hover:text-gray-300 transition-colors cursor-pointer"><div className="w-1 h-1 rounded-full bg-gray-300 dark:bg-gray-700" /> Investigating delivery delays</li>
                      <li className="flex items-center gap-2 group-hover:text-gray-900 dark:group-hover:text-gray-300 transition-colors cursor-pointer"><div className="w-1 h-1 rounded-full bg-gray-300 dark:bg-gray-700" /> Eligibility tier support</li>
@@ -97,30 +97,30 @@ export default function Support() {
           <div className="flex flex-col gap-6">
 
              {/* F. Contact Options Card */}
-             <div className="bg-card rounded-2xl p-6 md:p-8 border border-border shadow-xl dark:shadow-[0_20px_50px_rgba(0,0,0,0.3)]">
+             <div className="bg-white dark:bg-[#171a1a] rounded-2xl p-6 md:p-8 border border-gray-200 dark:border-gray-800 shadow-xl dark:shadow-[0_20px_50px_rgba(0,0,0,0.3)]">
                 <div className="flex items-center gap-3 mb-6">
-                  <Mail className="w-5 h-5 text-primary" />
-                  <h2 className="text-xl font-bold text-foreground">F. Direct Contact</h2>
+                  <Mail className="w-5 h-5 text-[#2f6f57]" />
+                  <h2 className="text-xl font-bold text-gray-900 dark:text-white">F. Direct Contact</h2>
                 </div>
                 <div className="mb-8">
                   <p className="text-xs text-gray-500 font-bold uppercase tracking-widest mb-1">Founder / CEO</p>
-                  <p className="font-semibold text-foreground text-lg">Ansh Maheshwari</p>
-                  <a href="mailto:anshmaheshwari2005@gmail.com" className="text-sm font-medium text-primary hover:underline mt-1 block w-fitBreak font-mono">anshmaheshwari2005@gmail.com</a>
+                  <p className="font-semibold text-gray-900 dark:text-white text-lg">Ansh Maheshwari</p>
+                  <a href="mailto:anshmaheshwari2005@gmail.com" className="text-sm font-medium text-[#2f6f57] hover:underline mt-1 block w-fitBreak font-mono">anshmaheshwari2005@gmail.com</a>
                 </div>
 
                 <div className="border-t border-gray-100 dark:border-white/5 pt-6">
                   <p className="text-xs text-gray-500 font-bold uppercase tracking-widest mb-4">Quick Form</p>
                   <form className="space-y-4" onSubmit={(e) => e.preventDefault()}>
-                    <input type="text" placeholder="Your Name" className="w-full text-sm bg-gray-50 dark:bg-[#0A0C0C] border border-border rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#2f6f57]/50" />
-                    <input type="email" placeholder="Email Address" className="w-full text-sm bg-gray-50 dark:bg-[#0A0C0C] border border-border rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#2f6f57]/50" />
-                    <select className="w-full text-sm font-medium bg-gray-50 dark:bg-[#0A0C0C] border border-border rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#2f6f57]/50 text-muted-foreground">
+                    <input type="text" placeholder="Your Name" className="w-full text-sm bg-gray-50 dark:bg-[#0A0C0C] border border-gray-200 dark:border-gray-800 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#2f6f57]/50" />
+                    <input type="email" placeholder="Email Address" className="w-full text-sm bg-gray-50 dark:bg-[#0A0C0C] border border-gray-200 dark:border-gray-800 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#2f6f57]/50" />
+                    <select className="w-full text-sm font-medium bg-gray-50 dark:bg-[#0A0C0C] border border-gray-200 dark:border-gray-800 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#2f6f57]/50 text-gray-600 dark:text-gray-300">
                       <option disabled selected>Select Issue Type</option>
                       <option>Account Access</option>
                       <option>Delivery Tracking</option>
                       <option>Safety Incident</option>
                       <option>General Feedback</option>
                     </select>
-                    <textarea rows={3} placeholder="Describe the issue neatly..." className="w-full resize-none text-sm bg-gray-50 dark:bg-[#0A0C0C] border border-border rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#2f6f57]/50" />
+                    <textarea rows={3} placeholder="Describe the issue neatly..." className="w-full resize-none text-sm bg-gray-50 dark:bg-[#0A0C0C] border border-gray-200 dark:border-gray-800 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#2f6f57]/50" />
                     
                     <Button type="submit" className="w-full h-12 bg-[#2f6f57] text-white hover:bg-[#235844] mt-2 active:scale-95 font-bold rounded-xl shadow-md flex items-center justify-center gap-2">
                       <Send className="w-4 h-4" /> Send Request
@@ -134,14 +134,14 @@ export default function Support() {
         </div>
 
         {/* Trust Badges */}
-        <div className="mt-20 pt-10 border-t border-border flex flex-wrap justify-center gap-8 md:gap-16 opacity-80">
-           <div className="flex items-center gap-2 text-sm font-bold tracking-wider uppercase text-muted-foreground">
+        <div className="mt-20 pt-10 border-t border-gray-200 dark:border-gray-800 flex flex-wrap justify-center gap-8 md:gap-16 opacity-80">
+           <div className="flex items-center gap-2 text-sm font-bold tracking-wider uppercase text-gray-500 dark:text-gray-400">
              <ShieldCheck className="w-5 h-5 text-[#10b981]" /> Secure Data
            </div>
-           <div className="flex items-center gap-2 text-sm font-bold tracking-wider uppercase text-muted-foreground">
+           <div className="flex items-center gap-2 text-sm font-bold tracking-wider uppercase text-gray-500 dark:text-gray-400">
              <HeartHandshake className="w-5 h-5 text-[#10b981]" /> Community Driven
            </div>
-           <div className="flex items-center gap-2 text-sm font-bold tracking-wider uppercase text-muted-foreground">
+           <div className="flex items-center gap-2 text-sm font-bold tracking-wider uppercase text-gray-500 dark:text-gray-400">
              <span className="text-xl">🇮🇳</span> Built for India
            </div>
         </div>

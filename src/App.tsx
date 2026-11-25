@@ -4,7 +4,7 @@
  */
 
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
-import { ThemeProvider, useTheme } from "./components/ThemeProvider";
+import { ThemeProvider } from "./components/ThemeProvider";
 import { Toaster } from "sonner";
 import { ProtectedRoute } from "./components/auth/ProtectedRoute";
 import { useEffect } from "react";
@@ -46,11 +46,6 @@ import Privacy from "./pages/Privacy";
 import Terms from "./pages/Terms";
 import Support from "./pages/Support";
 import Notifications from "./pages/Notifications";
-
-function ThemeToaster() {
-  const { resolvedTheme } = useTheme();
-  return <Toaster position="top-center" richColors theme={resolvedTheme} />;
-}
 
 export default function App() {
   const { initializeAuth } = useAuthStore();
@@ -121,7 +116,7 @@ export default function App() {
           </NotificationProvider>
         </Router>
       </RBACProvider>
-      <ThemeToaster />
+      <Toaster position="top-center" richColors theme="dark" />
     </ThemeProvider>
   );
 }

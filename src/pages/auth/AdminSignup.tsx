@@ -72,7 +72,7 @@ export default function AdminSignup() {
     >
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="space-y-2">
-          <label className="text-sm font-medium leading-none text-foreground" htmlFor="fullName">
+          <label className="text-sm font-medium leading-none text-zinc-300" htmlFor="fullName">
             Full Name
           </label>
           <Input 
@@ -82,12 +82,12 @@ export default function AdminSignup() {
             required 
             value={formData.fullName}
             onChange={handleChange}
-            className="bg-card border-border text-foreground placeholder:text-muted-foreground focus-visible:ring-emerald-500"
+            className="bg-zinc-900/50 border-white/10 text-white placeholder:text-zinc-500 focus-visible:ring-emerald-500"
           />
         </div>
         
         <div className="space-y-2">
-          <label className="text-sm font-medium leading-none text-foreground" htmlFor="email">
+          <label className="text-sm font-medium leading-none text-zinc-300" htmlFor="email">
             Email
           </label>
           <Input 
@@ -98,12 +98,12 @@ export default function AdminSignup() {
             required 
             value={formData.email}
             onChange={handleChange}
-            className="bg-card border-border text-foreground placeholder:text-muted-foreground focus-visible:ring-emerald-500"
+            className="bg-zinc-900/50 border-white/10 text-white placeholder:text-zinc-500 focus-visible:ring-emerald-500"
           />
         </div>
         
         <div className="space-y-2">
-          <label className="text-sm font-medium leading-none text-foreground" htmlFor="password">
+          <label className="text-sm font-medium leading-none text-zinc-300" htmlFor="password">
             Password
           </label>
           <Input 
@@ -114,12 +114,12 @@ export default function AdminSignup() {
             required 
             value={formData.password}
             onChange={handleChange}
-            className="bg-card border-border text-foreground placeholder:text-muted-foreground focus-visible:ring-emerald-500"
+            className="bg-zinc-900/50 border-white/10 text-white placeholder:text-zinc-500 focus-visible:ring-emerald-500"
           />
         </div>
         
         <div className="space-y-2">
-          <label className="text-sm font-medium leading-none text-foreground" htmlFor="adminSecret">
+          <label className="text-sm font-medium leading-none text-zinc-300" htmlFor="adminSecret">
             Admin Secret Key
           </label>
           <Input 
@@ -130,21 +130,21 @@ export default function AdminSignup() {
             required 
             value={formData.adminSecret}
             onChange={handleChange}
-            className="bg-card border-border text-foreground placeholder:text-muted-foreground focus-visible:ring-emerald-500"
+            className="bg-zinc-900/50 border-white/10 text-white placeholder:text-zinc-500 focus-visible:ring-emerald-500"
           />
         </div>
         
         <Button 
           type="submit" 
-          className="w-full mt-6 bg-primary hover:bg-primary/90 text-primary-foreground transition-all active:scale-[0.98]"
+          className="w-full mt-6 bg-emerald-600 hover:bg-emerald-500 text-white transition-all active:scale-[0.98]" 
           disabled={isLoading}
         >
           {isLoading ? "Registering..." : "Register as Admin"}
         </Button>
       </form>
 
-      <div className="mt-8 text-center border-t border-border pt-6">
-        <Link to="/admin-login" className="text-sm font-medium text-success hover:text-emerald-300 transition-colors">
+      <div className="mt-8 text-center border-t border-white/10 pt-6">
+        <Link to="/admin-login" className="text-sm font-medium text-emerald-400 hover:text-emerald-300 transition-colors">
           Already an admin? Sign in
         </Link>
       </div>

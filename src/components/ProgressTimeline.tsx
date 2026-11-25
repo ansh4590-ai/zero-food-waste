@@ -44,24 +44,24 @@ export function ProgressTimeline({
                       ? "bg-emerald-500 border-emerald-500"
                       : isCurrent
                       ? `border-current`
-                      : "border-border bg-transparent"
+                      : "border-white/15 bg-transparent"
                   }`}
                   style={isCurrent ? { borderColor: stage.color, boxShadow: `0 0 12px ${stage.color}40` } : undefined}
                 >
                   {isPast ? (
-                    <CheckCircle2 className="w-4 h-4 text-foreground" />
+                    <CheckCircle2 className="w-4 h-4 text-white" />
                   ) : isCurrent ? (
                     <div
                       className="w-2.5 h-2.5 rounded-full animate-pulse"
                       style={{ background: stage.color }}
                     />
                   ) : (
-                    <Circle className="w-3 h-3 text-muted-foreground" />
+                    <Circle className="w-3 h-3 text-white/20" />
                   )}
                 </div>
                 <span
                   className={`text-[8px] font-bold uppercase tracking-wider text-center leading-tight max-w-[60px] ${
-                    isPast ? "text-success" : isCurrent ? "text-foreground" : "text-muted-foreground"
+                    isPast ? "text-emerald-400" : isCurrent ? "text-white/80" : "text-white/20"
                   }`}
                   style={isCurrent ? { color: stage.color } : undefined}
                 >
@@ -73,7 +73,7 @@ export function ProgressTimeline({
               {i < stages.length - 1 && (
                 <div
                   className={`flex-1 h-0.5 mx-1 rounded-full ${
-                    i < currentIndex ? "bg-emerald-500" : "bg-muted"
+                    i < currentIndex ? "bg-emerald-500" : "bg-white/10"
                   }`}
                 />
               )}
@@ -101,22 +101,22 @@ export function ProgressTimeline({
                     ? "bg-emerald-500 border-emerald-500"
                     : isCurrent
                     ? ""
-                    : "border-border"
+                    : "border-white/15"
                 }`}
                 style={isCurrent ? { borderColor: stage.color, boxShadow: `0 0 10px ${stage.color}30` } : undefined}
               >
                 {isPast ? (
-                  <CheckCircle2 className="w-3 h-3 text-foreground" />
+                  <CheckCircle2 className="w-3 h-3 text-white" />
                 ) : isCurrent ? (
                   <div className="w-2 h-2 rounded-full animate-pulse" style={{ background: stage.color }} />
                 ) : (
-                  <Circle className="w-2.5 h-2.5 text-muted-foreground" />
+                  <Circle className="w-2.5 h-2.5 text-white/15" />
                 )}
               </div>
               {i < stages.length - 1 && (
                 <div
                   className={`w-0.5 flex-1 min-h-[16px] ${
-                    i < currentIndex ? "bg-emerald-500" : "bg-muted"
+                    i < currentIndex ? "bg-emerald-500" : "bg-white/8"
                   }`}
                 />
               )}
@@ -125,7 +125,7 @@ export function ProgressTimeline({
             {/* Label */}
             <span
               className={`text-[10px] font-semibold uppercase tracking-wider pb-2 ${
-                isPast ? "text-success" : isCurrent ? "text-foreground" : "text-muted-foreground"
+                isPast ? "text-emerald-400/60" : isCurrent ? "text-white/90" : "text-white/20"
               }`}
               style={isCurrent ? { color: stage.color } : undefined}
             >

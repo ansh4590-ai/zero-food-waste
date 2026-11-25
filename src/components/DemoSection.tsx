@@ -16,15 +16,15 @@ const DEMO_STEPS = [
     title: "Donor Upload",
     icon: Camera,
     Component: () => (
-      <div className="flex flex-col items-center justify-center h-full w-full bg-card p-6 text-center shadow-inner rounded-xl relative overflow-hidden">
+      <div className="flex flex-col items-center justify-center h-full w-full bg-white dark:bg-[#131616] p-6 text-center shadow-inner rounded-xl relative overflow-hidden">
         <div className="absolute top-4 left-4 bg-gray-100 dark:bg-white/5 px-3 py-1 rounded-full text-xs font-medium text-gray-500 flex items-center gap-2">
            <Smartphone className="w-3 h-3" /> Donor App
         </div>
         <div className="w-16 h-16 bg-[#2f6f57]/10 rounded-full flex items-center justify-center mb-4 mt-8">
-          <Camera className="w-8 h-8 text-primary" />
+          <Camera className="w-8 h-8 text-[#2f6f57]" />
         </div>
         <div className="w-3/4 max-w-[200px] h-32 bg-gray-100 dark:bg-white/5 rounded-xl border-2 border-dashed border-gray-300 dark:border-white/20 flex flex-col items-center justify-center shadow-inner">
-          <span className="text-sm font-medium text-muted-foreground">Capturing Food...</span>
+          <span className="text-sm font-medium text-gray-500 dark:text-white/40">Capturing Food...</span>
           <motion.div initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ delay: 2 }} className="mt-3 text-xs bg-[#2f6f57] text-white px-3 py-1.5 rounded-md font-medium shadow-sm">
             Paneer & Roti (20 meals)
           </motion.div>
@@ -41,12 +41,12 @@ const DEMO_STEPS = [
     title: "AI Analysis",
     icon: ScanLine,
     Component: () => (
-      <div className="flex flex-col items-center justify-center h-full w-full bg-card p-6 text-center border-t-[6px] border-[#2f6f57] relative">
+      <div className="flex flex-col items-center justify-center h-full w-full bg-white dark:bg-[#131616] p-6 text-center border-t-[6px] border-[#2f6f57] relative">
         <div className="absolute inset-0 bg-[#2f6f57]/5 flex items-center justify-center overflow-hidden">
            <motion.div animate={{ top: ['0%', '100%', '0%'] }} transition={{ repeat: Infinity, duration: 2, ease: "linear" }} className="absolute w-full h-[2px] bg-[#2f6f57] shadow-[0_0_15px_#2f6f57] z-10" />
         </div>
-        <ScanLine className="w-12 h-12 text-primary animate-pulse mb-6 relative z-10" />
-        <h3 className="text-lg font-bold text-foreground mb-4 relative z-10">AI Integrity Check</h3>
+        <ScanLine className="w-12 h-12 text-[#2f6f57] animate-pulse mb-6 relative z-10" />
+        <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4 relative z-10">AI Integrity Check</h3>
         <div className="space-y-3 w-full max-w-[220px] text-left relative z-10">
           <motion.div initial={{ x: -20, opacity: 0 }} animate={{ x: 0, opacity: 1 }} transition={{ delay: 1 }} className="flex justify-between items-center text-sm bg-green-50 dark:bg-green-900/20 px-4 py-2 bg-opacity-90 backdrop-blur rounded-lg border border-green-100 dark:border-green-800/30">
             <span className="text-green-700 dark:text-green-400 font-medium">Freshness Check</span>
@@ -66,23 +66,23 @@ const DEMO_STEPS = [
     title: "NGO Request",
     icon: Box,
     Component: () => (
-      <div className="flex flex-col items-center justify-center h-full w-full bg-background p-6">
+      <div className="flex flex-col items-center justify-center h-full w-full bg-gray-50 dark:bg-[#0f1111] p-6">
         <div className="w-full max-w-[260px]">
-          <div className="w-full bg-card p-4 rounded-xl shadow-sm border border-gray-100 dark:border-white/5 mb-4 flex items-center justify-between">
+          <div className="w-full bg-white dark:bg-[#171a1a] p-4 rounded-xl shadow-sm border border-gray-100 dark:border-white/5 mb-4 flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center">
                 <User className="w-4 h-4 text-blue-600 dark:text-blue-400" />
               </div>
               <div>
-                <p className="text-sm font-bold text-foreground">Hope Center</p>
+                <p className="text-sm font-bold text-gray-900 dark:text-white">Hope Center</p>
                 <p className="text-[10px] text-gray-500 bg-gray-100 dark:bg-white/10 px-1.5 py-0.5 rounded mt-0.5 inline-block">NGO</p>
               </div>
             </div>
           </div>
           
-          <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 1 }} className="w-full bg-card shadow-lg border border-gray-100 dark:border-white/10 p-5 rounded-2xl relative overflow-hidden">
+          <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 1 }} className="w-full bg-white dark:bg-[#1a1d1d] shadow-lg border border-gray-100 dark:border-white/10 p-5 rounded-2xl relative overflow-hidden">
             <div className="absolute top-0 right-0 bg-[#10b981] text-white text-[9px] font-bold px-2 py-1 uppercase rounded-bl-lg">New matching food</div>
-            <h4 className="font-bold text-foreground mb-1 mt-2">Paneer & Roti</h4>
+            <h4 className="font-bold text-gray-900 dark:text-white mb-1 mt-2">Paneer & Roti</h4>
             <p className="text-xs text-gray-500 mb-4 flex items-center gap-1.5"><Box className="w-3 h-3"/> 20 Meals • 1.2km away</p>
             <motion.div whileTap={{ scale: 0.95 }}>
               <Button size="sm" className="w-full bg-[#2f6f57] text-white font-bold h-9">Request Food</Button>
@@ -208,10 +208,10 @@ const DEMO_STEPS = [
     title: "QR Pickup",
     icon: ScanLine,
     Component: () => (
-      <div className="flex flex-col items-center justify-center h-full w-full bg-card p-6 text-center">
-        <h3 className="font-bold text-foreground mb-6 text-lg">Scan to verify pickup</h3>
+      <div className="flex flex-col items-center justify-center h-full w-full bg-white dark:bg-[#131616] p-6 text-center">
+        <h3 className="font-bold text-gray-900 dark:text-white mb-6 text-lg">Scan to verify pickup</h3>
         <div className="relative mb-8">
-          <div className="w-40 h-40 bg-gray-50 dark:bg-[#1a1d1d] rounded-3xl shadow-inner border-2 border-dashed border-border p-4 flex items-center justify-center overflow-hidden">
+          <div className="w-40 h-40 bg-gray-50 dark:bg-[#1a1d1d] rounded-3xl shadow-inner border-2 border-dashed border-gray-200 dark:border-white/10 p-4 flex items-center justify-center overflow-hidden">
             <div className="w-full h-full bg-[url('https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=verified_pickup')] bg-contain bg-no-repeat bg-center opacity-60 dark:invert rounded-lg mix-blend-multiply dark:mix-blend-screen" />
           </div>
           {/* Scanner Line Animation */}
@@ -261,7 +261,7 @@ const DEMO_STEPS = [
     title: "Impact Analytics",
     icon: Activity,
     Component: () => (
-      <div className="flex flex-col items-center justify-center h-full w-full bg-card p-6 px-4 md:px-6">
+      <div className="flex flex-col items-center justify-center h-full w-full bg-white dark:bg-[#131616] p-6 px-4 md:px-6">
         <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="w-full bg-[#2f6f57] text-white rounded-[2rem] p-8 text-center shadow-2xl relative overflow-hidden">
           {/* subtle background decor */}
           <div className="absolute top-[-50%] right-[-10%] w-64 h-64 bg-white/10 rounded-full blur-3xl" />
@@ -345,22 +345,22 @@ export function DemoSection() {
   const CurrentComponent = DEMO_STEPS[currentStep].Component;
 
   return (
-    <section className="py-24 bg-white dark:bg-[#0f1111] border-b border-border transition-colors overflow-hidden" id="demo">
+    <section className="py-24 bg-white dark:bg-[#0f1111] border-b border-gray-200 dark:border-white/5 transition-colors overflow-hidden" id="demo">
       <div className="max-w-7xl mx-auto px-6 relative">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20 items-center">
           
           {/* Left Text Content */}
           <div className="order-2 lg:order-1 flex flex-col justify-center">
             <motion.div initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.7 }}>
-              <div className="inline-flex items-center rounded-full border border-[#2f6f57]/20 bg-[#2f6f57]/5 px-3 py-1 text-xs font-bold text-primary tracking-widest uppercase mb-6">
+              <div className="inline-flex items-center rounded-full border border-[#2f6f57]/20 bg-[#2f6f57]/5 px-3 py-1 text-xs font-bold text-[#2f6f57] tracking-widest uppercase mb-6">
                 Product Demo
               </div>
               
-              <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight text-foreground mb-6 leading-tight">
-                See Zero Food Waste <span className="text-primary">in Action</span>
+              <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight text-gray-900 dark:text-white mb-6 leading-tight">
+                See Zero Food Waste <span className="text-[#2f6f57]">in Action</span>
               </h2>
               
-              <p className="text-lg md:text-xl text-muted-foreground leading-relaxed mb-8 max-w-lg">
+              <p className="text-lg md:text-xl text-gray-600 dark:text-white/60 leading-relaxed mb-8 max-w-lg">
                 From surplus meals to verified delivery in under a minute. Experience the complete end-to-end logistics platform.
               </p>
 
@@ -381,9 +381,9 @@ export function DemoSection() {
                     className="flex items-start gap-4"
                   >
                     <div className="w-6 h-6 rounded-full bg-[#2f6f57]/10 flex items-center justify-center shrink-0 mt-0.5">
-                       <CheckCircle2 className="w-4 h-4 text-primary" />
+                       <CheckCircle2 className="w-4 h-4 text-[#2f6f57]" />
                     </div>
-                    <span className="font-semibold text-foreground text-[15px]">{item}</span>
+                    <span className="font-semibold text-gray-800 dark:text-white text-[15px]">{item}</span>
                   </motion.li>
                 ))}
               </ul>
@@ -428,7 +428,7 @@ export function DemoSection() {
               whileInView={{ opacity: 1, rotateY: 0, scale: 1 }} 
               viewport={{ once: true, margin: "-100px" }} 
               transition={{ duration: 1, type: "spring", bounce: 0.4 }}
-              className="relative w-full aspect-[9/16] rounded-[2.5rem] bg-card border-[8px] border-white dark:border-[#222525] shadow-2xl dark:shadow-[0_40px_80px_rgba(0,0,0,0.6)] overflow-hidden flex flex-col group will-change-transform"
+              className="relative w-full aspect-[9/16] rounded-[2.5rem] bg-white dark:bg-[#0a0c0c] border-[8px] border-white dark:border-[#222525] shadow-2xl dark:shadow-[0_40px_80px_rgba(0,0,0,0.6)] overflow-hidden flex flex-col group will-change-transform"
             >
               {/* iPhone style top notch */}
               <div className="absolute top-0 left-1/2 -translate-x-1/2 w-1/3 h-6 bg-white dark:bg-[#222525] rounded-b-xl z-40" />
@@ -437,7 +437,7 @@ export function DemoSection() {
               <div className={`absolute inset-0 z-40 flex items-center justify-center backdrop-blur-sm transition-all duration-300 ${isPlaying ? 'opacity-0 bg-transparent pointer-events-none' : 'opacity-100 bg-black/30'}`}>
                 <button 
                   onClick={() => setIsPlaying(true)}
-                  className="w-16 h-16 rounded-full bg-white/90 dark:bg-black/80 backdrop-blur-md flex items-center justify-center text-primary dark:text-white shadow-[0_0_30px_rgba(47,111,87,0.3)] hover:scale-110 transition-transform focus:outline-none"
+                  className="w-16 h-16 rounded-full bg-white/90 dark:bg-black/80 backdrop-blur-md flex items-center justify-center text-[#2f6f57] dark:text-white shadow-[0_0_30px_rgba(47,111,87,0.3)] hover:scale-110 transition-transform focus:outline-none"
                 >
                   <Play className="w-7 h-7 fill-current ml-1" />
                 </button>

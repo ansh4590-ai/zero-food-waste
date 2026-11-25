@@ -105,7 +105,7 @@ function DonorDashboard() {
           <div className="kpi-accent-bar" />
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 px-0 pt-0">
             <CardTitle className="text-sm font-medium">Meals Donated</CardTitle>
-            <Utensils className="h-4 w-4 text-success" />
+            <Utensils className="h-4 w-4 text-emerald-500" />
           </CardHeader>
           <CardContent className="px-0 pb-0">
             <div className="text-3xl font-bold tabular-nums">{isLoading ? "-" : stats.mealsDonated}</div>
@@ -115,7 +115,7 @@ function DonorDashboard() {
           <div className="kpi-accent-bar" />
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 px-0 pt-0">
             <CardTitle className="text-sm font-medium">Active Listings</CardTitle>
-            <Activity className="h-4 w-4 text-warning" />
+            <Activity className="h-4 w-4 text-amber-500" />
           </CardHeader>
           <CardContent className="px-0 pb-0">
             <div className="text-3xl font-bold tabular-nums">{isLoading ? "-" : stats.activeListings}</div>
@@ -125,7 +125,7 @@ function DonorDashboard() {
           <div className="kpi-accent-bar" />
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 px-0 pt-0">
             <CardTitle className="text-sm font-medium">Successful Deliveries</CardTitle>
-            <CheckCircle2 className="h-4 w-4 text-info" />
+            <CheckCircle2 className="h-4 w-4 text-blue-500" />
           </CardHeader>
           <CardContent className="px-0 pb-0">
             <div className="text-3xl font-bold tabular-nums">{isLoading ? "-" : stats.successfulDeliveries}</div>
@@ -135,7 +135,7 @@ function DonorDashboard() {
           <div className="kpi-accent-bar" />
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 px-0 pt-0">
             <CardTitle className="text-sm font-medium">Impact Score</CardTitle>
-            <HeartHandshake className="h-4 w-4 text-violet" />
+            <HeartHandshake className="h-4 w-4 text-purple-500" />
           </CardHeader>
           <CardContent className="px-0 pb-0">
             <div className="text-3xl font-bold tabular-nums">{isLoading ? "-" : stats.impactScore}</div>
@@ -185,10 +185,10 @@ function DonorDashboard() {
                 {upcomingPickups.map((p, i) => (
                   <div key={i} className="flex flex-col p-4 rounded-xl border border-blue-500/20 bg-blue-500/5 space-y-4">
                     <div className="flex items-center gap-3">
-                      <div className="p-2 rounded-full bg-blue-500/20"><Truck className="w-4 h-4 text-info" /></div>
+                      <div className="p-2 rounded-full bg-blue-500/20"><Truck className="w-4 h-4 text-blue-500" /></div>
                       <div>
                         <p className="font-medium text-sm">{p.title}</p>
-                        <p className="text-xs text-info font-medium mt-0.5">Volunteer En Route for Pickup</p>
+                        <p className="text-xs text-blue-500 font-medium mt-0.5">Volunteer En Route for Pickup</p>
                       </div>
                     </div>
                     {p.taskId && (
@@ -301,9 +301,9 @@ function ReceiverDashboard() {
   }, [user]);
 
   const getTaskStatusConfig = (taskStatus: string | null, reqStatus: string) => {
-    if (reqStatus === 'pending' && !taskStatus) return { label: 'Awaiting Volunteer', color: 'text-warning', icon: <Clock className="w-4 h-4" />, pulse: true };
-    if (taskStatus === 'assigned') return { label: 'Volunteer En Route to Pickup', color: 'text-info', icon: <Navigation className="w-4 h-4" /> };
-    if (taskStatus === 'picked_up') return { label: 'Out for Delivery to You', color: 'text-success', icon: <Truck className="w-4 h-4" />, pulse: true };
+    if (reqStatus === 'pending' && !taskStatus) return { label: 'Awaiting Volunteer', color: 'text-amber-500', icon: <Clock className="w-4 h-4" />, pulse: true };
+    if (taskStatus === 'assigned') return { label: 'Volunteer En Route to Pickup', color: 'text-blue-500', icon: <Navigation className="w-4 h-4" /> };
+    if (taskStatus === 'picked_up') return { label: 'Out for Delivery to You', color: 'text-emerald-500', icon: <Truck className="w-4 h-4" />, pulse: true };
     return { label: 'Processing', color: 'text-muted-foreground', icon: <Clock className="w-4 h-4" /> };
   };
 
@@ -325,7 +325,7 @@ function ReceiverDashboard() {
           <div className="kpi-accent-bar" />
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 px-0 pt-0">
             <CardTitle className="text-sm font-medium">Meals Received</CardTitle>
-            <Utensils className="h-4 w-4 text-success" />
+            <Utensils className="h-4 w-4 text-emerald-500" />
           </CardHeader>
           <CardContent className="px-0 pb-0">
             <div className="text-3xl font-bold tabular-nums">{isLoading ? "-" : stats.mealsReceived}</div>
@@ -335,7 +335,7 @@ function ReceiverDashboard() {
           <div className="kpi-accent-bar" />
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 px-0 pt-0">
             <CardTitle className="text-sm font-medium">Active Reservations</CardTitle>
-            <Activity className="h-4 w-4 text-warning" />
+            <Activity className="h-4 w-4 text-amber-500" />
           </CardHeader>
           <CardContent className="px-0 pb-0">
             <div className="text-3xl font-bold tabular-nums">{isLoading ? "-" : stats.activeReservations}</div>
@@ -345,7 +345,7 @@ function ReceiverDashboard() {
           <div className="kpi-accent-bar" />
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 px-0 pt-0">
             <CardTitle className="text-sm font-medium">Completed Deliveries</CardTitle>
-            <CheckCircle2 className="h-4 w-4 text-info" />
+            <CheckCircle2 className="h-4 w-4 text-blue-500" />
           </CardHeader>
           <CardContent className="px-0 pb-0">
             <div className="text-3xl font-bold tabular-nums">{isLoading ? "-" : stats.completedDeliveries}</div>
@@ -355,7 +355,7 @@ function ReceiverDashboard() {
           <div className="kpi-accent-bar" />
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 px-0 pt-0">
             <CardTitle className="text-sm font-medium">Partner Count</CardTitle>
-            <Users className="h-4 w-4 text-violet" />
+            <Users className="h-4 w-4 text-purple-500" />
           </CardHeader>
           <CardContent className="px-0 pb-0">
             <div className="text-3xl font-bold tabular-nums">{isLoading ? "-" : stats.partnerCount}</div>
@@ -370,12 +370,12 @@ function ReceiverDashboard() {
             <div className="flex items-center justify-between">
               <div>
                 <CardTitle className="flex items-center gap-2">
-                  <Truck className="w-5 h-5 text-info" />
+                  <Truck className="w-5 h-5 text-blue-500" />
                   Active Deliveries
                 </CardTitle>
                 <CardDescription>Live tracking of your food requests</CardDescription>
               </div>
-              <Badge variant="outline" className="border-blue-500/30 text-info bg-blue-500/10 animate-pulse">
+              <Badge variant="outline" className="border-blue-500/30 text-blue-500 bg-blue-500/10 animate-pulse">
                 {activeDeliveries.length} Active
               </Badge>
             </div>
@@ -553,7 +553,7 @@ function VolunteerDashboard() {
           <div className="kpi-accent-bar" />
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 px-0 pt-0">
             <CardTitle className="text-sm font-medium">Assigned Pickups</CardTitle>
-            <Package className="h-4 w-4 text-warning" />
+            <Package className="h-4 w-4 text-amber-500" />
           </CardHeader>
           <CardContent className="px-0 pb-0">
             <div className="text-3xl font-bold tabular-nums">{isLoading ? "-" : stats.assignedPickups}</div>
@@ -563,7 +563,7 @@ function VolunteerDashboard() {
           <div className="kpi-accent-bar" />
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 px-0 pt-0">
             <CardTitle className="text-sm font-medium">Completed Deliveries</CardTitle>
-            <CheckCircle2 className="h-4 w-4 text-success" />
+            <CheckCircle2 className="h-4 w-4 text-emerald-500" />
           </CardHeader>
           <CardContent className="px-0 pb-0">
             <div className="text-3xl font-bold tabular-nums">{isLoading ? "-" : stats.completedDeliveries}</div>
@@ -573,7 +573,7 @@ function VolunteerDashboard() {
           <div className="kpi-accent-bar" />
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 px-0 pt-0">
             <CardTitle className="text-sm font-medium">Active Tasks</CardTitle>
-            <Activity className="h-4 w-4 text-info" />
+            <Activity className="h-4 w-4 text-blue-500" />
           </CardHeader>
           <CardContent className="px-0 pb-0">
             <div className="text-3xl font-bold tabular-nums">{isLoading ? "-" : stats.activeTasks}</div>
@@ -583,7 +583,7 @@ function VolunteerDashboard() {
           <div className="kpi-accent-bar" />
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 px-0 pt-0">
             <CardTitle className="text-sm font-medium">Efficiency Score</CardTitle>
-            <HeartHandshake className="h-4 w-4 text-violet" />
+            <HeartHandshake className="h-4 w-4 text-purple-500" />
           </CardHeader>
           <CardContent className="px-0 pb-0">
             <div className="text-3xl font-bold tabular-nums">{isLoading ? "-" : `${stats.efficiencyScore}%`}</div>
@@ -726,7 +726,7 @@ function AdminDashboard() {
           <div className="kpi-accent-bar" />
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 px-0 pt-0">
             <CardTitle className="text-sm font-medium">Total Users</CardTitle>
-            <Users className="h-4 w-4 text-info" />
+            <Users className="h-4 w-4 text-blue-500" />
           </CardHeader>
           <CardContent className="px-0 pb-0">
             <div className="text-3xl font-bold tabular-nums">{isLoading ? "-" : stats.totalUsers}</div>
@@ -736,7 +736,7 @@ function AdminDashboard() {
           <div className="kpi-accent-bar" />
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 px-0 pt-0">
             <CardTitle className="text-sm font-medium">Active Listings</CardTitle>
-            <Activity className="h-4 w-4 text-success" />
+            <Activity className="h-4 w-4 text-emerald-500" />
           </CardHeader>
           <CardContent className="px-0 pb-0">
             <div className="text-3xl font-bold tabular-nums">{isLoading ? "-" : stats.activeListings}</div>
@@ -746,7 +746,7 @@ function AdminDashboard() {
           <div className="kpi-accent-bar" />
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 px-0 pt-0">
             <CardTitle className="text-sm font-medium">Pending KYC</CardTitle>
-            <ShieldCheck className="h-4 w-4 text-warning" />
+            <ShieldCheck className="h-4 w-4 text-amber-500" />
           </CardHeader>
           <CardContent className="px-0 pb-0">
             <div className="text-3xl font-bold tabular-nums">{isLoading ? "-" : stats.pendingKyc}</div>
@@ -756,10 +756,10 @@ function AdminDashboard() {
           <div className="kpi-accent-bar" />
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 px-0 pt-0">
             <CardTitle className="text-sm font-medium">Platform Health</CardTitle>
-            <Activity className="h-4 w-4 text-success" />
+            <Activity className="h-4 w-4 text-emerald-500" />
           </CardHeader>
           <CardContent className="px-0 pb-0">
-            <div className="text-3xl font-bold tabular-nums text-success">{isLoading ? "-" : `${stats.platformHealth}%`}</div>
+            <div className="text-3xl font-bold tabular-nums text-emerald-500">{isLoading ? "-" : `${stats.platformHealth}%`}</div>
           </CardContent>
         </Card>
       </div>
@@ -778,7 +778,7 @@ function AdminDashboard() {
                 {recentVerifications.map(u => (
                   <div key={u.id} className="flex items-center justify-between p-3 rounded-lg border border-amber-500/20 bg-amber-500/5">
                     <div className="flex items-center gap-3">
-                      <div className="p-2 rounded-full bg-amber-500/20"><AlertCircle className="w-4 h-4 text-warning" /></div>
+                      <div className="p-2 rounded-full bg-amber-500/20"><AlertCircle className="w-4 h-4 text-amber-500" /></div>
                       <div>
                         <p className="font-medium text-sm">User {u.id.substring(0, 8)}...</p>
                         <p className="text-xs text-muted-foreground">Joined {new Date(u.created_at).toLocaleDateString()}</p>
@@ -804,21 +804,21 @@ function AdminDashboard() {
                   <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
                   <span className="font-medium text-sm">Supabase Database</span>
                 </div>
-                <span className="text-xs text-success">Connected</span>
+                <span className="text-xs text-emerald-500">Connected</span>
               </div>
               <div className="flex items-center justify-between p-3 rounded-lg bg-card border border-border">
                 <div className="flex items-center gap-3">
                   <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
                   <span className="font-medium text-sm">Realtime Channels</span>
                 </div>
-                <span className="text-xs text-success">Active</span>
+                <span className="text-xs text-emerald-500">Active</span>
               </div>
               <div className="flex items-center justify-between p-3 rounded-lg bg-card border border-border">
                 <div className="flex items-center gap-3">
                   <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
                   <span className="font-medium text-sm">Background Workers</span>
                 </div>
-                <span className="text-xs text-success">Running</span>
+                <span className="text-xs text-emerald-500">Running</span>
               </div>
             </div>
           </CardContent>

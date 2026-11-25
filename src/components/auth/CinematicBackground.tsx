@@ -7,13 +7,13 @@ export function CinematicBackground() {
   return (
     <>
       {/* ── Base Gradient Layer ── */}
-      <div className="absolute inset-0 z-0 bg-background">
+      <div className="absolute inset-0 z-0 bg-[#050a0a]">
         {/* Primary radial gradients */}
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_15%_50%,rgba(16,185,129,0.08)_0%,transparent_50%)]"></div>
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_85%_20%,rgba(20,184,166,0.06)_0%,transparent_45%)]"></div>
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_90%,rgba(16,185,129,0.05)_0%,transparent_40%)]"></div>
         {/* Vignette */}
-        <div className="absolute inset-0 hidden dark:block bg-[radial-gradient(ellipse_at_center,transparent_0%,rgba(0,0,0,0.5)_70%,rgba(0,0,0,0.9)_100%)]"></div>
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_0%,rgba(0,0,0,0.5)_70%,rgba(0,0,0,0.9)_100%)]"></div>
         {/* Film Grain */}
         <div className="absolute inset-0 bg-noise opacity-[0.15] mix-blend-overlay pointer-events-none"></div>
       </div>
@@ -27,7 +27,7 @@ export function CinematicBackground() {
       {/* ── Decorative Grid Dots ── */}
       <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden opacity-[0.03]">
         <div className="absolute inset-0" style={{
-          backgroundImage: 'radial-gradient(circle, var(--foreground) 1px, transparent 1px)',
+          backgroundImage: 'radial-gradient(circle, rgba(255,255,255,0.8) 1px, transparent 1px)',
           backgroundSize: '32px 32px',
         }}></div>
       </div>
