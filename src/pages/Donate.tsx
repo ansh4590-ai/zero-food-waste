@@ -399,6 +399,9 @@ export default function Donate() {
     if (startD.getTime() < Date.now() - 5 * 60000) {
       return "Pickup start time cannot be significantly in the past.";
     }
+    if (endD.getTime() <= Date.now()) {
+      return "Pickup window has already closed.";
+    }
     if (endD.getTime() > expiryDate.getTime()) {
       return "Pickup must end by the expiry time.";
     }
@@ -483,7 +486,7 @@ export default function Donate() {
       if (existingPending) {
         const { data: existingRow, error: lookupError } = await supabase
           .from("food_listings")
-          .select("id, image_url")
+          .select("id, image_url, status")
           .eq("id", existingPending.listingId)
           .maybeSingle();
 
@@ -510,7 +513,7 @@ export default function Donate() {
             return;
           }
 
-          toast.error("Your previous donation was already published before your edits. Use 'Donate More' to submit a new listing.");
+          toast.error(`Your previous donation was already published (status: ${existingRow.status || "active"}). Use 'Donate More' to submit a new listing.`);
           return;
         }
 
@@ -523,6 +526,16 @@ export default function Donate() {
             }
             pendingSubmissionRef.current = null;
           } else if (existingPending.payload) {
+            // Validate the original submission's pickup window before resending it.
+            const origScheduleError = validateScheduleWindow(
+              String(existingPending.payload.expiry_time ?? ""),
+              String(existingPending.payload.pickup_window_start ?? ""),
+              String(existingPending.payload.pickup_window_end ?? "")
+            );
+            if (origScheduleError) {
+              toast.error(`Cannot resend previous donation: ${origScheduleError}`);
+              return;
+            }
             // An earlier insert may still be in flight: retry the ORIGINAL listingId and payload
             // rather than generating a second listing ID and risking two published donations.
             const { error: retryErr } = await supabase.from("food_listings").insert(existingPending.payload);

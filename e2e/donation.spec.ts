@@ -463,6 +463,105 @@ test.describe('Donation Lifecycle', () => {
     expect(deleteCalls).toBe(0);
   });
 
+  test('retry after timeout rejects resending when original pickup window has closed, and shows status if already published', async ({ page }) => {
+    await page.route('**/api/classify', route => route.fulfill({
+      json: { is_food: true, title: 'Curry Trays', predicted_category: 'cooked_meal' },
+    }));
+    await page.route('https://photon.komoot.io/api/*', route => route.fulfill({
+      json: {
+        features: [{
+          geometry: { coordinates: [77.209, 28.6139] },
+          properties: { osm_id: 5, name: 'Connaught Place', city: 'Delhi', state: 'DL', country: 'India' },
+        }],
+      },
+    }));
+
+    let postCount = 0;
+    let existingListingRow: { id: string; image_url: string; status: string } | null = null;
+
+    await page.route('**/storage/v1/object/food_images/**', route => route.fulfill({
+      status: 200,
+      json: { Key: 'food_images/test.png' },
+    }));
+
+    await page.route('**/rest/v1/food_listings*', async (route) => {
+      if (route.request().method() === 'POST') {
+        postCount += 1;
+        return route.abort('timedout');
+      }
+      if (route.request().method() === 'GET') {
+        return route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          json: existingListingRow,
+        });
+      }
+      return route.continue();
+    });
+
+    await page.goto('/donate');
+
+    const upload = page.locator('input[type="file"]');
+    await upload.waitFor({ state: 'attached' });
+    await upload.evaluate(async (el: HTMLInputElement) => {
+      const canvas = document.createElement('canvas');
+      canvas.width = 40;
+      canvas.height = 40;
+      const ctx = canvas.getContext('2d')!;
+      ctx.fillStyle = '#22c55e';
+      ctx.fillRect(0, 0, 40, 40);
+      const blob = await new Promise<Blob>(r => canvas.toBlob(b => r(b!), 'image/png'));
+      const dt = new DataTransfer();
+      dt.items.add(new File([blob], 'food.png', { type: 'image/png' }));
+      el.files = dt.files;
+      el.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+
+    await page.locator('#title').fill('Curry Trays');
+    await page.locator('#quantity').fill('10 trays');
+
+    await pickFutureDateTime(page, /pick expiry date & time/i, '14');
+    await pickFutureDateTime(page, /start time/i, '10');
+    await pickFutureDateTime(page, /end time/i, '12');
+
+    const addressInput = page.locator('#address');
+    await addressInput.fill('Connaught Place');
+    const suggestion = page.locator('ul li', { hasText: 'Connaught Place' }).first();
+    await suggestion.waitFor({ state: 'visible', timeout: 10_000 });
+    await suggestion.click();
+
+    await page.getByRole('button', { name: /next: review/i }).click();
+    await expect(page.getByRole('heading', { name: /review your donation/i })).toBeVisible({ timeout: 5_000 });
+
+    // First attempt times out
+    await page.getByRole('button', { name: /confirm & publish/i }).click();
+    await expect(page.getByRole('button', { name: /confirm & publish/i })).toBeEnabled({ timeout: 10_000 });
+    expect(postCount).toBe(1);
+
+    await page.getByRole('button', { name: /back to edit/i }).click();
+    await page.locator('#quantity').fill('20 trays');
+    await page.getByRole('button', { name: /next: review/i }).click();
+    await expect(page.getByRole('heading', { name: /review your donation/i })).toBeVisible({ timeout: 5_000 });
+
+    // Simulate time advancing 60 days while on review screen so the original pickup window has closed
+    await page.evaluate(() => {
+      const futureOffset = 60 * 24 * 60 * 60 * 1000;
+      const realNow = Date.now.bind(Date);
+      Date.now = () => realNow() + futureOffset;
+    });
+
+    // Original row does not exist: must NOT resend expired pickup window
+    await page.getByRole('button', { name: /confirm & publish/i }).click();
+    await expect(page.getByText(/cannot resend previous donation/i)).toBeVisible({ timeout: 5_000 });
+    expect(postCount).toBe(1);
+
+    // If the original row actually committed, lookup finds it and shows its status
+    existingListingRow = { id: 'committed-id', image_url: 'https://example.com/food.png', status: 'active' };
+    await page.getByRole('button', { name: /confirm & publish/i }).click();
+    await expect(page.getByText(/status: active/i)).toBeVisible({ timeout: 5_000 });
+    expect(postCount).toBe(1);
+  });
+
   test('donor profile with zero latitude and zero longitude is treated as valid location', async ({ page }) => {
     await page.route('**/rest/v1/profiles*', route => route.fulfill({
       status: 200,
